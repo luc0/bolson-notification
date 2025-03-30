@@ -21,3 +21,8 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+
+/captures
+posts.jpg
+todo.md
+cookies.json
