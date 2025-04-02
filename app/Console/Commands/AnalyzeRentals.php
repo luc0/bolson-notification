@@ -170,15 +170,15 @@ class AnalyzeRentals extends Command
                     $item['site_url'] = $site['url'];
 
                     $notExistentRental = !Rental::where('source', $item['Link'])->exists();
-//                    if ($notExistentRental) {
-                    if (true) {
-//                        Rental::create([
-//                            'source' => $item['Link'],
-//                            'content' => $item['Content'],
-//                            'description' => $item['Caracteristicas'],
-//                        ]);
+                    if ($notExistentRental) {
+//                    if (true) {
+                        Rental::create([
+                            'source' => $item['Link'],
+                            'content' => $item['Content'],
+                            'description' => $item['Caracteristicas'],
+                        ]);
 
-//                        $this->info('✅ Datos guardados con éxito en la DB.');
+                        $this->info('✅ Datos guardados con éxito en la DB.');
 
                         $allItems[] = $item; // solo nuevos
                     }
