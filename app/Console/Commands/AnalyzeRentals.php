@@ -99,48 +99,6 @@ class AnalyzeRentals extends Command
 
             $html = file_get_contents($site['html']);
 
-//            $response = Http::withToken(env('OPENAI_API_KEY'))
-//                ->timeout(120)
-//                ->post('https://api.openai.com/v1/chat/completions', [
-//                'model' => 'gpt-4-turbo', //'gpt-4-turbo' // gpt-3.5-turbo
-//                'messages' => [
-//                    [
-//                        'role' => 'user',
-//                        'content' => `
-//               Extraé todos los avisos de alquiler de departamentos del siguiente HTML.
-//
-//                Cada resultado debe ser un objeto con estas claves:
-//                - "Content": descripción del aviso (texto completo)
-//                - "Link": URL completa al aviso (si no es válida, completala con el baseUrl: {{URL_BASE}})
-//                - "Caracteristicas": string con ubicación, precio, cantidad de ambientes, baños, etc., separado por saltos de línea (\n) y sin emojis.
-//
-//                El resultado debe ser un array JSON válido:
-//                - Todo debe estar envuelto dentro de [ ]
-//                - Cada objeto debe tener comillas dobles en claves y valores
-//                - No incluyas texto adicional antes o después
-//                - No uses etiquetas Markdown ni emojis
-//
-//                Ejemplo válido:
-//
-//                [
-//                  {
-//                    "Content": "Departamento amueblado con balcón",
-//                    "Link": "https://example.com/propiedad/123",
-//                    "Caracteristicas": "ubicación: El Bolsón\nprecio: AR$ 200000\nambientes: 2\nbaños: 1"
-//                  }
-//                ]
-//
-//                IMPORTANTE: Solo devolvé un JSON válido como el ejemplo. No agregues ningún texto ni explicación.
-//                `
-//                    ], // Solo respondé el array JSON sin ningún texto adicional. // Respondé solo con el array JSON sin envolverlo en \`\`\` ni ningún otro formato. No agregues texto extra ni comentarios antes o después.
-//                    [
-//                        'role' => 'user',
-//                        'content' => $html
-//                    ]
-//                ],
-//                'max_tokens' => 1500, // 200 x post aprox. (y tranqui)
-//            ]);
-
             $response = Http::withToken(env('GROQ_API_KEY'))
                 ->timeout(120)
                 ->post('https://api.groq.com/openai/v1/chat/completions', [
@@ -191,7 +149,7 @@ class AnalyzeRentals extends Command
 
             $jsonRaw = $response['choices'][0]['message']['content'];
 
-            $this->line($jsonRaw); // no es error // TODO: borrar este
+//            $this->line($jsonRaw); // no es error // TODO: borrar este
 
             // Limpiar el <think> del modelo de deepseek
             $jsonClean = preg_replace('/<think>.*?<\/think>/is', '', $jsonRaw);
@@ -205,7 +163,7 @@ class AnalyzeRentals extends Command
                 return;
             }
 
-            $this->info(json_encode($modelDataResponse, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+//            $this->info(json_encode($modelDataResponse, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
             try {
                 foreach ($modelDataResponse as $item) {
@@ -254,31 +212,46 @@ class AnalyzeRentals extends Command
             return;
         }
 
-        $mensaje = "🏠 *Alquileres disponibles:*\n\n";
+        $bloques = [];
+        $mensajeActual = "🏠 *Alquileres disponibles:*\n\n";
 
         foreach ($allItems as $item) {
             $caracteristicas = $item['Caracteristicas'] ?? 'Sin descripción';
             $fuente = $item['Link'] ?? $item['site_url'] ?? 'Sin link';
 
-            $mensaje .= "$caracteristicas\n";
-            $mensaje .= "👉 Ver en: $fuente\n";
-            $mensaje .= "---\n";
+            $itemTexto = "$caracteristicas\n👉 Ver en: $fuente\n---\n";
+
+            // Si agregar este item supera el límite, se guarda el mensaje actual y se comienza uno nuevo
+            if (strlen($mensajeActual . $itemTexto) > 1600) {
+                $bloques[] = rtrim($mensajeActual);
+                $mensajeActual = ""; // sin el título en los siguientes bloques
+            }
+
+            $mensajeActual .= $itemTexto;
         }
 
-        $this->info("Mensaje que se enviará: $mensaje");
+        // Guardar el último bloque si quedó contenido sin enviar
+        if (!empty(trim($mensajeActual))) {
+            $bloques[] = rtrim($mensajeActual);
+        }
+
+        $this->info("Se generaron " . count($bloques) . " bloque(s) de mensaje(s).");
 
         try {
             $twilio = new Client(env('TWILIO_SID'), env('TWILIO_TOKEN'));
 
-            WhatsappUser::where('active', true)->each(function ($user) use ($twilio, $mensaje) {
+            WhatsappUser::where('active', true)->each(function ($user) use ($twilio, $bloques) {
                 $to = 'whatsapp:' . $user->phone;
 
-                $twilio->messages->create($to, [
-                    'from' => 'whatsapp:' . env('TWILIO_FROM'),
-                    'body' => $mensaje,
-                ]);
+                foreach ($bloques as $index => $mensaje) {
+                    $twilio->messages->create($to, [
+                        'from' => 'whatsapp:' . env('TWILIO_FROM'),
+                        'body' => $mensaje,
+                    ]);
 
-                $this->info('✅ Mensaje enviado por WhatsApp a: ' . $user->name . ' | ' . $user->phone);
+                    $this->info("✅ Bloque " . ($index + 1) . " enviado a " . $user->name . " | " . $user->phone);
+                    sleep(1); // Delay pequeño para evitar throttle, opcional
+                }
             });
 
         } catch (\Exception $e) {
