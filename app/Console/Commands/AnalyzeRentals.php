@@ -2,9 +2,12 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Rental;
 use App\Models\WhatsappUser;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
+use Symfony\Component\Process\Process;
+use Symfony\Component\Process\Exception\ProcessFailedException;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
@@ -17,110 +20,270 @@ class AnalyzeRentals extends Command
 
     public function handle()
     {
-        $facebookPath = "https://www.facebook.com/groups/615188652452832";
-        $filePath = base_path('posts.jpg');
+        // Scrapear.
+        $this->line('🤖 Ejecutando script de scrapeo con Node...');
 
-        if (!file_exists($filePath)) {
-            $this->error('No se encontró el archivo posts.jpg en la raíz del proyecto.');
+        $process = new Process(['node', base_path('scrape.cjs')]);
+        $process->setTimeout(120); // 2 minutos como máximo
+
+        try {
+            $process->mustRun();
+            $this->info("✅ Scrapeo finalizado");
+        } catch (ProcessFailedException $e) {
+            $this->error('❌ Error al ejecutar el script de scrapeo:');
+            $this->error($e->getMessage());
             return Command::FAILURE;
         }
 
-        $this->info('📤 Enviando y analizando imagen con ChatGPT...');
+        // ANALYZE
+        // maximo gasto admitido OPENIA total: 0.1USD
+        $sites = [
+            [
+                'html' => base_path('captures/anezca.html'),
+                'url' => 'https://anezcapropiedades.com.ar/properties?property_type_id=&operation_id=2&location_id=1396&currency_id=&price_min=&price_max=&bathrooms=&bedrooms=&order=',
+                'postUrl' => 'https://anezcapropiedades.com.ar/propiedades' // No hace falta
+            ],
+            [
+                'html' => base_path('captures/puntopatagonia.html'),
+                'url' => 'https://www.inmobiliariapuntopatagonia.com.ar/Alquiler',
+                'postUrl' => 'https://www.inmobiliariapuntopatagonia.com.ar/p/'
+            ],
+            [
+                'html' => base_path('captures/puntosurpropiedades.html'),
+                'url' => 'https://puntosurpropiedades.ar/web/index.php?search_tipo_de_propiedad=1&search_locality=El%20Bols%C3%B3n&search_tipo_de_operacion=2#listado',
+                'postUrl' => 'https://puntosurpropiedades.ar/web/' // TODO: no obtiene link de la publicacion. ver html
+            ],
+            [
+                'html' => base_path('captures/rioazulpropiedades.html'),
+                'url' => 'https://www.rioazulpropiedades.com/Buscar?operation=2&locations=40933&o=2,2&1=1',
+                'postUrl' => 'https://www.rioazulpropiedades.com/' // TODO: te redirije a home. Porque?
+            ],
+            [
+                'html' => base_path('captures/inmobiliariadelagua.html'),
+                'url' => 'https://inmobiliariadelagua.com.ar/s/alquiler////?business_type%5B%5D=for_rent',
+                'postUrl' => 'https://inmobiliariadelagua.com.ar' // TODO: no obtiene link del html. ver porque.
+            ]
+        ];
 
-        $imageData = base64_encode(file_get_contents($filePath));
-        $response = Http::withToken(env('OPENAI_API_KEY'))->post('https://api.openai.com/v1/chat/completions', [
-            'model' => 'gpt-4-turbo',
-            'messages' => [
-                [
-                    'role' => 'user',
-                    'content' => [
+        $allItems = [];
+
+        foreach ($sites as $site) {
+            if (!file_exists($site['html'])) {
+                $this->error('No se encontró el archivo HTML: ' . $site['html']);
+                continue;
+            }
+
+            // Check site snapshot updates
+            if (!File::exists(storage_path('html_snapshots'))) {
+                File::makeDirectory(storage_path('html_snapshots'));
+            }
+
+            $html = file_get_contents($site['html']);
+
+            $snapshotPath = storage_path('html_snapshots/' . basename($site['html']));
+
+            if (File::exists($snapshotPath)) {
+                $previousHtml = file_get_contents($snapshotPath);
+
+                if (hash('sha256', $html) === hash('sha256', $previousHtml)) {
+                    $this->line('🔁 Sin cambios detectados en el HTML de: ' . $site['url']);
+                    continue;
+                }
+            }
+
+            // Guardamos el nuevo snapshot para futuras comparaciones
+            file_put_contents($snapshotPath, $html);
+
+            // Continua con el analyze.
+
+            $this->line('📤 Enviando HTML a OpenAI para analizar: ' . $site['url']);
+
+            $html = file_get_contents($site['html']);
+
+//            $response = Http::withToken(env('OPENAI_API_KEY'))
+//                ->timeout(120)
+//                ->post('https://api.openai.com/v1/chat/completions', [
+//                'model' => 'gpt-4-turbo', //'gpt-4-turbo' // gpt-3.5-turbo
+//                'messages' => [
+//                    [
+//                        'role' => 'user',
+//                        'content' => `
+//               Extraé todos los avisos de alquiler de departamentos del siguiente HTML.
+//
+//                Cada resultado debe ser un objeto con estas claves:
+//                - "Content": descripción del aviso (texto completo)
+//                - "Link": URL completa al aviso (si no es válida, completala con el baseUrl: {{URL_BASE}})
+//                - "Caracteristicas": string con ubicación, precio, cantidad de ambientes, baños, etc., separado por saltos de línea (\n) y sin emojis.
+//
+//                El resultado debe ser un array JSON válido:
+//                - Todo debe estar envuelto dentro de [ ]
+//                - Cada objeto debe tener comillas dobles en claves y valores
+//                - No incluyas texto adicional antes o después
+//                - No uses etiquetas Markdown ni emojis
+//
+//                Ejemplo válido:
+//
+//                [
+//                  {
+//                    "Content": "Departamento amueblado con balcón",
+//                    "Link": "https://example.com/propiedad/123",
+//                    "Caracteristicas": "ubicación: El Bolsón\nprecio: AR$ 200000\nambientes: 2\nbaños: 1"
+//                  }
+//                ]
+//
+//                IMPORTANTE: Solo devolvé un JSON válido como el ejemplo. No agregues ningún texto ni explicación.
+//                `
+//                    ], // Solo respondé el array JSON sin ningún texto adicional. // Respondé solo con el array JSON sin envolverlo en \`\`\` ni ningún otro formato. No agregues texto extra ni comentarios antes o después.
+//                    [
+//                        'role' => 'user',
+//                        'content' => $html
+//                    ]
+//                ],
+//                'max_tokens' => 1500, // 200 x post aprox. (y tranqui)
+//            ]);
+
+            $response = Http::withToken(env('GROQ_API_KEY'))
+                ->timeout(120)
+                ->post('https://api.groq.com/openai/v1/chat/completions', [
+                    'model' => 'deepseek-r1-distill-qwen-32b',
+                    'messages' => [
                         [
-                            'type' => 'text',
-                            'text' => "Analizá esta captura de pantalla del grupo de Facebook y extraé los alquileres de departamentos ofrecidos por dueños o inmobiliarias.
-                            De cada uno quiero un objeto JSON con 4 propiedades: 'Autor', 'Content' (seria el texto completo de la publicación), 'Fecha' y 'Caracteristicas'. Dentro de caracteristicas: ubicación, precio, ambientes, patio, estacionamiento, etc. (poniendole emojis al inicio para hacerlo visual y un salto de linea y solo las caracteristicas que sean obvias e importantes)
-                            Solo incluí posts que sean ofertas de alquiler de departamentos (no comentarios, ni pedidos).
-                            Respondé SOLO en JSON, como un array. Pero sin agregarle ```json sino como si fuera el contenido directo del archivo."
+                            'role' => 'user',
+                            'content' => <<<EOT
+                            Extraé todos los avisos de alquiler de departamentos del siguiente HTML.
+
+                            Cada resultado debe ser un objeto con estas claves:
+                            - "Content": descripción del aviso (texto completo)
+                            - "Link": URL completa al aviso (si no es válida, completala con el baseUrl: {$site['postUrl']})
+                            - "Caracteristicas": string con ubicación, precio, cantidad de ambientes, baños, etc., separado por saltos de línea (\n) y sin emojis.
+
+                            El resultado debe ser un array JSON válido:
+                            - Todo debe estar envuelto dentro de [ ]
+                            - Cada objeto debe tener comillas dobles en claves y valores
+                            - No incluyas texto adicional antes o después
+                            - No uses etiquetas Markdown
+                            - Si hay saltos de linea usa \n
+
+                            Ejemplo válido:
+
+                            [
+                              {
+                                "Content": "Departamento amueblado con balcón",
+                                "Link": "https://example.com/propiedad/123",
+                                "Caracteristicas": "ubicación: El Bolsón\nprecio: AR$ 200000\nambientes: 2\nbaños: 1"
+                              }
+                            ]
+
+                            IMPORTANTE: No expliques lo que vas a hacer. No incluyas bloques de reflexión como <think> o análisis previos. Solo devolvé el JSON pedido. Solo devolvé un JSON válido como el ejemplo. No agregues ningún texto ni explicación.
+                            EOT
                         ],
                         [
-                            'type' => 'image_url',
-                            'image_url' => ['url' => 'data:image/jpeg;base64,' . $imageData]
+                            'role' => 'user',
+                            'content' => $html
                         ]
-                    ]
-                ]
-            ],
-            'max_tokens' => 1500,
-        ]);
+                    ],
+                    'temperature' => 0.3,
+                    'max_tokens' => 3000,
+                ]);
 
-        if (!$response->successful()) {
-            $this->error('❌ Error de la API de OpenAI:');
-            $this->line($response->body());
-            return Command::FAILURE;
+            if (!$response->successful()) {
+                $this->error('❌ Error de OpenAI en ' . $site['url']);
+                $this->line($response->body());
+                continue;
+            }
+
+            $jsonRaw = $response['choices'][0]['message']['content'];
+
+            $this->line($jsonRaw); // no es error // TODO: borrar este
+
+            // Limpiar el <think> del modelo de deepseek
+            $jsonClean = preg_replace('/<think>.*?<\/think>/is', '', $jsonRaw);
+            $jsonClean = trim($jsonClean);
+            $jsonClean = preg_replace('/^```json|```$/m', '', $jsonClean);
+            $modelDataResponse = json_decode($jsonClean, true);
+
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                $this->error('❌ JSON malformado: ' . json_last_error_msg());
+                $this->line($jsonClean); // Para debug
+                return;
+            }
+
+            $this->info(json_encode($modelDataResponse, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+
+            try {
+                foreach ($modelDataResponse as $item) {
+                    $item['site_url'] = $site['url'];
+
+                    $notExistentRental = !Rental::where('source', $item['Link'])->exists();
+                    if ($notExistentRental) {
+                        Rental::create([
+                            'source' => $item['Link'],
+                            'content' => $item['Content'],
+                            'description' => $item['Caracteristicas'],
+                        ]);
+
+                        $allItems[] = $item; // solo nuevos
+                    }
+                }
+            } catch (\Throwable $e) {
+                $this->error('❌ Error parseando o guardando JSON para: ' . $site['url'] . ' ' . $e->getMessage());
+            }
+//            try {
+//                $modelDataResponse = json_decode($modelDataResponse, true);
+//
+//                foreach ($modelDataResponse as &$item) {
+//                    $item['site_url'] = $site['url'];
+//                }
+//
+//                $allItems = array_merge($allItems, $modelDataResponse);
+//            } catch (\Throwable $e) {
+//                $this->error('❌ Error parseando JSON para: ' . $site['url']);
+//            }
         }
 
-        $jsonString = $response['choices'][0]['message']['content'];
+        // Guardar todo en rental.json
+        $this->line('💾 Guardando resultados combinados...');
+        Storage::put('rental.json', json_encode($allItems, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
-        $this->info('💾 Guardando resultado en storage/app/rental.json...');
-        Storage::put('rental.json', $jsonString);
-
-        $this->info('✅ Análisis completado con éxito.');
-
+        $this->info('✅ Datos guardados con éxito.');
 
         // TWILIO
-        $this->info('Enviando a whastapp, data de alquileres!...');
-        $path = storage_path('app/private/rental.json');
 
-        if (!File::exists($path)) {
-            $this->error('❌ No existe el archivo rental.json');
-            return;
-        }
-
-        $data = json_decode(File::get($path), true);
-
-        if (!$data || !is_array($data)) {
-            $this->error('❌ El archivo no tiene un formato válido');
-            return;
-        }
-
-        if (empty($data)) {
+        if (empty($allItems)) {
             $this->warn('⚠️ No hay alquileres para enviar.');
             return;
         }
 
         $mensaje = "🏠 *Alquileres disponibles:*\n\n";
 
-        foreach ($data as $item) {
-            $fecha = $item['Fecha'] ?? 'Sin fecha';
+        foreach ($allItems as $item) {
             $caracteristicas = $item['Caracteristicas'] ?? 'Sin descripción';
+            $fuente = $item['Link'] ?? $item['site_url'] ?? 'Sin link';
 
-            $query = rawurlencode('"' . $item['Autor'] . " " . Str::words($item['Content'], 5) . '"');
-            $link = "$facebookPath/search/?q=$query";
-
-            $mensaje .= "_" . $fecha . "_ \n";
-            $mensaje .= "$caracteristicas\n\n";
-            $mensaje .= "👉 Más info: $link \n";
+            $mensaje .= "$caracteristicas\n";
+            $mensaje .= "👉 Ver en: $fuente\n";
             $mensaje .= "---\n";
         }
 
-//        $to = 'whatsapp:' . env('WHATSAPP_TO');
-
         $this->info("Mensaje que se enviará: $mensaje");
-        try {
-            $twilio = new Client(env('TWILIO_SID'), env('TWILIO_TOKEN'));
 
-            WhatsappUser::where('active', true)->each(function ($user) use ($twilio, $mensaje) {
-                $to = 'whatsapp:' . $user->phone;
-
-                $twilio->messages->create($to, [
-                    'from' => 'whatsapp:' . env('TWILIO_FROM'),
-                    'body' => $mensaje,
-                ]);
-
-                $this->info('✅ Mensaje enviado por WhatsApp a: ' . $user->name . ' | ' . $user->phone);
-            });
-
-        } catch (\Exception $e) {
-            $this->error('❌ Error enviando mensaje: ' . $e->getMessage());
-        }
+//        try {
+//            $twilio = new Client(env('TWILIO_SID'), env('TWILIO_TOKEN'));
+//
+//            WhatsappUser::where('active', true)->each(function ($user) use ($twilio, $mensaje) {
+//                $to = 'whatsapp:' . $user->phone;
+//
+//                $twilio->messages->create($to, [
+//                    'from' => 'whatsapp:' . env('TWILIO_FROM'),
+//                    'body' => $mensaje,
+//                ]);
+//
+//                $this->info('✅ Mensaje enviado por WhatsApp a: ' . $user->name . ' | ' . $user->phone);
+//            });
+//
+//        } catch (\Exception $e) {
+//            $this->error('❌ Error enviando mensaje: ' . $e->getMessage());
+//        }
 
         return Command::SUCCESS;
     }

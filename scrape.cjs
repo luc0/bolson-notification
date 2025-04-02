@@ -1,101 +1,117 @@
 const puppeteer = require('puppeteer');
 const fs = require('fs');
-const sharp = require('sharp');
-const path = require('path');
 
-const SCROLL_TIMES = 5;
-const SCROLL_DELAY = 2000;
-const VIEWPORT_WIDTH = 400;
-const VIEWPORT_HEIGHT = 700;
-const SCREENSHOT_DIR = './captures';
-const FINAL_IMAGE = 'posts.jpg';
+const sites = [
+    {
+        file: 'anezca.html',
+        url: 'https://anezcapropiedades.com.ar/properties?property_type_id=&operation_id=2&location_id=1396&currency_id=&price_min=&price_max=&bathrooms=&bedrooms=&order='
+    },
+    {
+        file: 'puntopatagonia.html',
+        url: 'https://www.inmobiliariapuntopatagonia.com.ar/Alquiler'
+    },
+    {
+        file: 'puntosurpropiedades.html',
+        url: 'https://puntosurpropiedades.ar/web/index.php?search_tipo_de_propiedad=1&search_locality=El%20Bols%C3%B3n&search_tipo_de_operacion=2#listado'
+    },
+    {
+        file: 'rioazulpropiedades.html',
+        url: 'https://www.rioazulpropiedades.com/Buscar?operation=2&locations=40933&o=2,2&1=1'
+    },
+    {
+        file: 'inmobiliariadelagua.html',
+        url: 'https://inmobiliariadelagua.com.ar/s/alquiler////?business_type%5B%5D=for_rent'
+    }
+];
 
 (async () => {
-    if (!fs.existsSync(SCREENSHOT_DIR)) fs.mkdirSync(SCREENSHOT_DIR);
+    const browser = await puppeteer.launch({ headless: 'new' });
 
-    const browser = await puppeteer.launch({
-        headless: false, // 🧪 Usá false para ver si realmente se carga bien
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
-    });
+    await Promise.allSettled(sites.map(async (site) => {
+        try {
+            const page = await browser.newPage();
+            await page.goto(site.url, {
+                waitUntil: 'networkidle0',
+                timeout: 60000
+            });
 
+            // await page.waitForTimeout(2000); // Espera por si carga algo con js
 
-    const page = await browser.newPage();
-    await page.setViewport({ width: VIEWPORT_WIDTH, height: VIEWPORT_HEIGHT });
+            const cleanBody = await page.evaluate(() => {
+                // Eliminar estilos embebidos y hojas de estilo externas
+                document.querySelectorAll('style, link[rel="stylesheet"]').forEach(el => el.remove());
 
-    await page.setUserAgent(
-        'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) ' +
-        'AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 ' +
-        'Mobile/15E148 Safari/604.1'
-    );
+                const bodyClone = document.body.cloneNode(true);
 
-    const cookies = JSON.parse(fs.readFileSync('cookies.json', 'utf8'));
-    await page.setCookie(...cookies);
+                // Remover scripts
+                bodyClone.querySelectorAll('script').forEach(s => s.remove());
 
-    console.log('🧭 Navegando a la versión mobile...');
-    await page.goto('https://m.facebook.com/groups/615188652452832/?sorting_setting=RECENT_ACTIVITY', {
-        waitUntil: 'networkidle2',
-        timeout: 60000
-    });
+                // Remover el <header>
+                const header = bodyClone.querySelector('header');
+                if (header) header.remove();
 
-    if (page.url().includes('login')) {
-        console.error('❌ Redirigido a login. Las cookies están vencidas.');
-        await browser.close();
-        process.exit(1);
-    }
+                // Remover comentarios HTML recursivamente
+                const removeComments = (node) => {
+                    for (let i = node.childNodes.length - 1; i >= 0; i--) {
+                        const child = node.childNodes[i];
+                        if (child.nodeType === Node.COMMENT_NODE) {
+                            node.removeChild(child);
+                        } else if (child.nodeType === Node.ELEMENT_NODE) {
+                            removeComments(child);
+                        }
+                    }
+                };
+                removeComments(bodyClone);
 
-    console.log('⏳ Esperando que cargue el feed...');
-    await Promise.race([
-        page.waitForSelector('img'),
-        page.waitForSelector('[role="feed"]'),
-        page.waitForSelector('[role="article"]'),
-    ]);
+                // 🧹 Remover todos los atributos de las etiquetas
+                // const removeAttributes = (node) => {
+                //     if (node.nodeType === Node.ELEMENT_NODE) {
+                //         // Copiar primero todos los nombres de atributos
+                //         const attrs = Array.from(node.attributes).map(attr => attr.name);
+                //
+                //         for (const attrName of attrs) {
+                //             if (attrName.toLowerCase() !== 'href') {
+                //                 node.removeAttribute(attrName);
+                //             }
+                //         }
+                //
+                //         // Procesar hijos
+                //         for (const child of node.children) {
+                //             removeAttributes(child);
+                //         }
+                //     }
+                // };
 
-    console.log('📸 Capturando scrolls...');
-    for (let i = 0; i < SCROLL_TIMES; i++) {
-        const filePath = path.join(SCREENSHOT_DIR, `frame-${i}.jpg`);
+                // 🗑️ Remover nodos vacíos recursivamente
+                const removeEmptyNodes = (node) => {
+                    const isEmpty = (el) =>
+                        el.nodeType === Node.ELEMENT_NODE &&
+                        !el.innerText.trim() &&
+                        el.children.length === 0;
 
-        // Asegurar que la parte visible tenga contenido
-        await new Promise(res => setTimeout(res, 2000));
+                    for (let i = node.children.length - 1; i >= 0; i--) {
+                        const child = node.children[i];
+                        removeEmptyNodes(child);
+                        if (isEmpty(child)) {
+                            child.remove();
+                        }
+                    }
+                };
+                removeEmptyNodes(bodyClone);
 
-        await page.screenshot({
-            path: filePath,
-            type: 'jpeg',
-            quality: 90,
-            fullPage: false
-        });
+                // Obtener HTML limpio y reducir espacios
+                let html = bodyClone.innerHTML;
+                html = html.replace(/\s+/g, ' ').trim();
 
-        console.log(`✅ Captura ${i + 1} guardada`);
-        await page.evaluate(() => window.scrollBy(0, window.innerHeight));
-        await new Promise(res => setTimeout(res, SCROLL_DELAY));
-    }
+                return html;
+            });
 
-    console.log('🧵 Uniendo imágenes con sharp...');
-    const images = Array.from({ length: SCROLL_TIMES }, (_, i) =>
-        path.join(SCREENSHOT_DIR, `frame-${i}.jpg`)
-    );
-
-    const sharpImages = images.map(img => sharp(img));
-    const heights = await Promise.all(sharpImages.map(img => img.metadata().then(meta => meta.height)));
-
-    const joined = sharp({
-        create: {
-            width: VIEWPORT_WIDTH,
-            height: heights.reduce((acc, h) => acc + h, 0),
-            channels: 3,
-            background: '#ffffff'
+            fs.writeFileSync(`captures/${site.file}`, cleanBody, 'utf-8');
+            console.log(`✅ HTML limpio guardado en captures/${site.file}`);
+        } catch (err) {
+            console.error(`❌ Error con ${site.url}:`, err.message);
         }
-    });
-
-    let top = 0;
-    const composites = await Promise.all(images.map(async (imgPath, index) => {
-        const buffer = await sharp(imgPath).toBuffer();
-        const result = { input: buffer, top, left: 0 };
-        top += heights[index];
-        return result;
     }));
-
-    await joined.composite(composites).jpeg({ quality: 90 }).toFile(FINAL_IMAGE);
-    console.log(`🖼️ Imagen final generada: ${FINAL_IMAGE}`);
 
     await browser.close();
 })();
