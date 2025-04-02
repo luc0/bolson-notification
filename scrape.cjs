@@ -4,26 +4,30 @@ const fs = require('fs');
 const sites = [
     {
         file: 'anezca.html',
-        url: 'https://anezcapropiedades.com.ar/properties?property_type_id=&operation_id=2&location_id=1396&currency_id=&price_min=&price_max=&bathrooms=&bedrooms=&order='
+        url: 'https://anezcapropiedades.com.ar/properties?property_type_id=&operation_id=2&location_id=1396&currency_id=&price_min=&price_max=&bathrooms=&bedrooms=&order=',
+        waitFor: null,
     },
     {
         file: 'puntopatagonia.html',
-        url: 'https://www.inmobiliariapuntopatagonia.com.ar/Alquiler'
+        url: 'https://www.inmobiliariapuntopatagonia.com.ar/Alquiler',
+        waitFor: '.prop-desc'
     },
     {
         file: 'puntosurpropiedades.html',
-        url: 'https://puntosurpropiedades.ar/web/index.php?search_tipo_de_propiedad=1&search_locality=El%20Bols%C3%B3n&search_tipo_de_operacion=2#listado'
+        url: 'https://puntosurpropiedades.ar/web/index.php?search_tipo_de_propiedad=1&search_locality=El%20Bols%C3%B3n&search_tipo_de_operacion=2#listado',
+        waitFor: null,
     },
     {
         file: 'rioazulpropiedades.html',
-        url: 'https://www.rioazulpropiedades.com/Buscar?operation=2&locations=40933&o=2,2&1=1'
+        url: 'https://www.rioazulpropiedades.com/Buscar?operation=2&locations=40933&o=2,2&1=1',
+        waitFor: null,
     },
     {
         file: 'inmobiliariadelagua.html',
-        url: 'https://inmobiliariadelagua.com.ar/s/alquiler////?business_type%5B%5D=for_rent'
+        url: 'https://inmobiliariadelagua.com.ar/s/alquiler////?business_type%5B%5D=for_rent',
+        waitFor: '.item',
     }
 ];
-
 (async () => {
     const browser = await puppeteer.launch({ headless: 'new' });
 
@@ -35,7 +39,19 @@ const sites = [
                 timeout: 60000
             });
 
-            // await page.waitForTimeout(2000); // Espera por si carga algo con js
+            // Sirve para sitios que cargan dinamicamente con js.
+            if (site['waitFor']) {
+                await page.waitForSelector(site['waitFor'], { timeout: 15000 });
+            }
+
+            // Sirve para hacer log de lo que haga dentro de page.evaluate
+            page.on('console', msg => {
+                for (let i = 0; i < msg.args().length; ++i) {
+                    msg.args()[i].jsonValue().then(val => {
+                        console.log(`[browser log]`, val);
+                    });
+                }
+            });
 
             const cleanBody = await page.evaluate(() => {
                 // Eliminar estilos embebidos y hojas de estilo externas
@@ -63,24 +79,23 @@ const sites = [
                 };
                 removeComments(bodyClone);
 
-                // 🧹 Remover todos los atributos de las etiquetas
-                // const removeAttributes = (node) => {
-                //     if (node.nodeType === Node.ELEMENT_NODE) {
-                //         // Copiar primero todos los nombres de atributos
-                //         const attrs = Array.from(node.attributes).map(attr => attr.name);
-                //
-                //         for (const attrName of attrs) {
-                //             if (attrName.toLowerCase() !== 'href') {
-                //                 node.removeAttribute(attrName);
-                //             }
-                //         }
-                //
-                //         // Procesar hijos
-                //         for (const child of node.children) {
-                //             removeAttributes(child);
-                //         }
-                //     }
-                // };
+                // 🧹 Remover todos los atributos de las etiquetas (excepto href)
+                const removeAttributes = (node) => {
+                    // console.log('limpiando', node.tagName);
+                    // Incluye el nodo raíz también
+                    const allElements = [node, ...node.querySelectorAll('*')];
+
+                    for (const el of allElements) {
+                        const attrs = Array.from(el.attributes).map(attr => attr.name);
+                        console.log(attrs);
+                        for (const attrName of attrs) {
+                            if (attrName.toLowerCase() !== 'href') {
+                                el.removeAttribute(attrName);
+                            }
+                        }
+                    }
+                };
+                removeAttributes(bodyClone);
 
                 // 🗑️ Remover nodos vacíos recursivamente
                 const removeEmptyNodes = (node) => {
@@ -99,11 +114,16 @@ const sites = [
                 };
                 removeEmptyNodes(bodyClone);
 
-                // Obtener HTML limpio y reducir espacios
-                let html = bodyClone.innerHTML;
-                html = html.replace(/\s+/g, ' ').trim();
+                // ✅ Asegurar que se procesen atributos del nodo raíz también
+                removeAttributes(bodyClone);
 
-                return html;
+                // 🧼 Serializar todo el body con sus cambios
+                const tempContainer = document.createElement('div');
+                tempContainer.appendChild(bodyClone);
+
+                // Devolver outerHTML para incluir el nodo raíz limpio
+                return tempContainer.innerHTML.replace(/\s+/g, ' ').trim();
+
             });
 
             fs.writeFileSync(`captures/${site.file}`, cleanBody, 'utf-8');

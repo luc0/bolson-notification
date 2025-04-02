@@ -36,32 +36,31 @@ class AnalyzeRentals extends Command
         }
 
         // ANALYZE
-        // maximo gasto admitido OPENIA total: 0.1USD
         $sites = [
             [
-                'html' => base_path('captures/anezca.html'),
+                'html' => base_path('captures/anezca.html'), // TODO: OK!
                 'url' => 'https://anezcapropiedades.com.ar/properties?property_type_id=&operation_id=2&location_id=1396&currency_id=&price_min=&price_max=&bathrooms=&bedrooms=&order=',
                 'postUrl' => 'https://anezcapropiedades.com.ar/propiedades' // No hace falta
             ],
             [
-                'html' => base_path('captures/puntopatagonia.html'),
+                'html' => base_path('captures/puntopatagonia.html'), // OK (antes: no obtiene link de la publicacion. ver html) (funca oiP https://www.inmobiliariapuntopatagonia.com.ar/p/6858071-Departamento-en-Alquiler-en-El-Bolson-El-Bols%C3%B3n,-departamento-a-200-mts-de-plaza-Pagano)
                 'url' => 'https://www.inmobiliariapuntopatagonia.com.ar/Alquiler',
                 'postUrl' => 'https://www.inmobiliariapuntopatagonia.com.ar/p/'
             ],
             [
-                'html' => base_path('captures/puntosurpropiedades.html'),
+                'html' => base_path('captures/puntosurpropiedades.html'), // TODO: OK (antes: no obtiene link de la publicacion. ver html) (funco con: https://puntosurpropiedades.ar/web/propiedad.php?id_propiedad=655)
                 'url' => 'https://puntosurpropiedades.ar/web/index.php?search_tipo_de_propiedad=1&search_locality=El%20Bols%C3%B3n&search_tipo_de_operacion=2#listado',
-                'postUrl' => 'https://puntosurpropiedades.ar/web/' // TODO: no obtiene link de la publicacion. ver html
+                'postUrl' => 'https://puntosurpropiedades.ar/web/'
             ],
             [
-                'html' => base_path('captures/rioazulpropiedades.html'),
+                'html' => base_path('captures/rioazulpropiedades.html'), // TODO: OK! (antes redirigia a la home) (funco con: https://www.rioazulpropiedades.com/p/6667459-Departamento-en-Alquiler-en-Centro-rivadavia)
                 'url' => 'https://www.rioazulpropiedades.com/Buscar?operation=2&locations=40933&o=2,2&1=1',
-                'postUrl' => 'https://www.rioazulpropiedades.com/' // TODO: te redirije a home. Porque?
+                'postUrl' => 'https://www.rioazulpropiedades.com/'
             ],
             [
-                'html' => base_path('captures/inmobiliariadelagua.html'),
+                'html' => base_path('captures/inmobiliariadelagua.html'), // TODO: OK! (antes no funcaba) (funco con: https://inmobiliariadelagua.com.ar/departamento-alquiler-casco-centrico-el-bolson/8587691)
                 'url' => 'https://inmobiliariadelagua.com.ar/s/alquiler////?business_type%5B%5D=for_rent',
-                'postUrl' => 'https://inmobiliariadelagua.com.ar' // TODO: no obtiene link del html. ver porque.
+                'postUrl' => 'https://inmobiliariadelagua.com.ar'
             ]
         ];
 
@@ -96,7 +95,7 @@ class AnalyzeRentals extends Command
 
             // Continua con el analyze.
 
-            $this->line('📤 Enviando HTML a OpenAI para analizar: ' . $site['url']);
+            $this->line('📤 Enviando HTML a DeepSeek para analizar: ' . $site['url']);
 
             $html = file_get_contents($site['html']);
 
@@ -155,13 +154,11 @@ class AnalyzeRentals extends Command
                             Cada resultado debe ser un objeto con estas claves:
                             - "Content": descripción del aviso (texto completo)
                             - "Link": URL completa al aviso (si no es válida, completala con el baseUrl: {$site['postUrl']})
-                            - "Caracteristicas": string con ubicación, precio, cantidad de ambientes, baños, etc., separado por saltos de línea (\n) y sin emojis.
+                            - "Caracteristicas": string con ubicación, precio, cantidad de ambientes, baños, etc., siempre separalos por saltos de línea \n. Usa Emoji al inicio de cada una.
 
                             El resultado debe ser un array JSON válido:
                             - Todo debe estar envuelto dentro de [ ]
                             - Cada objeto debe tener comillas dobles en claves y valores
-                            - No incluyas texto adicional antes o después
-                            - No uses etiquetas Markdown
                             - Si hay saltos de linea usa \n
 
                             Ejemplo válido:
@@ -215,12 +212,15 @@ class AnalyzeRentals extends Command
                     $item['site_url'] = $site['url'];
 
                     $notExistentRental = !Rental::where('source', $item['Link'])->exists();
-                    if ($notExistentRental) {
-                        Rental::create([
-                            'source' => $item['Link'],
-                            'content' => $item['Content'],
-                            'description' => $item['Caracteristicas'],
-                        ]);
+//                    if ($notExistentRental) {
+                    if (true) {
+//                        Rental::create([
+//                            'source' => $item['Link'],
+//                            'content' => $item['Content'],
+//                            'description' => $item['Caracteristicas'],
+//                        ]);
+
+//                        $this->info('✅ Datos guardados con éxito en la DB.');
 
                         $allItems[] = $item; // solo nuevos
                     }
@@ -245,7 +245,7 @@ class AnalyzeRentals extends Command
         $this->line('💾 Guardando resultados combinados...');
         Storage::put('rental.json', json_encode($allItems, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
-        $this->info('✅ Datos guardados con éxito.');
+        $this->info('✅ Datos guardados con éxito a un json.');
 
         // TWILIO
 
@@ -267,23 +267,23 @@ class AnalyzeRentals extends Command
 
         $this->info("Mensaje que se enviará: $mensaje");
 
-//        try {
-//            $twilio = new Client(env('TWILIO_SID'), env('TWILIO_TOKEN'));
-//
-//            WhatsappUser::where('active', true)->each(function ($user) use ($twilio, $mensaje) {
-//                $to = 'whatsapp:' . $user->phone;
-//
-//                $twilio->messages->create($to, [
-//                    'from' => 'whatsapp:' . env('TWILIO_FROM'),
-//                    'body' => $mensaje,
-//                ]);
-//
-//                $this->info('✅ Mensaje enviado por WhatsApp a: ' . $user->name . ' | ' . $user->phone);
-//            });
-//
-//        } catch (\Exception $e) {
-//            $this->error('❌ Error enviando mensaje: ' . $e->getMessage());
-//        }
+        try {
+            $twilio = new Client(env('TWILIO_SID'), env('TWILIO_TOKEN'));
+
+            WhatsappUser::where('active', true)->each(function ($user) use ($twilio, $mensaje) {
+                $to = 'whatsapp:' . $user->phone;
+
+                $twilio->messages->create($to, [
+                    'from' => 'whatsapp:' . env('TWILIO_FROM'),
+                    'body' => $mensaje,
+                ]);
+
+                $this->info('✅ Mensaje enviado por WhatsApp a: ' . $user->name . ' | ' . $user->phone);
+            });
+
+        } catch (\Exception $e) {
+            $this->error('❌ Error enviando mensaje: ' . $e->getMessage());
+        }
 
         return Command::SUCCESS;
     }
