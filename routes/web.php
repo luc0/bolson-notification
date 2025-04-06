@@ -17,4 +17,8 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
+use Rap2hpoutre\LaravelLogViewer\LogViewerController;
+
+Route::get('logs', [LogViewerController::class, 'index'])->middleware('log.auth');
+
 require __DIR__.'/auth.php';

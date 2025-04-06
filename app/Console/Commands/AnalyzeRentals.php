@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Rental;
 use App\Models\WhatsappUser;
 use Illuminate\Console\Command;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Http;
 use Symfony\Component\Process\Process;
 use Symfony\Component\Process\Exception\ProcessFailedException;
@@ -17,6 +18,11 @@ class AnalyzeRentals extends Command
 {
     protected $signature = 'analyze:rentals';
     protected $description = 'Analiza una captura de pantalla de publicaciones de alquiler en Facebook';
+
+    public function schedule(Schedule $schedule): void
+    {
+        $schedule->dailyAt('18:30');
+    }
 
     public function handle()
     {
