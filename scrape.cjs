@@ -1,5 +1,6 @@
 const puppeteer = require('puppeteer');
 const fs = require('fs');
+const path = require('path');
 
 const sites = [
     {
@@ -129,7 +130,7 @@ const sites = [
 
             });
 
-            fs.writeFileSync(`captures/${site.file}`, cleanBody, 'utf-8');
+            saveCapture(site.file, cleanBody);
             console.log(`✅ HTML limpio guardado en captures/${site.file}`);
         } catch (err) {
             console.error(`❌ Error con ${site.url}:`, err.message);
@@ -138,3 +139,14 @@ const sites = [
 
     await browser.close();
 })();
+
+function saveCapture(fileName, html) {
+    const filePath = path.join(__dirname, 'captures', fileName);
+    const dir = path.dirname(filePath);
+
+    if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+    }
+
+    fs.writeFileSync(filePath, html, 'utf-8');
+}
