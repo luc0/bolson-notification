@@ -31,8 +31,9 @@ const sites = [
 ];
 (async () => {
     const browser = await puppeteer.launch({
-        args: ['--no-sandbox'],
+        executablePath: '/usr/bin/chromium-browser', // o el path correcto en tu server
         headless: 'new',
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
 
     await Promise.allSettled(sites.map(async (site) => {
@@ -91,7 +92,6 @@ const sites = [
 
                     for (const el of allElements) {
                         const attrs = Array.from(el.attributes).map(attr => attr.name);
-                        console.log(attrs);
                         for (const attrName of attrs) {
                             if (attrName.toLowerCase() !== 'href') {
                                 el.removeAttribute(attrName);
