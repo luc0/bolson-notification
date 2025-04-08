@@ -29,7 +29,10 @@ const sites = [
     }
 ];
 (async () => {
-    const browser = await puppeteer.launch({ headless: 'new' });
+    const browser = await puppeteer.launch({
+        args: ['--no-sandbox'],
+        headless: 'new',
+    });
 
     await Promise.allSettled(sites.map(async (site) => {
         try {
