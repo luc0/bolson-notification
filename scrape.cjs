@@ -31,9 +31,9 @@ const sites = [
 ];
 (async () => {
     const browser = await puppeteer.launch({
-        executablePath: '/usr/bin/chromium-browser', // o el path correcto en tu server
+        executablePath: '/snap/bin/chromium',
         headless: 'new',
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
 
     await Promise.allSettled(sites.map(async (site) => {
