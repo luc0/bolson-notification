@@ -1,6 +1,9 @@
 const puppeteer = require('puppeteer');
 const fs = require('fs');
 const path = require('path');
+require('dotenv').config();
+
+const environment = process.env.APP_ENV;
 
 const sites = [
     {
@@ -30,11 +33,16 @@ const sites = [
     }
 ];
 (async () => {
-    const browser = await puppeteer.launch({
-        executablePath: '/usr/bin/google-chrome',
-        headless: 'new',
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
-    });
+    let browser;
+    if (environment === 'local') {
+        browser = await puppeteer.launch({ headless: 'new' });
+    } else {
+        browser = await puppeteer.launch({
+            executablePath: '/usr/bin/google-chrome',
+            headless: 'new',
+            args: ['--no-sandbox', '--disable-setuid-sandbox']
+        });
+    }
 
     await Promise.allSettled(sites.map(async (site) => {
         try {

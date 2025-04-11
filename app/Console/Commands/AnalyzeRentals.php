@@ -105,7 +105,7 @@ class AnalyzeRentals extends Command
 
             $html = file_get_contents($site['html']);
 
-            $response = Http::withToken(env('GROQ_API_KEY'))
+            $response = Http::withToken(config('services.deepseek.api_key'))
                 ->timeout(120)
                 ->post('https://api.groq.com/openai/v1/chat/completions', [
                     'model' => 'deepseek-r1-distill-qwen-32b',
