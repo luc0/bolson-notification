@@ -31,7 +31,7 @@ const sites = [
 ];
 (async () => {
     const browser = await puppeteer.launch({
-        executablePath: '/snap/bin/chromium',
+        executablePath: '/usr/bin/google-chrome',
         headless: 'new',
         args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
