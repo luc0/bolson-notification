@@ -22,8 +22,9 @@ class TestDbConnection extends Command
         $this->line("\n📡 Testing DB connection...");
         $this->line('Using database: ' . DB::connection()->getDatabaseName());
         try {
-            $result = DB::select('SELECT NOW() as current_time');
-            $this->info("✅ Connection successful. Current DB time: " . $result[0]->current_time);
+            $result = DB::select('SELECT NOW()');
+            $this->info("✅ Connection successful. Current DB time: " . $result[0]->{'NOW()'});
+            dump($result);
         } catch (Throwable $e) {
             $this->error("❌ Connection failed: " . $e->getMessage());
         }
