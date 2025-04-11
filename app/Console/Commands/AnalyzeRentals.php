@@ -175,14 +175,14 @@ class AnalyzeRentals extends Command
                 foreach ($modelDataResponse as $item) {
                     $item['site_url'] = $site['url'];
 
-                    $notExistentRental = !Rental::where('source', $item['Link'])->exists();
-                    if ($notExistentRental) {
-//                    if (true) {
-                        Rental::create([
-                            'source' => $item['Link'],
-                            'content' => $item['Content'],
-                            'description' => $item['Caracteristicas'],
-                        ]);
+//                    $notExistentRental = !Rental::where('source', $item['Link'])->exists();
+//                    if ($notExistentRental) {
+                    if (true) { // TODO: desactivar guardar en DB
+//                        Rental::create([
+//                            'source' => $item['Link'],
+//                            'content' => $item['Content'],
+//                            'description' => $item['Caracteristicas'],
+//                        ]);
 
                         $this->info('✅ Datos guardados con éxito en la DB.');
 
@@ -244,14 +244,14 @@ class AnalyzeRentals extends Command
         $this->info("Se generaron " . count($bloques) . " bloque(s) de mensaje(s).");
 
         try {
-            $twilio = new Client(env('TWILIO_SID'), env('TWILIO_TOKEN'));
+            $twilio = new Client(config('services.twilio.sid'), config('services.twilio.token'));
 
             WhatsappUser::where('active', true)->each(function ($user) use ($twilio, $bloques) {
                 $to = 'whatsapp:' . $user->phone;
 
                 foreach ($bloques as $index => $mensaje) {
                     $twilio->messages->create($to, [
-                        'from' => 'whatsapp:' . env('TWILIO_FROM'),
+                        'from' => 'whatsapp:' . config('services.twilio.from'),
                         'body' => $mensaje,
                     ]);
 
