@@ -148,7 +148,7 @@ class AnalyzeRentals extends Command
                 ]);
 
             if (!$response->successful()) {
-                $this->error('❌ Error de OpenAI en ' . $site['url']);
+                $this->error('❌ Error de IA en ' . $site['url'] . ' token:' . config('services.groq.api_key'));
                 $this->line($response->body());
                 continue;
             }
