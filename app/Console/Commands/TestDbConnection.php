@@ -20,8 +20,8 @@ class TestDbConnection extends Command
         $this->line('DB_USERNAME: ' . config('database.connections.mysql.username'));
 
         $this->line("\n📡 Testing DB connection...");
-        $this->line('Using database: ' . DB::connection()->getDatabaseName());
         try {
+            $this->line('Using database: ' . DB::connection()->getDatabaseName());
             $result = DB::select('SELECT NOW()');
             $this->info("✅ Connection successful. Current DB time: " . $result[0]->{'NOW()'});
             dump($result);

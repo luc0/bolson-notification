@@ -7,6 +7,7 @@ use App\Models\WhatsappUser;
 use Illuminate\Console\Command;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\Process\Process;
 use Symfony\Component\Process\Exception\ProcessFailedException;
 use Illuminate\Support\Facades\Storage;
@@ -17,27 +18,21 @@ use Twilio\Rest\Client;
 class AnalyzeRentals extends Command
 {
     protected $signature = 'analyze:rentals';
-    protected $description = 'Analiza una captura de pantalla de publicaciones de alquiler en Facebook';
-
-    public function schedule(Schedule $schedule): void
-    {
-        $schedule->dailyAt('18:30');
-    }
+    protected $description = 'Analiza alquileres en distintas inmobiliarias';
 
     public function handle()
     {
+        Log::info("📦 Comando analyze:rentals ejecutado.", ['timestamp' => now()]);
         // Scrapear.
-        $this->line('🤖 Ejecutando script de scrapeo con Node...');
-
         $process = new Process(['node', base_path('scrape.cjs')]);
         $process->setTimeout(120); // 2 minutos como máximo
 
         try {
             $process->mustRun();
-            $this->info("✅ Scrapeo finalizado");
+            Log::info("✅ Scrap done.", ['timestamp' => now()]);
         } catch (ProcessFailedException $e) {
-            $this->error('❌ Error al ejecutar el script de scrapeo:');
-            $this->error($e->getMessage());
+            Log::error("❌ Error al ejecutar el script de scrapeo:");
+            Log::error($e->getMessage());
             return Command::FAILURE;
         }
 
@@ -74,7 +69,7 @@ class AnalyzeRentals extends Command
 
         foreach ($sites as $site) {
             if (!file_exists($site['html'])) {
-                $this->error('No se encontró el archivo HTML: ' . $site['html']);
+                Log::error('No se encontró el archivo HTML: ' . $site['html']);
                 continue;
             }
 
@@ -91,7 +86,7 @@ class AnalyzeRentals extends Command
                 $previousHtml = file_get_contents($snapshotPath);
 
                 if (hash('sha256', $html) === hash('sha256', $previousHtml)) {
-                    $this->line('🔁 Sin cambios detectados en el HTML de: ' . $site['url']);
+                    Log::info('🔁 Sin cambios detectados en el HTML de: ' . $site['url']);
                     continue;
                 }
             }
@@ -101,14 +96,14 @@ class AnalyzeRentals extends Command
 
             // Continua con el analyze.
 
-            $this->line('📤 Enviando HTML a DeepSeek para analizar: ' . $site['url']);
+            Log::info('📤 Enviando HTML a DeepSeek para analizar: ' . $site['url']);
 
             $html = file_get_contents($site['html']);
 
             $response = Http::withToken(config('services.groq.api_key'))
                 ->timeout(120)
                 ->post('https://api.groq.com/openai/v1/chat/completions', [
-                    'model' => 'deepseek-r1-distill-qwen-32b',
+                    'model' => 'qwen-qwq-32b',
                     'messages' => [
                         [
                             'role' => 'user',
@@ -144,18 +139,16 @@ class AnalyzeRentals extends Command
                         ]
                     ],
                     'temperature' => 0.3,
-                    'max_tokens' => 3000,
+                    'max_tokens' => 4000, // antes: 3000 dio error una vez.
                 ]);
 
             if (!$response->successful()) {
-                $this->error('❌ Error de IA en ' . $site['url'] . ' token:' . config('services.groq.api_key'));
-                $this->line($response->body());
+                Log::error('❌ Error de IA en ' . $site['url']);
+                Log::info($response->body());
                 continue;
             }
 
             $jsonRaw = $response['choices'][0]['message']['content'];
-
-//            $this->line($jsonRaw); // no es error // TODO: borrar este
 
             // Limpiar el <think> del modelo de deepseek
             $jsonClean = preg_replace('/<think>.*?<\/think>/is', '', $jsonRaw);
@@ -164,12 +157,12 @@ class AnalyzeRentals extends Command
             $modelDataResponse = json_decode($jsonClean, true);
 
             if (json_last_error() !== JSON_ERROR_NONE) {
-                $this->error('❌ JSON malformado: ' . json_last_error_msg());
-                $this->line($jsonClean); // Para debug
+                Log::error('❌ JSON malformado: ' . json_last_error_msg());
+                Log::info($jsonClean);
                 return;
             }
 
-//            $this->info(json_encode($modelDataResponse, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+//            Log::info(json_encode($modelDataResponse, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
             try {
                 foreach ($modelDataResponse as $item) {
@@ -184,37 +177,26 @@ class AnalyzeRentals extends Command
 //                            'description' => $item['Caracteristicas'],
 //                        ]);
 
-                        $this->info('✅ Datos guardados con éxito en la DB.');
+                        Log::info('✅ Datos guardados con éxito en la DB.');
 
                         $allItems[] = $item; // solo nuevos
                     }
                 }
             } catch (\Throwable $e) {
-                $this->error('❌ Error parseando o guardando JSON para: ' . $site['url'] . ' ' . $e->getMessage());
+                Log::error('❌ Error parseando o guardando JSON para: ' . $site['url'] . ' ' . $e->getMessage());
             }
-//            try {
-//                $modelDataResponse = json_decode($modelDataResponse, true);
-//
-//                foreach ($modelDataResponse as &$item) {
-//                    $item['site_url'] = $site['url'];
-//                }
-//
-//                $allItems = array_merge($allItems, $modelDataResponse);
-//            } catch (\Throwable $e) {
-//                $this->error('❌ Error parseando JSON para: ' . $site['url']);
-//            }
         }
 
         // Guardar todo en rental.json
-        $this->line('💾 Guardando resultados combinados...');
+        Log::info('💾 Guardando resultados combinados...');
         Storage::put('rental.json', json_encode($allItems, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
-        $this->info('✅ Datos guardados con éxito a un json.');
+        Log::info('✅ Datos guardados con éxito a un json.');
 
         // TWILIO
 
         if (empty($allItems)) {
-            $this->warn('⚠️ No hay alquileres para enviar.');
+            Log::warning('⚠️ No hay alquileres para enviar.');
             return;
         }
 
@@ -241,7 +223,7 @@ class AnalyzeRentals extends Command
             $bloques[] = rtrim($mensajeActual);
         }
 
-        $this->info("Se generaron " . count($bloques) . " bloque(s) de mensaje(s).");
+        Log::info("Se generaron " . count($bloques) . " bloque(s) de mensaje(s).");
 
         try {
             $twilio = new Client(config('services.twilio.sid'), config('services.twilio.token'));
@@ -255,13 +237,13 @@ class AnalyzeRentals extends Command
                         'body' => $mensaje,
                     ]);
 
-                    $this->info("✅ Bloque " . ($index + 1) . " enviado a " . $user->name . " | " . $user->phone);
+                    Log::info("✅ Bloque " . ($index + 1) . " enviado a " . $user->name . " | " . $user->phone);
                     sleep(1); // Delay pequeño para evitar throttle, opcional
                 }
             });
 
         } catch (\Exception $e) {
-            $this->error('❌ Error enviando mensaje: ' . $e->getMessage());
+            Log::error('❌ Error enviando mensaje: ' . $e->getMessage());
         }
 
         return Command::SUCCESS;

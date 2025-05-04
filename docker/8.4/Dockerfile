@@ -55,18 +55,41 @@ RUN apt-get update && apt-get upgrade -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# pupeteer
-RUN apt-get update && apt-get install -y \
-    chromium \
-    fonts-noto-color-emoji \
-    libatk-bridge2.0-0 \
-    libgtk-3-0 \
-    libgbm1 \
-    libasound2t64 \
-    libnss3 \
-    libxss1 \
-    xdg-utils \
-    --no-install-recommends && \
+# 🧹 Elimina Snap y conflictos
+RUN apt-get update && apt-get install -y wget gnupg2 && \
+    snap remove chromium || true && \
+    apt-get purge -y snapd || true && \
+    rm -f /var/lib/dpkg/lock-frontend && \
+    rm -f /var/lib/dpkg/lock && \
+    dpkg --configure -a && \
+
+# ⬇️ Instala Google Chrome
+    wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && \
+    apt-get install -y ./google-chrome-stable_current_amd64.deb && \
+
+# 📦 Instala dependencias para Puppeteer
+    apt-get install -y \
+      ca-certificates \
+      fonts-liberation \
+      libappindicator3-1 \
+      libasound2t64 \
+      libatk-bridge2.0-0 \
+      libatk1.0-0 \
+      libcups2 \
+      libdbus-1-3 \
+      libdrm2 \
+      libgbm1 \
+      libgtk-3-0 \
+      libnspr4 \
+      libnss3 \
+      libx11-xcb1 \
+      libxcomposite1 \
+      libxdamage1 \
+      libxrandr2 \
+      xdg-utils \
+      libu2f-udev \
+      libvulkan1 \
+      fonts-noto-color-emoji && \
     rm -rf /var/lib/apt/lists/*
 
 RUN setcap "cap_net_bind_service=+ep" /usr/bin/php8.4
