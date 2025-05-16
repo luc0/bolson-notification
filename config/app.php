@@ -123,4 +123,6 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    'analyze_rentals_debug_mode' => env('ANALYZE_RENTALS_DEBUG_MODE', 'true')
+
 ];
