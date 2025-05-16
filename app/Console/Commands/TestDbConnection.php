@@ -21,10 +21,15 @@ class TestDbConnection extends Command
 
         $this->line("\n📡 Testing DB connection...");
         try {
+            // para muysql
+//            $this->line('Using database: ' . DB::connection()->getDatabaseName());
+//            $result = DB::select('SELECT NOW()');
+//            $this->info("✅ Connection successful. Current DB time: " . $result[0]->{'NOW()'});
+//            dump($result);
+            // para pgsql
             $this->line('Using database: ' . DB::connection()->getDatabaseName());
             $result = DB::select('SELECT NOW()');
-            $this->info("✅ Connection successful. Current DB time: " . $result[0]->{'NOW()'});
-            dump($result);
+            $this->info("✅ Connection successful. Current DB time: " . $result[0]->now);
         } catch (Throwable $e) {
             $this->error("❌ Connection failed: " . $e->getMessage());
         }

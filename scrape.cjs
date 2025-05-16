@@ -1,4 +1,4 @@
-const puppeteer = require('puppeteer-core');
+const puppeteer = require('puppeteer');
 const fs = require('fs');
 const { existsSync } = require('fs');
 const path = require('path');
@@ -35,16 +35,10 @@ const sites = [
 ];
 (async () => {
     let browser;
-    // const isLocal = environment === 'local';
-    // let chromePath = '/usr/bin/chromium';
-    // if (!existsSync(chromePath)) {
-    //     chromePath = '/usr/bin/chromium-browser';
-    // }
 
-     browser = await puppeteer.launch({
-        executablePath: '/usr/bin/google-chrome',
-        headless: 'new',
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
 
     await Promise.allSettled(sites.map(async (site) => {

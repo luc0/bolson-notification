@@ -8,5 +8,5 @@ use Illuminate\Support\Facades\Schedule;
 
 Schedule::command( AnalyzeRentals::class)
 //    ->weekdays()->at('4:26')
-    ->everyMinute();
+    ->everyThreeMinutes();
 //    ->sendOutputTo(storage_path('logs/analyze.log'));

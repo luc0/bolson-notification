@@ -139,7 +139,7 @@ class AnalyzeRentals extends Command
                         ]
                     ],
                     'temperature' => 0.3,
-                    'max_tokens' => 4000, // antes: 3000 dio error una vez.
+                    'max_tokens' => 9000, // antes: 3000 dio error una vez.
                 ]);
 
             if (!$response->successful()) {
