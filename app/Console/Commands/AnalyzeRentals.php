@@ -100,10 +100,16 @@ class AnalyzeRentals extends Command
 
             $html = file_get_contents($site['html']);
 
+            /*
+             * Models:
+             * meta-llama/llama-4-scout-17b-16e-instruct (precio 0.1/0.35) (parseo, mas nuevo, emojis) [tokens: ~3.1k] [latencia: ~1s]
+             * llama-3.1-8b-instant (precio 0.05/0.05) (parseo simple, no emojis) [tokens ~3.6k] [latencia: ~1s]
+             * qwen-qwq-32b (precio 0.3/0.4) (razona, pero revuelve think y es un monton) [tokens 7k] [latencia: ~9s]
+             */
             $response = Http::withToken(config('services.groq.api_key'))
                 ->timeout(120)
                 ->post('https://api.groq.com/openai/v1/chat/completions', [
-                    'model' => 'qwen-qwq-32b',
+                    'model' => 'meta-llama/llama-4-scout-17b-16e-instruct',
                     'messages' => [
                         [
                             'role' => 'user',
@@ -139,7 +145,7 @@ class AnalyzeRentals extends Command
                         ]
                     ],
                     'temperature' => 0.3,
-                    'max_tokens' => 9000, // antes: 3000 dio error una vez.
+                    'max_tokens' => 8192, // 8192, creo que es el limite del modelo. En anezca uso 3.100
                 ]);
 
             if (!$response->successful()) {
@@ -156,9 +162,9 @@ class AnalyzeRentals extends Command
             $jsonClean = preg_replace('/^```json|```$/m', '', $jsonClean);
             $modelDataResponse = json_decode($jsonClean, true);
 
+            Log::info($jsonClean);
             if (json_last_error() !== JSON_ERROR_NONE) {
                 Log::error('❌ JSON malformado: ' . json_last_error_msg());
-                Log::info($jsonClean);
                 return;
             }
 
