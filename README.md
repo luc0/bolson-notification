@@ -8,3 +8,8 @@
 </p>
 
 Dockerfile: 8.4 -> Customized image: Added puppeteer to Sail Dockerfile.
+
+
+# TODO:
+- Actualizar service providers para implementar en la interface, para que use Kapso.
+- Crear mocks.
