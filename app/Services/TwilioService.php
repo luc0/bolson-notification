@@ -11,6 +11,7 @@ class TwilioService implements IWhatsapp
 {
     public function sendMessage(array $allItems)
     {
+        Log::info('Utilizando Twilio para envio de mensajes.');
         $bloques = [];
         $mensajeActual = "🏠 *Alquileres disponibles:*\n\n";
 

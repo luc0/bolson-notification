@@ -102,7 +102,7 @@ class ScraperService
             $modelDataResponse = $this->aiProcessingService->process($site, $html);
 
 //            Log::info(json_encode($modelDataResponse, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-            $this->rentalService->store($modelDataResponse, $site);
+            $allItems = $this->rentalService->store($modelDataResponse, $site, $allItems);
         }
 
         return $allItems;

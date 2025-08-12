@@ -7,6 +7,7 @@ use App\Models\Rental;
 use App\Models\WhatsappUser;
 use App\Services\AiProcessingService;
 use App\Services\ScraperService;
+use App\Services\TwilioService;
 use Illuminate\Console\Command;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Http;

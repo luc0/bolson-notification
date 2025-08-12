@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Log;
 
 class RentalService
 {
-    public function store($modelDataResponse, $site) {
+    public function store($modelDataResponse, $site, $allItems) {
         try {
             foreach ($modelDataResponse as $item) {
                 $item['site_url'] = $site['url'];
@@ -28,5 +28,7 @@ class RentalService
         } catch (\Throwable $e) {
             Log::error('❌ Error parseando o guardando JSON para: ' . $site['url'] . ' ' . $e->getMessage());
         }
+
+        return $allItems;
     }
 }
