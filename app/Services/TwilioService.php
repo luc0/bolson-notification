@@ -2,12 +2,12 @@
 
 namespace App\Services;
 
-use App\Contracts\IWhatsapp;
+use App\Contracts\IWhatsappService;
 use App\Models\WhatsappUser;
 use Illuminate\Support\Facades\Log;
 use Twilio\Rest\Client;
 
-class TwilioService implements IWhatsapp
+class TwilioService implements IWhatsappService
 {
     public function sendMessage(array $allItems)
     {

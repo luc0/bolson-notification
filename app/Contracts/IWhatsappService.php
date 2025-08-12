@@ -2,7 +2,7 @@
 
 namespace App\Contracts;
 
-interface IWhatsapp
+interface IWhatsappService
 {
     public function sendMessage(array $allItems);
 }

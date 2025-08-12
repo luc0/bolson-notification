@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Contracts\IScraperService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
@@ -9,13 +10,15 @@ use Illuminate\Support\Facades\Log;
 use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Component\Process\Process;
 
-class ScraperService
+class ScraperServiceService implements IScraperService
 {
     public function __construct(private readonly AiProcessingService $aiProcessingService, private readonly RentalService $rentalService)
     {
     }
 
     public function scrape() {
+        Log::info('Utilizando Scraper real.');
+
         // Scrapear.
         $process = new Process(['node', base_path('scrape.cjs')]);
         $process->setTimeout(120); // 2 minutos como máximo

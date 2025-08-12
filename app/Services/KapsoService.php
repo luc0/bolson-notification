@@ -2,10 +2,10 @@
 
 namespace App\Services;
 
-use App\Contracts\IWhatsapp;
+use App\Contracts\IWhatsappService;
 use Illuminate\Support\Facades\Log;
 
-class KapsoService implements IWhatsapp
+class KapsoService implements IWhatsappService
 {
     public function sendMessage(array $allItems)
     {

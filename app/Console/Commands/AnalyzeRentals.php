@@ -2,11 +2,12 @@
 
 namespace App\Console\Commands;
 
-use App\Contracts\IWhatsapp;
+use App\Contracts\IScraperService;
+use App\Contracts\IWhatsappService;
 use App\Models\Rental;
 use App\Models\WhatsappUser;
 use App\Services\AiProcessingService;
-use App\Services\ScraperService;
+use App\Services\ScraperServiceService;
 use App\Services\TwilioService;
 use Illuminate\Console\Command;
 use Illuminate\Console\Scheduling\Schedule;
@@ -24,7 +25,11 @@ class AnalyzeRentals extends Command
     protected $signature = 'analyze:rentals';
     protected $description = 'Analiza alquileres en distintas inmobiliarias';
 
-    public function __construct(private ScraperService $scraperService, private AiProcessingService $aiProcessingService, private IWhatsapp $IWhatsapp)
+    public function __construct(
+        readonly private IScraperService $scraperService,
+        readonly private IWhatsappService $IWhatsapp,
+        readonly private AiProcessingService $aiProcessingService,
+    )
     {
         parent::__construct();
     }
@@ -38,7 +43,6 @@ class AnalyzeRentals extends Command
         // Guardar todo en rental.json
         Log::info('💾 Guardando resultados combinados...');
         Storage::put('rental.json', json_encode($allItems, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-
         Log::info('✅ Datos guardados con éxito a un json.');
 
         if (empty($allItems)) {
