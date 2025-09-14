@@ -17,6 +17,9 @@
         </ol>
     </div>
 
+    {{-- Incluir la vista de listado de alquileres --}}
+    @include('rentals.list')
+
     @push('scripts')
         <script>
             console.log('test');

@@ -1,11 +1,10 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\RentalController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('rentals.index');
-});
+Route::get('/', [RentalController::class, 'index']);
 
 Route::get('/dashboard', function () {
     return view('dashboard');
