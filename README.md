@@ -9,3 +9,10 @@
 
 Dockerfile: 8.4 -> Customized image: Added puppeteer to Sail Dockerfile.
 
+# LLM reglas:
+los comandos se corren usando sail.
+siempre usa inglés para el codigo, params, y todo lo que escribas, que no sea texto para el usuario.
+clean code:
+- siempre que sea posible no anides ifs, ni uses else.
+- en las condiciones de los ifs, a menos que sean muy simples, crea una variable que describa el flag y usalo en el if.
+

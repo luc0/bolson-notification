@@ -6,9 +6,11 @@ use App\Contracts\IScraperService;
 use App\Contracts\IWhatsappService;
 use App\Models\Rental;
 use App\Models\WhatsappUser;
+use App\Models\AnonSubscriber;
 use App\Services\AiProcessingService;
 use App\Services\ScraperServiceService;
 use App\Services\TwilioService;
+use App\Services\NotificationService;
 use Illuminate\Console\Command;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Http;
@@ -19,6 +21,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Twilio\Rest\Client;
+use App\Notifications\NewRentalsNotification;
 
 class AnalyzeRentals extends Command
 {
@@ -29,6 +32,7 @@ class AnalyzeRentals extends Command
         readonly private IScraperService $scraperService,
         readonly private IWhatsappService $IWhatsapp,
         readonly private AiProcessingService $aiProcessingService,
+        readonly private NotificationService $notificationService,
     )
     {
         parent::__construct();
@@ -51,6 +55,9 @@ class AnalyzeRentals extends Command
         }
 
         $this->IWhatsapp->sendMessage($allItems);
+
+        // Send push notifications to all subscribers
+        $this->notificationService->sendNewRentalsNotification(count($allItems));
 
         return Command::SUCCESS;
     }
