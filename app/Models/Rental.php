@@ -10,5 +10,10 @@ class Rental extends Model
         'source',
         'content',
         'description',
+        'price',
+        'location',
+        'rooms',
+        'bathrooms',
+        'source_path',
     ];
 }
