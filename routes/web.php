@@ -4,11 +4,14 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RentalController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', [RentalController::class, 'index']);
-
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+// Protected routes
+Route::middleware('auth')->group(function () {
+    Route::get('/', [RentalController::class, 'index'])->name('rentals.index');
+    
+    Route::get('/dashboard', function () {
+        return view('dashboard');
+    })->name('dashboard');
+});
 
 //Route::get('/rentals', function () {
 //    return view('rentals.index');
