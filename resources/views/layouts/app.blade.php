@@ -29,6 +29,17 @@
         </script>
     </head>
     <body class="font-sans antialiased">
+        <script>
+            // Theme switcher functionality
+            (function() {
+                const theme = localStorage.getItem('theme') || 'light';
+                if (theme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+            })();
+        </script>
         <div class="min-h-screen bg-gray-100 dark:bg-gray-900">
             @include('layouts.navigation')
 
@@ -47,5 +58,47 @@
             </main>
         </div>
         @stack('scripts')
+        
+        <script>
+            // Theme switcher functions
+            function toggleTheme() {
+                const html = document.documentElement;
+                const currentTheme = localStorage.getItem('theme') || 'light';
+                const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+                
+                if (newTheme === 'dark') {
+                    html.classList.add('dark');
+                } else {
+                    html.classList.remove('dark');
+                }
+                
+                localStorage.setItem('theme', newTheme);
+                
+                // Update theme color meta tag
+                const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+                if (metaThemeColor) {
+                    metaThemeColor.content = newTheme === 'dark' ? '#1f2937' : '#0d6efd';
+                }
+                
+                // Update mobile theme text
+                const themeText = document.getElementById('theme-text');
+                if (themeText) {
+                    themeText.textContent = newTheme === 'light' ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro';
+                }
+            }
+            
+            function getCurrentTheme() {
+                return localStorage.getItem('theme') || 'light';
+            }
+            
+            // Initialize theme text on page load
+            document.addEventListener('DOMContentLoaded', function() {
+                const currentTheme = getCurrentTheme();
+                const themeText = document.getElementById('theme-text');
+                if (themeText) {
+                    themeText.textContent = currentTheme === 'light' ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro';
+                }
+            });
+        </script>
     </body>
 </html>

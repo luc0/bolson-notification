@@ -8,3 +8,4 @@ return [
         'icon' => '/icons/icon-192.png',
     ],
 ];
+

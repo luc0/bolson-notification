@@ -1,24 +1,36 @@
 {{-- resources/views/rentals/index.blade.php --}}
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl">Alquileres</h2>
+        <h2 class="font-semibold text-xl text-gray-900 dark:text-gray-100">Alquileres</h2>
     </x-slot>
 
-    <h1 class="text-xl font-bold mb-4">Alquileres en el Bolsón</h1>
-    <button id="enablePush">Activar notificaciones!</button>
+    <div class="px-4 sm:px-6 lg:px-8 py-6">
+        <h1 class="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">Alquileres en el Bolsón</h1>
+        <button id="enablePush" class="btn-primary mb-4">Activar notificaciones!</button>
 
-    <button id="installBtn" hidden>Instalar app</button>
-    <button id="iosHelpBtn" hidden>Instalar en iPhone</button>
-    <div id="iosModal" hidden>
-        <ol>
-            <li>Tocá <b>Compartir</b> (cuadrado con flecha).</li>
-            <li>Elegí <b>Añadir a pantalla de inicio</b>.</li>
-            <li>Confirmá con <b>Añadir</b>.</li>
-        </ol>
+        <button id="installBtn" hidden class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 mb-2">Instalar app</button>
+        <button id="iosHelpBtn" hidden class="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 mb-2">Instalar en iPhone</button>
+        <div id="iosModal" hidden class="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg p-6 shadow-lg max-w-md mx-auto mt-4">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Instrucciones para iPhone</h3>
+            <ol class="space-y-2 text-gray-800 dark:text-gray-200">
+                <li class="flex items-start">
+                    <span class="bg-blue-100 text-blue-800 text-sm font-medium px-2 py-1 rounded-full mr-3 mt-0.5">1</span>
+                    <span>Tocá <strong class="text-gray-900 dark:text-gray-100">Compartir</strong> (cuadrado con flecha).</span>
+                </li>
+                <li class="flex items-start">
+                    <span class="bg-blue-100 text-blue-800 text-sm font-medium px-2 py-1 rounded-full mr-3 mt-0.5">2</span>
+                    <span>Elegí <strong class="text-gray-900 dark:text-gray-100">Añadir a pantalla de inicio</strong>.</span>
+                </li>
+                <li class="flex items-start">
+                    <span class="bg-blue-100 text-blue-800 text-sm font-medium px-2 py-1 rounded-full mr-3 mt-0.5">3</span>
+                    <span>Confirmá con <strong class="text-gray-900 dark:text-gray-100">Añadir</strong>.</span>
+                </li>
+            </ol>
+        </div>
+
+        {{-- Incluir la vista de listado de alquileres --}}
+        @include('rentals.list')
     </div>
-
-    {{-- Incluir la vista de listado de alquileres --}}
-    @include('rentals.list')
 
     @push('scripts')
         <script>

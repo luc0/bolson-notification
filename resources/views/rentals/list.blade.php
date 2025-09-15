@@ -1,21 +1,21 @@
 {{-- resources/views/rentals/list.blade.php --}}
 <div class="mt-8">
-    <h2 class="text-2xl font-bold mb-6 text-gray-800">Propiedades Disponibles</h2>
+    <h2 class="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-100">Propiedades Disponibles</h2>
     
     @if(isset($rentals) && count($rentals) > 0)
         <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             @foreach($rentals as $rental)
-                <div class="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow duration-300">
+                <div class="card overflow-hidden">
                     <div class="p-6">
                         <div class="flex justify-between items-start mb-3">
-                            <h3 class="text-lg font-semibold text-gray-800">{{ $rental->content }}</h3>
+                            <h3 class="card-title">{{ $rental->content }}</h3>
                             <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">{{ $rental->source }}</span>
                         </div>
                         
-                        <p class="text-gray-600 text-sm mb-4">{{ $rental->description }}</p>
+                        <p class="card-description mb-4">{{ $rental->description }}</p>
                         
                         <div class="flex items-center justify-between mb-4">
-                            <div class="flex items-center space-x-4 text-sm text-gray-500">
+                            <div class="flex items-center space-x-4 card-meta">
                                 @if($rental->rooms)
                                     <span class="flex items-center">
                                         <svg class="w-4 h-4 mr-1 flex-shrink-0" style="width: 16px; height: 16px;" fill="currentColor" viewBox="0 0 20 20">
@@ -38,10 +38,10 @@
                         <div class="flex items-center justify-between">
                             <div class="flex flex-col">
                                 @if($rental->location)
-                                    <span class="text-sm text-gray-500">{{ $rental->location }}</span>
+                                    <span class="card-location text-sm">{{ $rental->location }}</span>
                                 @endif
                                 @if($rental->source_path)
-                                    <span class="text-xs text-gray-400">Fuente: {{ $rental->source_path }}</span>
+                                    <span class="card-source">Fuente: {{ $rental->source_path }}</span>
                                 @endif
                             </div>
                             @if($rental->price)
@@ -54,7 +54,7 @@
         </div>
     @else
         <div class="text-center py-8">
-            <p class="text-gray-500 text-lg">No hay propiedades disponibles en este momento.</p>
+            <p class="text-gray-600 dark:text-gray-400 text-lg font-medium">No hay propiedades disponibles en este momento.</p>
         </div>
     @endif
 </div>

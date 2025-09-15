@@ -34,3 +34,4 @@ class NewRentalsNotification extends Notification
             ->action('Ver', $this->url);
     }
 }
+
