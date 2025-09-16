@@ -14,6 +14,11 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->alias(['log.auth' =>  LogViewerAuth::class]);
+        
+        // Configurar TrustProxies para HTTPS detrás de proxy (ngrok)
+        $middleware->web(append: [
+            \App\Http\Middleware\TrustProxies::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

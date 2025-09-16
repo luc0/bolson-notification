@@ -27,4 +27,12 @@ use Rap2hpoutre\LaravelLogViewer\LogViewerController;
 
 Route::get('logs', [LogViewerController::class, 'index'])->middleware('log.auth');
 
+// Passkeys routes
+Route::passkeys();
+
+// Ruta temporal para crear passkeys (solo para desarrollo)
+Route::middleware('auth')->get('/create-passkey', function () {
+    return view('create-passkey');
+})->name('create-passkey');
+
 require __DIR__.'/auth.php';

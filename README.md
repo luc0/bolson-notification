@@ -9,6 +9,12 @@
 
 Dockerfile: 8.4 -> Customized image: Added puppeteer to Sail Dockerfile.
 
+# Requerimientos
+- Laravel 12
+- PHP 8.4
+- Spatie/laravel-passkeys
+  - Livewire
+
 # LLM reglas:
 los comandos se corren usando sail.
 siempre usa inglés para el codigo, params, y todo lo que escribas, que no sea texto para el usuario.

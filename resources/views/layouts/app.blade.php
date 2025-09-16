@@ -17,6 +17,7 @@
 
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
+        @livewireStyles
         <script>
             if ('serviceWorker' in navigator) {
                 // navigator.serviceWorker.register('/service-worker.js');
@@ -58,6 +59,8 @@
             </main>
         </div>
         @stack('scripts')
+        
+        @livewireScripts
         
         <script>
             // Theme switcher functions

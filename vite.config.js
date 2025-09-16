@@ -19,6 +19,7 @@ export default defineConfig({
         port: 5173,
         hmr: {
             host: 'https://f2b840f31172.ngrok-free.app',
+            // host: '192.168.18.13',
             protocol: 'wss',
             clientPort: 443,
         },
