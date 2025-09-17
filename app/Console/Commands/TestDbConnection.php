@@ -28,8 +28,10 @@ class TestDbConnection extends Command
 //            dump($result);
             // para pgsql
             $this->line('Using database: ' . DB::connection()->getDatabaseName());
-            $result = DB::select('SELECT NOW()');
-            $this->info("✅ Connection successful. Current DB time: " . $result[0]->now);
+//            $result = DB::select('SELECT NOW()');
+//            $this->info("✅ Connection successful. Current DB time: " . $result[0]->now);
+            $result = DB::scalar('SELECT NOW()');
+            $this->info("✅ Connection successful. Current DB time: " . $result);
         } catch (Throwable $e) {
             $this->error("❌ Connection failed: " . $e->getMessage());
         }

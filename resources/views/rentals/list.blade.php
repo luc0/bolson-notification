@@ -8,8 +8,20 @@
                 <div class="card overflow-hidden">
                     <div class="p-6">
                         <div class="flex justify-between items-start mb-3">
-                            <h3 class="card-title">{{ $rental->content }}</h3>
-                            <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">{{ $rental->source }}</span>
+                            @if($rental->source)
+                                <h3 class="card-title">
+                                    <a href="{{ $rental->source }}" 
+                                       data-fallback-url="{{ $rental->site_path }}" 
+                                       class="rental-link hover:text-blue-600 hover:underline transition-colors duration-200" 
+                                       target="_blank" 
+                                       rel="noopener noreferrer">
+                                        {{ $rental->content }}
+                                    </a>
+                                </h3>
+                            @else
+                                <h3 class="card-title">{{ $rental->content }}</h3>
+                            @endif
+                            <!-- <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">{{ $rental->source }}</span> -->
                         </div>
                         
                         <p class="card-description mb-4">{{ $rental->description }}</p>
@@ -58,3 +70,77 @@
         </div>
     @endif
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Función para extraer el dominio root de una URL
+    function getDomainRoot(url) {
+        try {
+            const urlObj = new URL(url);
+            return urlObj.protocol + '//' + urlObj.hostname + '/';
+        } catch (error) {
+            console.error('Error parsing URL:', url, error);
+            return url; // Retornar la URL original si hay error
+        }
+    }
+    
+    // Validar links de rentals al cargar la página
+    const rentalLinks = document.querySelectorAll('.rental-link');
+    
+    rentalLinks.forEach(function(link) {
+        const originalUrl = link.href;
+        const sitePath = link.getAttribute('data-fallback-url');
+        
+        if (sitePath) {
+            // Extraer solo el dominio root del site_path
+            const fallbackUrl = getDomainRoot(sitePath);
+            
+            // Validar el link original
+            fetch(originalUrl, { 
+                method: 'HEAD', 
+                mode: 'no-cors',
+                cache: 'no-cache'
+            }).then(function(response) {
+                // Si hay respuesta, el link funciona
+                console.log('✅ Link válido:', originalUrl);
+            }).catch(function(error) {
+                // Si hay error, usar el fallback (dominio root)
+                console.log('🔗 Link roto, usando fallback:', originalUrl, '->', fallbackUrl);
+                link.href = fallbackUrl;
+                
+                // Agregar indicador visual de que es un fallback
+                link.style.opacity = '0.8';
+                link.title = 'Link original no disponible, redirigiendo al sitio principal';
+            });
+        }
+    });
+    
+    // También validar al hacer clic (como respaldo)
+    rentalLinks.forEach(function(link) {
+        link.addEventListener('click', function(e) {
+            const originalUrl = this.href;
+            const sitePath = this.getAttribute('data-fallback-url');
+            
+            if (sitePath) {
+                const fallbackUrl = getDomainRoot(sitePath);
+                
+                // Si el link actual es el fallback, no hacer validación adicional
+                if (originalUrl === fallbackUrl) {
+                    return;
+                }
+                
+                // Intentar validar antes de navegar
+                fetch(originalUrl, { 
+                    method: 'HEAD', 
+                    mode: 'no-cors',
+                    cache: 'no-cache'
+                }).catch(function(error) {
+                    // Si falla, cambiar al fallback y navegar
+                    e.preventDefault();
+                    window.open(fallbackUrl, '_blank', 'noopener,noreferrer');
+                });
+            }
+        });
+    });
+});
+</script>

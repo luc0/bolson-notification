@@ -54,7 +54,7 @@ class AnalyzeRentals extends Command
             return;
         }
 
-        $this->IWhatsapp->sendMessage($allItems);
+//        $this->IWhatsapp->sendMessage($allItems);
 
         // Send push notifications to all subscribers
         $this->notificationService->sendNewRentalsNotification(count($allItems));

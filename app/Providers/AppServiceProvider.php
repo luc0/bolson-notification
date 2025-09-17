@@ -18,7 +18,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $scrapeMock = config('mock.scrape_mock');
-
+//        dd($scrapeMock);
         $this->app->singleton(IScraperService::class, function ($app) use ($scrapeMock) {
             return match ($scrapeMock) {
                 true => $app->make(MockScraperServiceService::class),

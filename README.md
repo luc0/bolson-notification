@@ -16,3 +16,23 @@ clean code:
 - siempre que sea posible no anides ifs, ni uses else.
 - en las condiciones de los ifs, a menos que sean muy simples, crea una variable que describa el flag y usalo en el if.
 
+# Ejecutar comando analyze:rentals desde local
+- levantar sail (por la db) pero correr cosas por fuera
+- si falla, en env, usar la conexion sin container SIN SAIL.
+- probar si la conexion a la db esta ok: `php artisan db:test`
+- probablemente si use sail tengo que limpiar permisos y carpetas:
+```
+rm -f bootstrap/cache/*.php
+mkdir -p storage/logs
+chmod -R 777 storage bootstrap/cache
+... correr comando
+```
+- correr `php artisan analyze:rentals`
+
+# Rentals model
+source -> es el sitio del rental en especifico (item)
+site_path -> es donde scrapea (listado)
+source_path -> no se usa habria que borrar
+
+# Rentals filter
+- por ahora hice que en el filtro se pueda filtrar por las location que aparecen en el enum + las de la db.

@@ -23,6 +23,10 @@ class AiProcessingService
                             - "Content": descripción del aviso (texto completo)
                             - "Link": URL completa al aviso (si no es válida, completala con el baseUrl: {$site['postUrl']})
                             - "Caracteristicas": string con ubicación, precio, cantidad de ambientes, baños, etc., siempre separalos por saltos de línea \n. Usa Emoji al inicio de cada una.
+                            - "Price": precio de alquiler y la moneda.
+                            - "Location": Ubicación del alquiler.
+                            - "Rooms": Cantidad de ambientes. Si no especifica devolver en null.
+                            - "Bathrooms": Cantidad de baños. Si no especifica devolver en null.
 
                             El resultado debe ser un array JSON válido:
                             - Todo debe estar envuelto dentro de [ ]
@@ -36,6 +40,10 @@ class AiProcessingService
                                 "Content": "Departamento amueblado con balcón",
                                 "Link": "https://example.com/propiedad/123",
                                 "Caracteristicas": "ubicación: El Bolsón\nprecio: AR$ 200000\nambientes: 2\nbaños: 1"
+                                "Price": 600000,
+                                "Location": "El Bolsón",
+                                "Rooms": 2,
+                                "Bathrooms": 1,
                               }
                             ]
 
