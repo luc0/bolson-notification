@@ -9,6 +9,7 @@ $analyzeRentals = Schedule::command(AnalyzeRentals::class);
 $isDebugMode = (bool) config('app.analyze_rentals_debug_mode');
 if ($isDebugMode) {
     $analyzeRentals->everyThreeMinutes();
+
     return;
 }
 

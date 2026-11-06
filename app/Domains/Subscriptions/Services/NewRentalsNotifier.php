@@ -2,7 +2,7 @@
 
 namespace App\Domains\Subscriptions\Services;
 
-use App\Domains\Subscriptions\Models\AnonSubscriber;
+use App\Domains\Subscriptions\Models\Subscriber;
 use App\Domains\Subscriptions\Notifications\NewRentalsNotification;
 use Illuminate\Support\Facades\Log;
 
@@ -40,7 +40,7 @@ class NewRentalsNotifier
     public function notifyAll(NewRentalsNotification $notification): int
     {
         $notifiedCount = 0;
-        AnonSubscriber::whereHas('pushSubscriptions')->cursor()->each(function (AnonSubscriber $subscriber) use ($notification, &$notifiedCount) {
+        Subscriber::whereHas('pushSubscriptions')->cursor()->each(function (Subscriber $subscriber) use ($notification, &$notifiedCount) {
             $subscriber->notify($notification);
             $notifiedCount++;
         });

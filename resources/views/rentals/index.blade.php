@@ -187,11 +187,7 @@
         
         <script>
             console.log('test');
-            window.VAPID_PUBLIC = @json(
-        config('webpush.vapid.public_key')
-        ?? config('services.vapid.public')
-        ?? env('VAPID_PUBLIC_KEY')
-      );
+            window.VAPID_PUBLIC = @json(config('webpush.vapid.public_key'));
             console.log('VAPID_PUBLIC_KEY:', window.VAPID_PUBLIC);
 
             function urlBase64ToUint8Array(b64){
@@ -212,12 +208,13 @@
                     applicationServerKey: urlBase64ToUint8Array(window.VAPID_PUBLIC)
                 });
 
-                await fetch('/api/push/subscribe', {
+                const response = await fetch(@json(route('push-subscriptions.store')), {
                     method: 'POST',
-                    headers: {'Content-Type':'application/json','X-CSRF-TOKEN':'{{ csrf_token() }}'},
+                    headers: {'Content-Type':'application/json','Accept':'application/json','X-CSRF-TOKEN':'{{ csrf_token() }}'},
                     body: JSON.stringify(sub)
                 });
 
+                if (!response.ok) { alert('No se pudieron activar las notificaciones. Probá de nuevo.'); return; }
                 alert('Notificaciones activadas ✅');
             });
         </script>

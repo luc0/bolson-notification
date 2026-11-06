@@ -2,13 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Domains\Subscriptions\Models\AnonSubscriber;
+use App\Domains\Subscriptions\Models\Subscriber;
 use App\Domains\Subscriptions\Notifications\NewRentalsNotification;
 use App\Domains\Subscriptions\Services\NewRentalsNotifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
-use NotificationChannels\WebPush\PushSubscription;
 
 class PushSubscriptionController extends Controller
 {
@@ -20,8 +18,8 @@ class PushSubscriptionController extends Controller
             'keys.auth' => 'required|string',
         ]);
 
-        // Fills push_subscriptions.subscribable_type / subscribable_id.
-        $this->subscriberFor($data['endpoint'])->updatePushSubscription(
+        // If this browser was subscribed by another member, the subscription moves to the current one.
+        Subscriber::forUser($request->user())->updatePushSubscription(
             $data['endpoint'],
             $data['keys']['p256dh'],
             $data['keys']['auth'],
@@ -35,13 +33,13 @@ class PushSubscriptionController extends Controller
     {
         $request->validate(['endpoint' => 'required|string']);
 
-        PushSubscription::findByEndpoint($request->input('endpoint'))?->delete();
+        Subscriber::forUser($request->user())->deletePushSubscription($request->input('endpoint'));
 
         return response()->json(['ok' => true]);
     }
 
     /**
-     * Local only (see routes/api.php): sends a test push to every subscriber.
+     * Local only (see routes/web.php): sends a test push to every subscriber.
      */
     public function test(Request $request, NewRentalsNotifier $notifier): JsonResponse
     {
@@ -53,19 +51,5 @@ class PushSubscriptionController extends Controller
         );
 
         return response()->json(['ok' => true, 'notified' => $notifier->notifyAll($notification)]);
-    }
-
-    /**
-     * The push endpoint identifies the browser (API routes have no session): reuse its subscriber
-     * when the browser subscribes again, otherwise create a new anonymous one.
-     */
-    private function subscriberFor(string $endpoint): AnonSubscriber
-    {
-        $existingSubscriber = PushSubscription::findByEndpoint($endpoint)?->subscribable;
-        if ($existingSubscriber instanceof AnonSubscriber) {
-            return $existingSubscriber;
-        }
-
-        return AnonSubscriber::create(['uuid' => (string) Str::uuid()]);
     }
 }

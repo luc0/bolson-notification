@@ -97,7 +97,7 @@ Usa `App\Integrations\Groq\GroqClient` para hablar con la IA.
 
 | Subdominio | Descripción |
 |---|---|
-| Suscriptores | Quién recibe alertas (hoy `AnonSubscriber`, suscripción anónima de web push). A futuro, ligado a un Member. |
+| Suscriptores | Quién recibe alertas: un `Subscriber` por Member (`user_id`), con una o varias suscripciones push (una por navegador). Las suscripciones viejas, anteriores a esto, no tienen Member. |
 | Preferencias y matching | (Futuro) Qué le interesa a cada uno (zona, precio, gas natural...) y qué avisos nuevos le corresponden. |
 | Canales | Cómo se envía: web push (hoy), WhatsApp (Twilio/Kapso, apagado) y Telegram (futuro). |
 | Envíos | Armado y envío de la notificación ("N alquileres nuevos"). |
@@ -106,11 +106,11 @@ Usa `App\Integrations\Groq\GroqClient` para hablar con la IA.
 
 | Clase | Subdominio |
 |---|---|
-| `Models/AnonSubscriber` (alias `anon_subscriber` en el morph map) | Suscriptores |
+| `Models/Subscriber` (alias `subscriber` en el morph map) | Suscriptores |
 | `Services/NewRentalsNotifier`, `Notifications/NewRentalsNotification` | Envíos |
 | `Contracts/WhatsappSender`, `Services/TwilioWhatsappSender`, `Services/KapsoWhatsappSender`, `Models/WhatsappSubscriber` | Canales (WhatsApp, apagado) |
 
-El alta y la baja de la suscripción push están en `app/Http/Controllers/PushSubscriptionController` (rutas en `routes/api.php`). El navegador se identifica por el endpoint de push, porque las rutas de API no tienen sesión.
+El alta y la baja de la suscripción push están en `app/Http/Controllers/PushSubscriptionController` (rutas web `push-subscriptions.*`, solo para Members logueados). Si un navegador lo suscribe otro Member, la suscripción pasa al último. Al borrar la cuenta se borran el suscriptor y sus suscripciones push.
 
 ## Members
 

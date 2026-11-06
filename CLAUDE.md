@@ -54,8 +54,9 @@ Laravel app that scrapes rental listings (El Bolsón / Lago Puelo), processes th
   - `RentalDetailService` → detail page data (`RentalDetailFetcher` + `RentalDetailExtractor`). Backfill: `rentals:fetch-details`.
 - `app/Integrations/Groq/GroqClient.php` → shared Groq API client (models in `config/services.php`).
 - Subscriptions (`app/Domains/Subscriptions`):
-  - `NewRentalsNotifier` → web push to every `AnonSubscriber` with a push subscription.
-  - Push subscribe/unsubscribe: `app/Http/Controllers/PushSubscriptionController` (browser identified by its push endpoint, API routes have no session).
+  - `Subscriber` (one per member, `user_id`; legacy rows have it null) → `NewRentalsNotifier` sends web push to every subscriber with a push subscription.
+  - Push subscribe/unsubscribe: `PushSubscriptionController`, web routes `push-subscriptions.store/destroy` under `auth` (needs session + CSRF). There are no API routes.
+  - Deleting a member deletes its subscriber and push subscriptions (`User::deleting` listener in `AppServiceProvider`).
   - WhatsApp (`Contracts/WhatsappSender`: `TwilioWhatsappSender`, `KapsoWhatsappSender`) exists but is currently disabled.
 
 ## Laravel conventions
