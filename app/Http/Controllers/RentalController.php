@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Location;
-use App\Models\Rental;
+use App\Domains\Rentals\Enums\Location;
+use App\Domains\Rentals\Models\Rental;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -18,7 +18,7 @@ class RentalController extends Controller
 
         $rentals = Rental::query()
             ->when(!$includeInactive, fn (Builder $query) => $query->available())
-            ->when(!empty($locations), fn (Builder $query) => $query->whereIn('location', $locations))
+            ->when(!empty($locations), fn (Builder $query) => $query->byLocation($locations))
             ->tap(fn (Builder $query) => $this->applyDateFilter($query, $request->input('date')))
             ->orderByDesc('active')
             ->orderByDesc('created_at')

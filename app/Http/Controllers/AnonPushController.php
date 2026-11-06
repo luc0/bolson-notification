@@ -1,13 +1,10 @@
 <?php
-// app/Http/Controllers/AnonPushController.php
 namespace App\Http\Controllers;
 
 use App\Models\AnonSubscriber;
+use App\Notifications\NewRentalsNotification;
 use Illuminate\Http\Request;
-use Illuminate\Notifications\Notification;
 use Illuminate\Support\Str;
-use NotificationChannels\WebPush\WebPushChannel;
-use NotificationChannels\WebPush\WebPushMessage;
 
 class AnonPushController extends Controller
 {
@@ -53,34 +50,19 @@ class AnonPushController extends Controller
 
     public function test(Request $request)
     {
-//        dd('ok');
-        $title = $request->input('title', 'Prueba');
-        $body  = $request->input('body',  'Llegó la notificación 🎉');
-        $url   = $request->input('url',   url('/'));
-        $icon  = $request->input('icon',  '/icons/icon-icon-192.png'); // asegurate que exista
+        $notification = new NewRentalsNotification(
+            $request->input('title', 'Prueba'),
+            $request->input('body', 'Llegó la notificación 🎉'),
+            $request->input('url', url('/')),
+            $request->input('icon', '/icons/icon-192.png'),
+        );
 
-        // Notificación inline (no requiere crear clase aparte)
-        $notification = new class($title, $body, $url, $icon) extends Notification {
-            public function __construct(public $t, public $b, public $u, public $i) {}
-            public function via($notifiable) { return [WebPushChannel::class]; }
-            public function toWebPush($notifiable, $notification)
-            {
-                return (new WebPushMessage)
-                    ->title($this->t)
-                    ->body($this->b)
-                    ->icon($this->i)
-                    ->badge($this->i)
-                    ->data(['url' => $this->u])
-                    ->action('Ver', $this->u);
-            }
-        };
-
-        $count = 0;
-        AnonSubscriber::whereHas('pushSubscriptions')->cursor()->each(function ($guest) use ($notification, &$count) {
-            $guest->notify($notification);
-            $count++;
+        $notifiedCount = 0;
+        AnonSubscriber::whereHas('pushSubscriptions')->cursor()->each(function ($subscriber) use ($notification, &$notifiedCount) {
+            $subscriber->notify($notification);
+            $notifiedCount++;
         });
 
-        return response()->json(['ok' => true, 'notified' => $count]);
+        return response()->json(['ok' => true, 'notified' => $notifiedCount]);
     }
 }

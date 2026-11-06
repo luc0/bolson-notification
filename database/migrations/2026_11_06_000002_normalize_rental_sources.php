@@ -1,6 +1,6 @@
 <?php
 
-use App\Support\RentalLink;
+use App\Domains\Rentals\Support\RentalLink;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 

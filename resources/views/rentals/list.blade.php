@@ -13,7 +13,7 @@
         ],
         [
             'title' => 'Antiguas',
-            'subtitle' => 'Detectadas hace más de ' . \App\Models\Rental::OLD_AFTER_MONTHS . ' meses. Siguen publicadas, pero probablemente ya no estén disponibles.',
+            'subtitle' => 'Detectadas hace más de ' . \App\Domains\Rentals\Models\Rental::OLD_AFTER_MONTHS . ' meses. Siguen publicadas, pero probablemente ya no estén disponibles.',
             'rentals' => $oldRentals,
         ],
         [

@@ -2,7 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\Rental;
+use App\Domains\Rentals\Enums\Utility;
+use App\Domains\Rentals\Models\Rental;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -65,7 +66,7 @@ class RentalDetailService
             'bedrooms' => $detail['Bedrooms'],
             'parking_spaces' => $detail['ParkingSpaces'],
             'age_years' => $detail['AgeYears'],
-            'services' => array_values(array_unique(array_intersect($detail['Services'], RentalDetailExtractor::SERVICES))),
+            'services' => array_values(array_unique(array_intersect($detail['Services'], Utility::values()))),
             // The detail page is more reliable than the listing card: keep the card value only if the page has none.
             'rooms' => $this->positiveOrNull($detail['Rooms']) ?? $rental->rooms,
             'bathrooms' => $this->positiveOrNull($detail['Bathrooms']) ?? $rental->bathrooms,

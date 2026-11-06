@@ -2,35 +2,25 @@
 
 namespace App\Providers;
 
-use App\Contracts\IScraperService;
-use App\Contracts\IWhatsappService;
-use App\Services\KapsoService;
-use App\Services\MockScraperServiceService;
-use App\Services\ScraperServiceService;
-use App\Services\TwilioService;
+use App\Contracts\RentalScraper;
+use App\Services\BrowserRentalScraper;
+use App\Services\FakeRentalScraper;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
     public function register(): void
     {
-        $scrapeMock = config('mock.scrape_mock');
-//        dd($scrapeMock);
-        $this->app->singleton(IScraperService::class, function ($app) use ($scrapeMock) {
-            return match ($scrapeMock) {
-                true => $app->make(MockScraperServiceService::class),
-                false => $app->make(ScraperServiceService::class),
-                default => throw new \InvalidArgumentException("Unknown scrape_mock value: $scrapeMock"),
-            };
+        $this->app->bind(RentalScraper::class, function ($app) {
+            $useFakeScraper = (bool) config('mock.scrape_mock');
+            if ($useFakeScraper) {
+                return $app->make(FakeRentalScraper::class);
+            }
+
+            return $app->make(BrowserRentalScraper::class);
         });
     }
 
-    /**
-     * Bootstrap any application services.
-     */
     public function boot(): void
     {
         //

@@ -2,9 +2,9 @@
 
 namespace App\Providers;
 
-use App\Contracts\IWhatsappService;
-use App\Services\KapsoService;
-use App\Services\TwilioService;
+use App\Contracts\WhatsappSender;
+use App\Services\KapsoWhatsappSender;
+use App\Services\TwilioWhatsappSender;
 use Illuminate\Support\ServiceProvider;
 
 class WhatsappServiceProvider extends ServiceProvider
@@ -16,10 +16,10 @@ class WhatsappServiceProvider extends ServiceProvider
     {
         $driver = config('whatsapp.driver', 'kapso');
 
-        $this->app->singleton(IWhatsappService::class, function ($app) use ($driver) {
+        $this->app->singleton(WhatsappSender::class, function ($app) use ($driver) {
             return match ($driver) {
-                'kapso' => $app->make(KapsoService::class),
-                'twilio' => $app->make(TwilioService::class),
+                'kapso' => $app->make(KapsoWhatsappSender::class),
+                'twilio' => $app->make(TwilioWhatsappSender::class),
                 default => throw new \InvalidArgumentException("Unknown driver: $driver"),
             };
         });

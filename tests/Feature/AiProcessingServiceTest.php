@@ -1,6 +1,8 @@
 <?php
 
 use App\Services\AiProcessingService;
+use App\Domains\Sources\Data\Source;
+use App\Domains\Sources\Enums\SourceType;
 use Illuminate\Support\Facades\Http;
 
 function fakeGroqResponse(string $content, string $finishReason = 'stop'): void
@@ -12,7 +14,7 @@ function fakeGroqResponse(string $content, string $finishReason = 'stop'): void
     ]);
 }
 
-$site = ['url' => 'https://example.com', 'postUrl' => 'https://example.com/p/'];
+$site = new Source('example', 'Example', SourceType::Agency, 'https://example.com', 'https://example.com/p/');
 
 it('returns the rentals array and requests a strict json schema', function () use ($site) {
     fakeGroqResponse(json_encode(['rentals' => [['Content' => 'Depto', 'Link' => 'https://example.com/p/1', 'Price' => 'Consultar']]]));

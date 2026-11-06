@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Domains\Sources\Data\Source;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Log;
 
@@ -23,17 +24,17 @@ class AiProcessingService
     /**
      * @return array|null null when the AI call fails or returns no usable rentals.
      */
-    public function process(array $site, string $html): ?array
+    public function process(Source $source, string $html): ?array
     {
-        $response = $this->requestRentals($site, $html);
+        $response = $this->requestRentals($source, $html);
 
         // The model occasionally generates output that doesn't match the schema: worth one retry.
         for ($attempt = 2; $attempt <= self::MAX_ATTEMPTS && $this->failedSchemaValidation($response); $attempt++) {
-            Log::warning("⚠️ AI output didn't match the schema, retrying ({$attempt}/" . self::MAX_ATTEMPTS . '): ' . $site['url']);
-            $response = $this->requestRentals($site, $html);
+            Log::warning("⚠️ AI output didn't match the schema, retrying ({$attempt}/" . self::MAX_ATTEMPTS . '): ' . $source->key);
+            $response = $this->requestRentals($source, $html);
         }
 
-        return $this->parseRentals($response, $site);
+        return $this->parseRentals($response, $source);
     }
 
     private function failedSchemaValidation(Response $response): bool
@@ -41,13 +42,13 @@ class AiProcessingService
         return $response->status() === 400 && $response->json('error.code') === 'json_validate_failed';
     }
 
-    private function requestRentals(array $site, string $html): Response
+    private function requestRentals(Source $source, string $html): Response
     {
         return $this->groq->chat([
             'model' => config('services.groq.model'),
             'messages' => [
                 ['role' => 'system', 'content' => self::SYSTEM_PROMPT],
-                ['role' => 'user', 'content' => $this->buildUserPrompt($site)],
+                ['role' => 'user', 'content' => $this->buildUserPrompt($source)],
                 ['role' => 'user', 'content' => $html],
             ],
             'temperature' => 0.3,
@@ -61,17 +62,17 @@ class AiProcessingService
         ]);
     }
 
-    private function parseRentals(Response $response, array $site): ?array
+    private function parseRentals(Response $response, Source $source): ?array
     {
         if (!$response->successful()) {
-            Log::error('❌ AI request failed for ' . $site['url'], ['status' => $response->status()]);
+            Log::error('❌ AI request failed for ' . $source->key, ['status' => $response->status()]);
             Log::info($response->body());
             return null;
         }
 
         $wasTruncated = ($response['choices'][0]['finish_reason'] ?? null) === 'length';
         if ($wasTruncated) {
-            Log::error('❌ AI response truncated (max_tokens reached) for ' . $site['url']);
+            Log::error('❌ AI response truncated (max_tokens reached) for ' . $source->key);
             return null;
         }
 
@@ -80,33 +81,33 @@ class AiProcessingService
 
         $decoded = json_decode($jsonRaw, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
-            Log::error('❌ Malformed JSON for ' . $site['url'] . ': ' . json_last_error_msg());
+            Log::error('❌ Malformed JSON for ' . $source->key . ': ' . json_last_error_msg());
             return null;
         }
 
         $rentals = $decoded['rentals'] ?? null;
         if (!is_array($rentals)) {
-            Log::error('❌ AI response has no "rentals" array for ' . $site['url']);
+            Log::error('❌ AI response has no "rentals" array for ' . $source->key);
             return null;
         }
 
         // An empty list almost always means the model failed, not that the site has no rentals.
         if (empty($rentals)) {
-            Log::error('❌ AI returned no rentals for ' . $site['url']);
+            Log::error('❌ AI returned no rentals for ' . $source->key);
             return null;
         }
 
         return $rentals;
     }
 
-    private function buildUserPrompt(array $site): string
+    private function buildUserPrompt(Source $source): string
     {
         return <<<EOT
             Extraé todos los avisos de alquiler del siguiente HTML.
 
             Para cada aviso:
             - "Content": título o descripción del aviso (texto completo).
-            - "Link": URL completa al aviso. Si es relativa, completala con el baseUrl: {$site['postUrl']}
+            - "Link": URL completa al aviso. Si es relativa, completala con el baseUrl: {$source->linkBaseUrl}
             - "Caracteristicas": solo datos extra que NO estén en los otros campos (ej: superficie, cochera, amoblado, temporal/permanente, mascotas). Una por línea (separadas por \\n), cada una empezando con un emoji. No incluyas precio, ubicación, ambientes ni baños. Omití los datos sin valor (null, N/A, 0, 0 m²). String vacío si no hay ninguno.
             - "Price": precio de alquiler con la moneda, tal como aparece (ej: "$650.000", "U\$S 550", "Consultar"). null si no figura.
             - "Currency": "USD" si el precio es en dólares (U\$S, USD, US\$), "ARS" si es en pesos, null si no hay precio.

@@ -1,6 +1,6 @@
 <?php
 
-use App\Support\PriceParser;
+use App\Domains\Rentals\Support\PriceParser;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 

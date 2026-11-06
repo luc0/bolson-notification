@@ -1,0 +1,119 @@
+# Dominios
+
+El proyecto se organiza como un **monolito modular liviano**: cada dominio vive en `app/Domains/<Dominio>/` y adentro sigue las mismas convenciones de carpetas de Laravel (`Models`, `Enums`, `Data`, `Support`, `Services`...).
+
+Lo que es propio del framework se queda donde Laravel lo espera:
+- Controllers, requests y middleware en `app/Http/`.
+- Comandos en `app/Console/Commands/`.
+- Vistas en `resources/views/`.
+- Migraciones en `database/migrations/`.
+- Clientes de servicios externos compartidos (Groq, Puppeteer, fetch HTTP) en `app/Integrations/`.
+
+## Regla de dependencias
+
+```
+Sources ──► Harvesting ──► Rentals ◄── Subscriptions ──► Members
+                                            ▲
+                                         Payments
+```
+
+- **Rentals no depende de ningún otro dominio.** Es el núcleo que los demás leen o escriben.
+- Harvesting escribe en Rentals. Subscriptions lee de Rentals (idealmente a partir de un evento `RentalPublished`).
+- Agregar una fuente o un canal de notificación no debería tocar Rentals.
+
+## Resumen
+
+| Dominio | Qué resuelve | Tipo | Estado |
+|---|---|---|---|
+| [Sources](#sources) | Qué sitios se scrapean y cómo | Soporte | ✅ `app/Domains/Sources` |
+| [Harvesting](#harvesting) | Pasar de la web a datos: captura, extracción con IA y enriquecimiento | **Core** | Pendiente de migrar |
+| [Rentals](#rentals) | El catálogo de alquileres y su ciclo de vida | **Core** | ✅ `app/Domains/Rentals` |
+| [Subscriptions](#subscriptions) | Avisarle a cada persona los alquileres que le interesan | **Core** | Pendiente de migrar |
+| [Members](#members) | Identidad de los usuarios | Genérico | Pendiente de migrar |
+| [Payments](#payments) | Cobrar el acceso a las alertas | Genérico | Futuro (v1.1) |
+
+**Core** es donde está el valor diferencial del producto. **Soporte** es necesario pero específico de este proyecto. **Genérico** conviene resolverlo de la forma más estándar posible.
+
+---
+
+## Sources
+
+**Qué resuelve:** define de qué sitios se obtienen los alquileres y cómo leer cada uno.
+
+| Subdominio | Descripción |
+|---|---|
+| Catálogo de fuentes | Lista de sitios en `config/sources.php` (clave, URL del listado, URL base de los links, selector a esperar), leída con `Source::all()` / `Source::find()`. |
+| Tipo de fuente | `SourceType`: inmobiliaria (`agency`, publica solo lo suyo) o portal (`portal`: Properati, MercadoLibre, agrega de muchos y puede repetir avisos). |
+| Configuración por sitio | Particularidades de cada sitio: si renderiza con JS (`wait_for`), cómo se arman los links, etc. |
+
+**Hoy:** `config/sources.php`, `app/Domains/Sources/` (`Data/Source`, `Enums/SourceType`).
+
+Dónde se guardan las capturas y snapshots no es parte de Sources sino de Harvesting (`config/harvesting.php`).
+
+## Harvesting
+
+**Qué resuelve:** convierte las páginas de las fuentes en avisos estructurados y completos. Es el proceso que corre `rentals:analyze`.
+
+| Subdominio | Descripción |
+|---|---|
+| Captura | Abrir cada listado con un navegador (Puppeteer, `scripts/scrape.cjs`) y guardar un HTML limpio. |
+| Detección de cambios | Comparar la captura con el último snapshot para no reprocesar sitios que no cambiaron. |
+| Extracción | Pasar el HTML a avisos estructurados con IA (título, link, precio, moneda, foto...). |
+| Enriquecimiento | Visitar la página de detalle de cada aviso y extraer superficie, dormitorios, servicios, etc., sin inventar datos. |
+| Detección de alquilados | Revisar la foto del aviso para detectar carteles de "ALQUILADO" o "RESERVADO". |
+| Deduplicación | (Futuro, con portales) Reconocer el mismo aviso publicado en varias fuentes. |
+
+**Hoy:** `config/harvesting.php`, `BrowserRentalScraper`, `FakeRentalScraper`, `AiProcessingService`, `RentalService` (importa los avisos en Rentals), `RentalDetailService`, `RentalDetailFetcher`, `RentalDetailExtractor`, `RentalImageChecker`, `app/Contracts/RentalScraper.php`.
+
+## Rentals
+
+**Qué resuelve:** es el catálogo de alquileres. Sabe qué es un alquiler, cuándo está disponible y cómo se describe, sin importar de dónde vino.
+
+| Subdominio | Descripción |
+|---|---|
+| Disponibilidad | Ciclo de vida del aviso: activo, inactivo (ya no está en el sitio), alquilado (cartel en la foto) y antiguo (3+ meses). |
+| Precio | Precio tal como lo publica la inmobiliaria más el monto y la moneda normalizados; detecta precios de relleno ("$1"). |
+| Ubicación | Localidad o barrio del aviso y las opciones del filtro (El Bolsón, Lago Puelo...). |
+| Características | Superficie, ambientes, dormitorios, baños, cocheras, antigüedad, servicios y datos extra limpios. |
+| Identidad del aviso | Normalización del link para que el mismo aviso no se guarde dos veces. |
+| Búsqueda | (Hoy en `RentalController`) Filtros del listado: ubicación, fecha, incluir no disponibles. |
+
+**Hoy:** `app/Domains/Rentals/`.
+
+## Subscriptions
+
+**Qué resuelve:** avisarle a cada persona solo los alquileres que le sirven, por el canal que prefiera.
+
+| Subdominio | Descripción |
+|---|---|
+| Suscriptores | Quién recibe alertas (hoy `AnonSubscriber`, suscripción anónima de web push). A futuro, ligado a un Member. |
+| Preferencias y matching | (Futuro) Qué le interesa a cada uno (zona, precio, gas natural...) y qué avisos nuevos le corresponden. |
+| Canales | Cómo se envía: web push (hoy), WhatsApp (Twilio/Kapso, apagado) y Telegram (futuro). |
+| Envíos | Armado y envío de la notificación ("N alquileres nuevos"). |
+
+**Hoy:** `AnonSubscriber`, `AnonPushController`, `NotificationService`, `NewRentalsNotification`, `WhatsappSender` (+ Twilio y Kapso).
+
+## Members
+
+**Qué resuelve:** la identidad de las personas que usan la app.
+
+| Subdominio | Descripción |
+|---|---|
+| Registro y acceso | Alta y login con teléfono y contraseña. |
+| Perfil | Datos de la cuenta y baja. |
+| Recuperación | (Futuro) Recuperar la cuenta. |
+| Consentimiento y privacidad | (Futuro) Consentimiento para recibir mensajes y cifrado de teléfonos. |
+
+**Hoy:** `User`, controllers de `app/Http/Controllers/Auth`, `ProfileController`.
+
+## Payments
+
+**Qué resuelve:** cobrar el acceso a las alertas (v1.1, pago único de un mes).
+
+| Subdominio | Descripción |
+|---|---|
+| Planes | Qué se vende y cuánto dura (1 mes). |
+| Checkout | Pago con Mercado Pago. |
+| Vencimientos | Cuándo vence el acceso; corta o habilita las alertas en Subscriptions. |
+
+**Hoy:** no existe todavía.

@@ -1,0 +1,114 @@
+<?php
+
+use App\Domains\Rentals\Models\Rental;
+use App\Models\User;
+
+function createRental(string $link, bool $active = true, ?string $createdAt = null): Rental
+{
+    $rental = Rental::create(['source' => $link, 'content' => "Rental {$link}", 'description' => 'desc', 'active' => $active]);
+    $rental->forceFill(['created_at' => $createdAt ?? now()])->save();
+
+    return $rental;
+}
+
+beforeEach(function () {
+    $this->actingAs(User::create(['phone' => '2944000000', 'password' => 'secret']));
+});
+
+it('hides inactive rentals by default', function () {
+    createRental('https://example.com/active');
+    createRental('https://example.com/inactive', active: false);
+
+    $this->get('/')
+        ->assertOk()
+        ->assertSee('Rental https://example.com/active')
+        ->assertDontSee('Rental https://example.com/inactive')
+        ->assertDontSee('No disponible</span>', false);
+});
+
+it('shows inactive rentals with a badge when requested', function () {
+    createRental('https://example.com/inactive', active: false);
+
+    $this->get('/?include_inactive=1')
+        ->assertOk()
+        ->assertSee('Rental https://example.com/inactive')
+        ->assertSee('No disponible</span>', false);
+});
+
+it('flags rentals detected 3 or more months ago as old', function () {
+    createRental('https://example.com/new');
+    expect(Rental::first()->isOld())->toBeFalse();
+
+    $oldRental = createRental('https://example.com/old', createdAt: now()->subMonths(4));
+    expect($oldRental->fresh()->isOld())->toBeTrue();
+
+    $this->get('/')->assertSee('Antiguo</span>', false)->assertSee('Detectado hace 4 meses');
+});
+
+it('groups rentals into recent, old and inactive sections in that order', function () {
+    createRental('https://example.com/recent');
+    createRental('https://example.com/old', createdAt: now()->subMonths(4));
+    createRental('https://example.com/inactive', active: false);
+
+    $this->get('/?include_inactive=1')
+        ->assertOk()
+        ->assertSeeInOrder([
+            'Propiedades Disponibles', 'Rental https://example.com/recent',
+            'Antiguas', 'Rental https://example.com/old',
+            'No disponibles', 'Rental https://example.com/inactive',
+        ])
+        ->assertSee('card-old', false)
+        ->assertSee('card-inactive', false);
+});
+
+it('treats rented rentals as unavailable', function () {
+    $rented = createRental('https://example.com/rented');
+    $rented->update(['rented_at' => now()]);
+
+    $this->get('/')->assertDontSee('Rental https://example.com/rented');
+
+    $this->get('/?include_inactive=1')
+        ->assertSeeInOrder(['No disponibles', 'Rental https://example.com/rented'])
+        ->assertSee('Alquilado</span>', false);
+});
+
+it('shows clean features, the price once and friendly fallbacks', function () {
+    $rental = createRental('https://example.com/1');
+    $rental->update([
+        'description' => "💸 precio: \$420.000\n🚿 baños: null\n🏠 0 m²\n📏 superficie: 45m²",
+        'price' => '$420.000',
+        'price_amount' => 420000,
+        'price_currency' => 'ARS',
+        'rooms' => 1,
+        'bathrooms' => 0,
+    ]);
+    $withoutPrice = createRental('https://example.com/2');
+    $withoutPrice->update(['description' => '💰 precio: N/A', 'price' => 'N/A', 'rooms' => 3]);
+
+    $this->get('/')
+        ->assertOk()
+        ->assertSee('📏 superficie: 45m²')
+        ->assertDontSee('0 m²')
+        ->assertDontSeeText('baños: null')
+        ->assertSeeText('🛏️ 1 ambiente')
+        ->assertSeeText('🛏️ 3 ambientes')
+        ->assertDontSee('baño')
+        ->assertSee('Consultar precio')
+        ->assertDontSee('N/A');
+
+    expect(substr_count($this->get('/')->getContent(), '$420.000'))->toBe(1);
+});
+
+it('shows specs and services from the detail page', function () {
+    createRental('https://example.com/1')->update([
+        'covered_area' => 45, 'bedrooms' => 1, 'parking_spaces' => 1, 'age_years' => 6,
+        'services' => ['electricity', 'running_water', 'natural_gas', 'sewer'],
+    ]);
+
+    $this->get('/')
+        ->assertSeeText('📐 45 m² cubiertos')
+        ->assertSeeText('1 dormitorio')
+        ->assertSeeText('🚗 1 cochera')
+        ->assertSeeText('🏗️ 6 años de antigüedad')
+        ->assertSeeTextInOrder(['Servicios', '✓ Gas natural', '✓ Luz', '✓ Agua corriente', '✓ Cloacas']);
+});

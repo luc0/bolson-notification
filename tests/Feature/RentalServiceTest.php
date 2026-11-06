@@ -1,6 +1,6 @@
 <?php
 
-use App\Models\Rental;
+use App\Domains\Rentals\Models\Rental;
 use App\Services\RentalService;
 
 

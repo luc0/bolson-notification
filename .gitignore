@@ -22,10 +22,7 @@ yarn-error.log
 /.vscode
 /.zed
 
-/captures
-posts.jpg
 todo.md
 cookies.json
 
-/captures
-/storage/html_snapshots
+.DS_Store

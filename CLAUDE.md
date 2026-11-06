@@ -3,35 +3,64 @@
 Laravel app that scrapes rental listings (El Bolsón / Lago Puelo), processes them with AI, stores them, and sends push notifications (PWA) to subscribers.
 
 ## Rules
-- Run commands through Sail (`./vendor/bin/sail ...`), except `analyze:rentals` from local (see below).
+- Run commands through Sail (`./vendor/bin/sail ...`), except `rentals:analyze` from local (see below).
 - Everything in English (code, params, names, comments) except user-facing text, which is in Spanish.
 - Clean code:
   - Don't nest ifs or use `else` when avoidable; prefer early returns.
   - For non-trivial if conditions, extract a descriptively named boolean variable and use it in the if.
 
 ## Commands
-- Tests (Pest): `./vendor/bin/sail test`
-- Run scraper from local (no Sail, DB in container): `DB_HOST=127.0.0.1 DB_PORT=3307 php artisan analyze:rentals`
+- Tests (Pest): `./vendor/bin/sail test` (or locally: `DB_CONNECTION=sqlite DB_DATABASE=:memory: php vendor/bin/pest`)
+- Run scraper from local (no Sail, DB in container): `DB_HOST=127.0.0.1 DB_PORT=3307 php artisan rentals:analyze`
+- Complete detail page data: `DB_HOST=127.0.0.1 DB_PORT=3307 php artisan rentals:fetch-details`
 - Check DB connection: `php artisan db:test`
 - If permission errors after using Sail:
   `rm -f bootstrap/cache/*.php && mkdir -p storage/logs && chmod -R 777 storage bootstrap/cache`
 
+## Structure (modular monolith)
+- Domains and their subdomains are documented in `docs/domains.md` (read it before adding features): Sources, Harvesting, Rentals, Subscriptions, Members, Payments.
+- Each domain lives in `app/Domains/<Domain>/` using Laravel's folder names inside (`Models`, `Enums`, `Data`, `Support`, `Services`...).
+- Framework entry points stay where Laravel expects them: `app/Http`, `app/Console`, `resources/views`, `database/migrations`.
+- Shared external clients (Groq, Puppeteer, HTTP fetch) go to `app/Integrations/`.
+- Dependency rule: Rentals depends on no other domain; Harvesting writes into Rentals; Subscriptions reads from Rentals.
+- Migrated so far: Rentals, Sources. The rest still lives in `app/Services`, `app/Models`, `app/Support`.
+
 ## Domain
 - `Rental`:
-  - `source` → URL of the specific listing (item).
-  - `site_path` → URL of the listing page being scraped.
+  - `source` → URL of the specific listing (item), stored decoded (`app/Domains/Rentals/Support/RentalLink.php`).
+  - `site_path` → `listing_url` of the source it was scraped from.
   - `source_path` → unused, pending removal.
-  - `price` (raw text) + `price_amount` / `price_currency` (parsed via `app/Support/PriceParser.php`).
-  - `active` → only active rentals are shown.
-- `location`: free string. Filter options = `app/Location.php` enum values + distinct locations in DB.
+  - `price` (raw text) + `price_amount` / `price_currency` (parsed via `app/Domains/Rentals/Support/PriceParser.php`).
+  - Availability: `active` (still listed on the site) + `rented_at` (photo stamped "ALQUILADO"). Use `Rental::available()`.
+  - Old = detected 3+ months ago (`Rental::OLD_AFTER_MONTHS`).
+  - Detail page data: `covered_area`, `total_area`, `bedrooms`, `parking_spaces`, `age_years`, `services` (json of `App\Domains\Rentals\Enums\Utility` values).
+- `location`: free string. Filter options = `App\Domains\Rentals\Enums\Location` values + distinct locations in DB.
+
+## Sources
+- `config/sources.php` is the single source of truth for scraped sites (key, type, listing URL, link base URL, `wait_for`). To add a site, add it there only.
+- Read them with `App\Domains\Sources\Data\Source::all()` / `Source::find($key)`; `SourceType` is `agency` or `portal`.
+- `BrowserRentalScraper` passes the sites to `scripts/scrape.cjs` through stdin.
+- Captures (`storage/app/captures`) and snapshots (`storage/app/snapshots`) are Harvesting config: `config/harvesting.php`.
 
 ## Architecture
-- `app/Console/Commands/AnalyzeRentals.php` → main flow: scrape → AI processing → store → notify. Scheduled in `routes/console.php`.
-- `app/Contracts/IScraperService.php` → real (`ScraperServiceService`, uses Puppeteer) and mock (`MockScraperServiceService`) implementations.
-- `app/Services/AiProcessingService.php` → extracts structured data from scraped content.
-- `app/Services/RentalService.php` → persistence.
+- `app/Console/Commands/AnalyzeRentals.php` (`rentals:analyze`) → main flow: capture → AI extraction → store → detail enrichment → notify. Scheduled in `routes/console.php`.
+- `app/Contracts/RentalScraper.php` → `BrowserRentalScraper` (Puppeteer) and `FakeRentalScraper` (`SCRAPE_MOCK=true`).
+- `app/Services/AiProcessingService.php` → extracts rentals from a listing page capture.
+- `app/Services/RentalService.php` → persistence, deactivation and rented photo check (`RentalImageChecker`).
+- `app/Services/RentalDetailService.php` → detail page data (`RentalDetailFetcher` + `RentalDetailExtractor`). Backfill: `rentals:fetch-details`.
+- `app/Services/GroqClient.php` → shared Groq API client (models in `config/services.php`).
 - `app/Services/NotificationService.php` → web push to `AnonSubscriber`s.
-- WhatsApp (`TwilioService`, `KapsoService`) exists but is currently disabled.
+- WhatsApp (`app/Contracts/WhatsappSender.php`: `TwilioWhatsappSender`, `KapsoWhatsappSender`) exists but is currently disabled.
+
+## Laravel conventions
+- Follow Laravel defaults before inventing structure; check how the framework itself names things.
+- Naming: interfaces without `I` prefix (`RentalScraper`, like `Illuminate\Contracts\...`); no repeated suffixes (`BrowserRentalScraper`, not `ScraperServiceService`); test doubles prefixed `Fake` (like `Http::fake()`).
+- Artisan commands: `group:action` (`rentals:analyze`, `rentals:fetch-details`); inject dependencies in `handle()`, not the constructor.
+- Prefer framework facades/helpers that can be faked in tests: `Http`, `Process`, `File`, `Storage` (not `Symfony\Process`, `file_get_contents`, `curl`).
+- Config over hardcoded values: read `config()` in code, `env()` only inside `config/*.php`. Config defaults must be safe for production.
+- Generated files go in `storage/app/...`; non-PHP scripts in `scripts/`; nothing generated in the repo root.
+- Routes: no debug/test endpoints outside `app()->isLocal()`.
+- Tests: Pest, `RefreshDatabase` is applied to `tests/Feature` in `tests/Pest.php`. Fake external calls (`Http::fake()`, `Process::fake()`).
 
 ## Roadmap
 - See `todo.md` (in Spanish) for milestones, pending tasks and known data-extraction bugs. Read it before proposing features or fixing AI parsing issues.

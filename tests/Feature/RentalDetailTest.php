@@ -1,6 +1,6 @@
 <?php
 
-use App\Models\Rental;
+use App\Domains\Rentals\Models\Rental;
 use App\Services\RentalDetailExtractor;
 use App\Services\RentalDetailFetcher;
 use App\Services\RentalDetailService;

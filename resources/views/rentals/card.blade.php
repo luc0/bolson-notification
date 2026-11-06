@@ -19,7 +19,7 @@
                 <span class="bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 text-xs font-medium px-2.5 py-0.5 rounded" title="Ya no aparece en el sitio de la inmobiliaria">🚫 No disponible</span>
             @endif
             @if($isOld)
-                <span class="bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 text-xs font-medium px-2.5 py-0.5 rounded" title="Detectado hace {{ \App\Models\Rental::OLD_AFTER_MONTHS }} meses o más: probablemente ya no esté disponible">⏳ Antiguo</span>
+                <span class="bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 text-xs font-medium px-2.5 py-0.5 rounded" title="Detectado hace {{ \App\Domains\Rentals\Models\Rental::OLD_AFTER_MONTHS }} meses o más: probablemente ya no esté disponible">⏳ Antiguo</span>
             @endif
             <span class="text-xs text-gray-500 dark:text-gray-400" title="{{ $rental->created_at->format('d/m/Y H:i') }}">Detectado {{ $rental->detectedForHumans() }}</span>
         </div>
@@ -41,7 +41,7 @@
         </div>
         
         @php
-            $features = \App\Support\RentalFeatures::extract($rental->description, $rental->content);
+            $features = \App\Domains\Rentals\Support\RentalFeatures::extract($rental->description, $rental->content);
             $specs = $rental->specs();
             $services = $rental->serviceLabels();
         @endphp

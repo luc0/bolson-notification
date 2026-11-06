@@ -11,7 +11,7 @@ test('email verification screen can be rendered', function () {
     $response = $this->actingAs($user)->get('/verify-email');
 
     $response->assertStatus(200);
-});
+})->skip('Users sign up with phone only: no email yet (todo.md: REGISTRO CON EMAIL / RECUPERAR CUENTA).');
 
 test('email can be verified', function () {
     $user = User::factory()->unverified()->create();
@@ -29,7 +29,7 @@ test('email can be verified', function () {
     Event::assertDispatched(Verified::class);
     expect($user->fresh()->hasVerifiedEmail())->toBeTrue();
     $response->assertRedirect(route('dashboard', absolute: false).'?verified=1');
-});
+})->skip('Users sign up with phone only: no email yet (todo.md: REGISTRO CON EMAIL / RECUPERAR CUENTA).');
 
 test('email is not verified with invalid hash', function () {
     $user = User::factory()->unverified()->create();
@@ -43,4 +43,4 @@ test('email is not verified with invalid hash', function () {
     $this->actingAs($user)->get($verificationUrl);
 
     expect($user->fresh()->hasVerifiedEmail())->toBeFalse();
-});
+})->skip('Users sign up with phone only: no email yet (todo.md: REGISTRO CON EMAIL / RECUPERAR CUENTA).');

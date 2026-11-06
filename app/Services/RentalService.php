@@ -2,9 +2,9 @@
 
 namespace App\Services;
 
-use App\Models\Rental;
-use App\Support\PriceParser;
-use App\Support\RentalLink;
+use App\Domains\Rentals\Models\Rental;
+use App\Domains\Rentals\Support\PriceParser;
+use App\Domains\Rentals\Support\RentalLink;
 use App\Support\RentalStoreResult;
 use Illuminate\Support\Facades\Log;
 use Throwable;

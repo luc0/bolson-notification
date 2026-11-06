@@ -2,68 +2,40 @@
 
 namespace App\Console\Commands;
 
-use App\Contracts\IScraperService;
-use App\Contracts\IWhatsappService;
-use App\Models\Rental;
-use App\Models\WhatsappUser;
-use App\Models\AnonSubscriber;
-use App\Services\AiProcessingService;
-use App\Services\ScraperServiceService;
-use App\Services\TwilioService;
+use App\Contracts\RentalScraper;
 use App\Services\NotificationService;
 use App\Services\RentalDetailService;
 use Illuminate\Console\Command;
-use Illuminate\Console\Scheduling\Schedule;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Symfony\Component\Process\Process;
-use Symfony\Component\Process\Exception\ProcessFailedException;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\File;
-use Illuminate\Support\Str;
-use Twilio\Rest\Client;
-use App\Notifications\NewRentalsNotification;
 
 class AnalyzeRentals extends Command
 {
-    protected $signature = 'analyze:rentals';
-    protected $description = 'Analiza alquileres en distintas inmobiliarias';
+    protected $signature = 'rentals:analyze';
+    protected $description = 'Scrapes the rental sources, completes details and notifies subscribers about new rentals';
 
-    public function __construct(
-        readonly private IScraperService $scraperService,
-        readonly private IWhatsappService $IWhatsapp,
-        readonly private AiProcessingService $aiProcessingService,
-        readonly private NotificationService $notificationService,
-        readonly private RentalDetailService $rentalDetailService,
-    )
-    {
-        parent::__construct();
-    }
+    public function handle(
+        RentalScraper $scraper,
+        RentalDetailService $rentalDetailService,
+        NotificationService $notificationService,
+    ): int {
+        Log::info('📦 rentals:analyze started.');
 
-    public function handle()
-    {
-        Log::info("📦 Comando analyze:rentals ejecutado.", ['timestamp' => now()]);
-
-        $allItems = $this->scraperService->scrape();
+        $newRentals = $scraper->scrape();
 
         // Runs even when no site changed: completes new rentals and retries previous failures.
-        $this->rentalDetailService->enrichPending();
+        $rentalDetailService->enrichPending();
 
-        // Guardar todo en rental.json
-        Log::info('💾 Guardando resultados combinados...');
-        Storage::put('rental.json', json_encode($allItems, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-        Log::info('✅ Datos guardados con éxito a un json.');
+        // Last run output, handy for debugging.
+        Storage::put('rental.json', json_encode($newRentals, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
-        if (empty($allItems)) {
-            Log::warning('⚠️ No hay alquileres para enviar.');
-            return;
+        if (empty($newRentals)) {
+            Log::info('⚠️ No new rentals to notify.');
+            return self::SUCCESS;
         }
 
-//        $this->IWhatsapp->sendMessage($allItems);
+        $notificationService->sendNewRentalsNotification(count($newRentals));
 
-        // Send push notifications to all subscribers
-        $this->notificationService->sendNewRentalsNotification(count($allItems));
-
-        return Command::SUCCESS;
+        return self::SUCCESS;
     }
 }

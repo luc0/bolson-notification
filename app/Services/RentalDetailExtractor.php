@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Domains\Rentals\Enums\Utility;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -9,10 +10,6 @@ use Illuminate\Support\Facades\Log;
  */
 class RentalDetailExtractor
 {
-    public const SERVICES = [
-        'electricity', 'running_water', 'natural_gas', 'bottled_gas', 'sewer', 'internet', 'cable', 'phone', 'paving',
-    ];
-
     private const SYSTEM_PROMPT = <<<EOT
         You are a data extraction assistant for a public real-estate listings aggregator in Argentina.
         You receive the text of ONE property detail page. Extract only data explicitly stated for that property.
@@ -115,7 +112,7 @@ class RentalDetailExtractor
                 'Bathrooms' => $nullableInteger,
                 'ParkingSpaces' => $nullableInteger,
                 'AgeYears' => $nullableInteger,
-                'Services' => ['type' => 'array', 'items' => ['type' => 'string', 'enum' => self::SERVICES]],
+                'Services' => ['type' => 'array', 'items' => ['type' => 'string', 'enum' => Utility::values()]],
             ],
             'required' => ['CoveredArea', 'TotalArea', 'Rooms', 'Bedrooms', 'Bathrooms', 'ParkingSpaces', 'AgeYears', 'Services'],
             'additionalProperties' => false,
