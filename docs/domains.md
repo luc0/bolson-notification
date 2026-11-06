@@ -29,7 +29,7 @@ Sources ──► Harvesting ──► Rentals ◄── Subscriptions ──►
 | [Harvesting](#harvesting) | Pasar de la web a datos: captura, extracción con IA y enriquecimiento | **Core** | ✅ `app/Domains/Harvesting` |
 | [Rentals](#rentals) | El catálogo de alquileres y su ciclo de vida | **Core** | ✅ `app/Domains/Rentals` |
 | [Subscriptions](#subscriptions) | Avisarle a cada persona los alquileres que le interesan | **Core** | ✅ `app/Domains/Subscriptions` |
-| [Members](#members) | Identidad de los usuarios | Genérico | Pendiente de migrar |
+| [Members](#members) | Identidad de los usuarios | Genérico | ✅ `app/Domains/Members` |
 | [Payments](#payments) | Cobrar el acceso a las alertas | Genérico | Futuro (v1.1) |
 
 **Core** es donde está el valor diferencial del producto. **Soporte** es necesario pero específico de este proyecto. **Genérico** conviene resolverlo de la forma más estándar posible.
@@ -123,7 +123,7 @@ El alta y la baja de la suscripción push están en `app/Http/Controllers/PushSu
 | Recuperación | (Futuro) Recuperar la cuenta. |
 | Consentimiento y privacidad | (Futuro) Consentimiento para recibir mensajes y cifrado de teléfonos. |
 
-**Hoy:** `User`, controllers de `app/Http/Controllers/Auth`, `ProfileController`.
+**Hoy:** `app/Domains/Members/Models/User` (alias `user` en el morph map; `config/auth.php` apunta ahí). Los controllers de `app/Http/Controllers/Auth`, `ProfileController` y sus requests quedan en `app/Http`.
 
 ## Payments
 

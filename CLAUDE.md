@@ -23,7 +23,8 @@ Laravel app that scrapes rental listings (El Bolsón / Lago Puelo), processes th
 - Framework entry points stay where Laravel expects them: `app/Http`, `app/Console`, `resources/views`, `database/migrations`.
 - Shared external clients (Groq, Puppeteer, HTTP fetch) go to `app/Integrations/`.
 - Dependency rule: Rentals depends on no other domain; Harvesting writes into Rentals; Subscriptions reads from Rentals.
-- Migrated so far: Rentals, Sources, Harvesting (+ `app/Integrations/Groq`), Subscriptions. Members (`User`) still lives in `app/Models`.
+- Migrated: Rentals, Sources, Harvesting (+ `app/Integrations/Groq`), Subscriptions, Members. Payments will be created with the checkout (v1.1).
+- Models outside `App\Models` need `#[UseFactory(...)]` (and `$model` in the factory) because Laravel can't guess the factory name.
 - Polymorphic models must be registered in `Relation::morphMap()` (`AppServiceProvider::boot()`) so stored types don't depend on class names.
 
 ## Domain

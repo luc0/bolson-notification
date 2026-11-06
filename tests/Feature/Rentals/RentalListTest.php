@@ -1,7 +1,7 @@
 <?php
 
 use App\Domains\Rentals\Models\Rental;
-use App\Models\User;
+use App\Domains\Members\Models\User;
 
 function createRental(string $link, bool $active = true, ?string $createdAt = null): Rental
 {
