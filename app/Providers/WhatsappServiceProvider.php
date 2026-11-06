@@ -2,9 +2,9 @@
 
 namespace App\Providers;
 
-use App\Contracts\WhatsappSender;
-use App\Services\KapsoWhatsappSender;
-use App\Services\TwilioWhatsappSender;
+use App\Domains\Subscriptions\Contracts\WhatsappSender;
+use App\Domains\Subscriptions\Services\KapsoWhatsappSender;
+use App\Domains\Subscriptions\Services\TwilioWhatsappSender;
 use Illuminate\Support\ServiceProvider;
 
 class WhatsappServiceProvider extends ServiceProvider

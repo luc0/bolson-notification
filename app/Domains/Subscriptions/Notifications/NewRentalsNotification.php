@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Notifications;
+namespace App\Domains\Subscriptions\Notifications;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
@@ -34,4 +34,3 @@ class NewRentalsNotification extends Notification
             ->action('Ver', $this->url);
     }
 }
-

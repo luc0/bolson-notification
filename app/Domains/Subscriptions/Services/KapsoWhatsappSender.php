@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Services;
+namespace App\Domains\Subscriptions\Services;
 
-use App\Contracts\WhatsappSender;
+use App\Domains\Subscriptions\Contracts\WhatsappSender;
 use Illuminate\Support\Facades\Log;
 
 class KapsoWhatsappSender implements WhatsappSender

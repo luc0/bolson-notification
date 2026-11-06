@@ -4,7 +4,7 @@ namespace App\Console\Commands;
 
 use App\Domains\Harvesting\Contracts\RentalScraper;
 use App\Domains\Harvesting\Services\RentalDetailService;
-use App\Services\NotificationService;
+use App\Domains\Subscriptions\Services\NewRentalsNotifier;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -18,7 +18,7 @@ class AnalyzeRentals extends Command
     public function handle(
         RentalScraper $scraper,
         RentalDetailService $rentalDetailService,
-        NotificationService $notificationService,
+        NewRentalsNotifier $newRentalsNotifier,
     ): int {
         Log::info('📦 rentals:analyze started.');
 
@@ -36,7 +36,7 @@ class AnalyzeRentals extends Command
             return self::SUCCESS;
         }
 
-        $notificationService->sendNewRentalsNotification(count($newRentals));
+        $newRentalsNotifier->notifyNewRentals(count($newRentals));
 
         return self::SUCCESS;
     }

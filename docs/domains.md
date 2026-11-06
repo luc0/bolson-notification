@@ -28,7 +28,7 @@ Sources ──► Harvesting ──► Rentals ◄── Subscriptions ──►
 | [Sources](#sources) | Qué sitios se scrapean y cómo | Soporte | ✅ `app/Domains/Sources` |
 | [Harvesting](#harvesting) | Pasar de la web a datos: captura, extracción con IA y enriquecimiento | **Core** | ✅ `app/Domains/Harvesting` |
 | [Rentals](#rentals) | El catálogo de alquileres y su ciclo de vida | **Core** | ✅ `app/Domains/Rentals` |
-| [Subscriptions](#subscriptions) | Avisarle a cada persona los alquileres que le interesan | **Core** | Pendiente de migrar |
+| [Subscriptions](#subscriptions) | Avisarle a cada persona los alquileres que le interesan | **Core** | ✅ `app/Domains/Subscriptions` |
 | [Members](#members) | Identidad de los usuarios | Genérico | Pendiente de migrar |
 | [Payments](#payments) | Cobrar el acceso a las alertas | Genérico | Futuro (v1.1) |
 
@@ -102,7 +102,15 @@ Usa `App\Integrations\Groq\GroqClient` para hablar con la IA.
 | Canales | Cómo se envía: web push (hoy), WhatsApp (Twilio/Kapso, apagado) y Telegram (futuro). |
 | Envíos | Armado y envío de la notificación ("N alquileres nuevos"). |
 
-**Hoy:** `AnonSubscriber`, `AnonPushController`, `NotificationService`, `NewRentalsNotification`, `WhatsappSender` (+ Twilio y Kapso).
+**Hoy:** `app/Domains/Subscriptions/`:
+
+| Clase | Subdominio |
+|---|---|
+| `Models/AnonSubscriber` (alias `anon_subscriber` en el morph map) | Suscriptores |
+| `Services/NewRentalsNotifier`, `Notifications/NewRentalsNotification` | Envíos |
+| `Contracts/WhatsappSender`, `Services/TwilioWhatsappSender`, `Services/KapsoWhatsappSender`, `Models/WhatsappSubscriber` | Canales (WhatsApp, apagado) |
+
+El alta y la baja de la suscripción push están en `app/Http/Controllers/PushSubscriptionController` (rutas en `routes/api.php`). El navegador se identifica por el endpoint de push, porque las rutas de API no tienen sesión.
 
 ## Members
 

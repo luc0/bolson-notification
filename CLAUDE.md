@@ -23,7 +23,8 @@ Laravel app that scrapes rental listings (El Bolsón / Lago Puelo), processes th
 - Framework entry points stay where Laravel expects them: `app/Http`, `app/Console`, `resources/views`, `database/migrations`.
 - Shared external clients (Groq, Puppeteer, HTTP fetch) go to `app/Integrations/`.
 - Dependency rule: Rentals depends on no other domain; Harvesting writes into Rentals; Subscriptions reads from Rentals.
-- Migrated so far: Rentals, Sources, Harvesting (+ `app/Integrations/Groq`). Subscriptions and Members still live in `app/Services`, `app/Models`, `app/Contracts`.
+- Migrated so far: Rentals, Sources, Harvesting (+ `app/Integrations/Groq`), Subscriptions. Members (`User`) still lives in `app/Models`.
+- Polymorphic models must be registered in `Relation::morphMap()` (`AppServiceProvider::boot()`) so stored types don't depend on class names.
 
 ## Domain
 - `Rental`:
@@ -51,8 +52,10 @@ Laravel app that scrapes rental listings (El Bolsón / Lago Puelo), processes th
   - `RentalImporter` → imports them into Rentals: create, reactivate, deactivate and rented photo check (`RentalImageChecker`).
   - `RentalDetailService` → detail page data (`RentalDetailFetcher` + `RentalDetailExtractor`). Backfill: `rentals:fetch-details`.
 - `app/Integrations/Groq/GroqClient.php` → shared Groq API client (models in `config/services.php`).
-- `app/Services/NotificationService.php` → web push to `AnonSubscriber`s.
-- WhatsApp (`app/Contracts/WhatsappSender.php`: `TwilioWhatsappSender`, `KapsoWhatsappSender`) exists but is currently disabled.
+- Subscriptions (`app/Domains/Subscriptions`):
+  - `NewRentalsNotifier` → web push to every `AnonSubscriber` with a push subscription.
+  - Push subscribe/unsubscribe: `app/Http/Controllers/PushSubscriptionController` (browser identified by its push endpoint, API routes have no session).
+  - WhatsApp (`Contracts/WhatsappSender`: `TwilioWhatsappSender`, `KapsoWhatsappSender`) exists but is currently disabled.
 
 ## Laravel conventions
 - Follow Laravel defaults before inventing structure; check how the framework itself names things.

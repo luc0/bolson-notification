@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Contracts;
+namespace App\Domains\Subscriptions\Contracts;
 
 interface WhatsappSender
 {
