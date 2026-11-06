@@ -8,13 +8,20 @@
 </p>
 
 Dockerfile: 8.4 -> Customized image: Added puppeteer to Sail Dockerfile.
+- Google Chrome se instala solo en amd64 (no existe build linux/arm64). En Mac M1+ la imagen se buildea sin Chrome, por eso el scraper (`analyze:rentals`) se corre por fuera de sail.
 
-# LLM reglas:
-los comandos se corren usando sail.
-siempre usa inglés para el codigo, params, y todo lo que escribas, que no sea texto para el usuario.
-clean code:
-- siempre que sea posible no anides ifs, ni uses else.
-- en las condiciones de los ifs, a menos que sean muy simples, crea una variable que describa el flag y usalo en el if.
+# LLM reglas
+Ver `CLAUDE.md`.
+
+# Instalar PWA desde celu
+para que aparezca el boton:
+- usar ngrok, cambiarlo de todos lados (back y vite)
+- desde el celu abrirlo desde chrome!
+
+# Que env DB usar para cada caso
+- activar notifications -> sail db
+- usar app -> sail
+- ejecutar comando -> sin sail `DB_HOST=127.0.0.1 DB_PORT=3307 php artisan analyze:rentals`
 
 # Ejecutar comando analyze:rentals desde local
 - levantar sail (por la db) pero correr cosas por fuera
@@ -36,3 +43,17 @@ source_path -> no se usa habria que borrar
 
 # Rentals filter
 - por ahora hice que en el filtro se pueda filtrar por las location que aparecen en el enum + las de la db.
+
+# Detección de alquilados por foto
+Algunas inmobiliarias (ej: Punto Patagonia) no despublican lo alquilado: le ponen un cartel "ALQUILADO"/"RESERVADO" a la foto.
+- `scrape.cjs` reemplaza cada `<img src>` por un id corto (`#img-3`) y guarda las URLs reales en `captures/<sitio>.images.json`. Descarta íconos (< 80px).
+- El LLM devuelve el id de la foto principal en `Image`, y `ScraperServiceService` lo traduce a la URL.
+- `RentalImageChecker` le pregunta a un modelo de visión (`GROQ_VISION_MODEL`, default `qwen/qwen3.6-27b`) si la foto tiene el cartel. Cada URL se revisa una sola vez (`image_checked_url`).
+- Si da alquilado se setea `rented_at`: no se notifica y se muestra en "No disponibles". Si la revisión falla, el aviso queda disponible y se reintenta.
+
+# Modelos (Groq)
+- `GROQ_MODEL` (default `openai/gpt-oss-20b`) y `GROQ_REASONING_EFFORT` (default `low`) para extraer avisos del HTML.
+- Si Groq da de baja un modelo, el log muestra `model_not_found`: cambiar el env.
+
+# TODO
+- Desactivar un aviso recién cuando falta en N corridas seguidas (ver TODO en `RentalService::deactivateMissingRentals`). Hoy el LLM a veces saltea algunos avisos y quedan inactivos hasta la próxima corrida.

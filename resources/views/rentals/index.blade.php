@@ -48,6 +48,14 @@
                                 @endforeach
                             </div>
                         </div>
+                        <label class="flex items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
+                            <input type="checkbox"
+                                   name="include_inactive"
+                                   value="1"
+                                   @checked($includeInactive)
+                                   class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                            <span class="ml-2 text-sm text-gray-900 dark:text-gray-100">Mostrar no disponibles</span>
+                        </label>
                     </div>
                     
                     <div class="flex space-x-3 mt-4">

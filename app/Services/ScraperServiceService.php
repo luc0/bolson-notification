@@ -16,7 +16,8 @@ class ScraperServiceService implements IScraperService
     {
     }
 
-    public function scrape() {
+    public function scrape(): array
+    {
         Log::info('Utilizando Scraper real.');
 
         // Scrapear.
@@ -29,7 +30,7 @@ class ScraperServiceService implements IScraperService
         } catch (ProcessFailedException $e) {
             Log::error("❌ Error al ejecutar el script de scrapeo:");
             Log::error($e->getMessage());
-            return Command::FAILURE;
+            return [];
         }
 
         // ANALYZE
@@ -75,26 +76,22 @@ class ScraperServiceService implements IScraperService
             }
 
             $html = file_get_contents($site['html']);
+            $images = $this->loadImages($site['html']);
 
+            // Images are part of the snapshot: an agency may only swap the photo for one stamped "ALQUILADO".
+            $snapshot = $html . json_encode($images);
             $snapshotPath = storage_path('html_snapshots/' . basename($site['html']));
 
             if (File::exists($snapshotPath)) {
-                $previousHtml = file_get_contents($snapshotPath);
+                $previousSnapshot = file_get_contents($snapshotPath);
 
-                if (hash('sha256', $html) === hash('sha256', $previousHtml)) {
+                if (hash('sha256', $snapshot) === hash('sha256', $previousSnapshot)) {
                     Log::info('🔁 Sin cambios detectados en el HTML de: ' . $site['url']);
                     continue;
                 }
             }
 
-            // Guardamos el nuevo snapshot para futuras comparaciones
-            file_put_contents($snapshotPath, $html);
-
-            // Continua con el analyze.
-
-            Log::info('📤 Enviando HTML a DeepSeek para analizar: ' . $site['url']);
-
-            $html = file_get_contents($site['html']);
+            Log::info('📤 Sending HTML to AI for analysis: ' . $site['url']);
 
             /*
              * Models:
@@ -104,10 +101,59 @@ class ScraperServiceService implements IScraperService
              */
             $modelDataResponse = $this->aiProcessingService->process($site, $html);
 
-//            Log::info(json_encode($modelDataResponse, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-            $allItems = $this->rentalService->store($modelDataResponse, $site, $allItems);
+            $aiFailed = $modelDataResponse === null;
+            if ($aiFailed) {
+                Log::warning('⚠️ AI failed, snapshot not saved so the site is retried next run: ' . $site['url']);
+                continue;
+            }
+
+            $rentals = $this->resolveImageUrls($modelDataResponse, $images);
+            $storeResult = $this->rentalService->store($rentals, $site['url']);
+            $allItems = [...$allItems, ...$storeResult->newItems];
+
+            if ($storeResult->hasFailures()) {
+                Log::warning('⚠️ Some rentals failed, snapshot not saved so the site is retried next run: ' . $site['url']);
+                continue;
+            }
+
+            // Only save the snapshot once the site was fully processed.
+            file_put_contents($snapshotPath, $snapshot);
         }
 
         return $allItems;
+    }
+
+    /**
+     * scrape.cjs replaces each <img src> with "#img-N" and saves the real URLs in "<name>.images.json".
+     */
+    private function loadImages(string $htmlPath): array
+    {
+        $imagesPath = preg_replace('/\.html$/', '.images.json', $htmlPath);
+        if (!File::exists($imagesPath)) {
+            return [];
+        }
+
+        return json_decode(File::get($imagesPath), true) ?? [];
+    }
+
+    private function resolveImageUrls(array $rentals, array $images): array
+    {
+        return array_map(function ($rental) use ($images) {
+            if (!is_array($rental)) {
+                return $rental;
+            }
+
+            return [...$rental, 'Image' => $this->resolveImageUrl($rental['Image'] ?? null, $images)];
+        }, $rentals);
+    }
+
+    private function resolveImageUrl(mixed $imageId, array $images): ?string
+    {
+        $isImageId = is_string($imageId) && preg_match('/^#img-(\d+)$/', trim($imageId), $matches) === 1;
+        if (!$isImageId) {
+            return null;
+        }
+
+        return $images[(int) $matches[1]] ?? null;
     }
 }

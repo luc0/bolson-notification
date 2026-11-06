@@ -12,17 +12,27 @@ class Rental extends Model
         'content',
         'description',
         'price',
+        'price_amount',
+        'price_currency',
         'location',
         'rooms',
         'bathrooms',
         'source_path',
         'active',
         'site_path',
+        'image_url',
+        'image_checked_url',
+        'rented_at',
     ];
 
     protected $casts = [
         'location' => 'string',
+        'price_amount' => 'decimal:2',
+        'active' => 'boolean',
+        'rented_at' => 'datetime',
     ];
+
+    public const OLD_AFTER_MONTHS = 3;
 
     public function scopeByLocation($query, array $locations)
     {
@@ -48,5 +58,33 @@ class Rental extends Model
     public function isValidLocation(): bool
     {
         return in_array($this->location, Location::values());
+    }
+
+    /**
+     * created_at is when the scraper first found the rental, not the agency's publish date.
+     */
+    public function isRented(): bool
+    {
+        return $this->rented_at !== null;
+    }
+
+    public function isAvailable(): bool
+    {
+        return $this->active && !$this->isRented();
+    }
+
+    public function scopeAvailable($query)
+    {
+        return $query->where('active', true)->whereNull('rented_at');
+    }
+
+    public function isOld(): bool
+    {
+        return $this->created_at <= now()->subMonths(self::OLD_AFTER_MONTHS);
+    }
+
+    public function detectedForHumans(): string
+    {
+        return $this->created_at->locale('es')->diffForHumans();
     }
 }

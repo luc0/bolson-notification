@@ -55,19 +55,19 @@ RUN apt-get update && apt-get upgrade -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# 🧹 Elimina Snap y conflictos
-RUN apt-get update && apt-get install -y wget gnupg2 && \
-    snap remove chromium || true && \
-    apt-get purge -y snapd || true && \
-    rm -f /var/lib/dpkg/lock-frontend && \
-    rm -f /var/lib/dpkg/lock && \
-    dpkg --configure -a && \
-
-# ⬇️ Instala Google Chrome
+# 🌐 Google Chrome + Puppeteer deps (amd64 only).
+# Chrome has no linux/arm64 build, so on Apple Silicon this is skipped:
+# locally the scraper runs outside the container (see README).
+ARG TARGETARCH
+RUN if [ "$TARGETARCH" != "amd64" ]; then \
+      echo "Skipping Google Chrome install on $TARGETARCH"; \
+      exit 0; \
+    fi && \
+    apt-get update && \
+    apt-get install -y wget gnupg2 && \
     wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && \
     apt-get install -y ./google-chrome-stable_current_amd64.deb && \
-
-# 📦 Instala dependencias para Puppeteer
+    rm google-chrome-stable_current_amd64.deb && \
     apt-get install -y \
       ca-certificates \
       fonts-liberation \

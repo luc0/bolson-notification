@@ -4,5 +4,5 @@ namespace App\Contracts;
 
 interface IScraperService
 {
-    public function scrape();
+    public function scrape(): array;
 }

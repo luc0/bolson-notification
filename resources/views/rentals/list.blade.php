@@ -1,74 +1,56 @@
 {{-- resources/views/rentals/list.blade.php --}}
-<div class="mt-8">
-    <h2 class="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-100">Propiedades Disponibles</h2>
-    
-    @if(isset($rentals) && count($rentals) > 0)
-        <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            @foreach($rentals as $rental)
-                <div class="card overflow-hidden">
-                    <div class="p-6">
-                        <div class="flex justify-between items-start mb-3">
-                            @if($rental->source)
-                                <h3 class="card-title">
-                                    <a href="{{ $rental->source }}" 
-                                       data-fallback-url="{{ $rental->site_path }}" 
-                                       class="rental-link hover:text-blue-600 hover:underline transition-colors duration-200" 
-                                       target="_blank" 
-                                       rel="noopener noreferrer">
-                                        {{ $rental->content }}
-                                    </a>
-                                </h3>
-                            @else
-                                <h3 class="card-title">{{ $rental->content }}</h3>
-                            @endif
-                            <!-- <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">{{ $rental->source }}</span> -->
-                        </div>
-                        
-                        <p class="card-description mb-4">{{ $rental->description }}</p>
-                        
-                        <div class="flex items-center justify-between mb-4">
-                            <div class="flex items-center space-x-4 card-meta">
-                                @if($rental->rooms)
-                                    <span class="flex items-center">
-                                        <svg class="w-4 h-4 mr-1 flex-shrink-0" style="width: 16px; height: 16px;" fill="currentColor" viewBox="0 0 20 20">
-                                            <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
-                                        </svg>
-                                        {{ $rental->rooms }} dorm.
-                                    </span>
-                                @endif
-                                @if($rental->bathrooms)
-                                    <span class="flex items-center">
-                                        <svg class="w-4 h-4 mr-1 flex-shrink-0" style="width: 16px; height: 16px;" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"></path>
-                                        </svg>
-                                        {{ $rental->bathrooms }} baños
-                                    </span>
-                                @endif
-                            </div>
-                        </div>
-                        
-                        <div class="flex items-center justify-between">
-                            <div class="flex flex-col">
-                                @if($rental->location)
-                                    <span class="card-location text-sm">{{ $rental->location }}</span>
-                                @endif
-                                @if($rental->source_path)
-                                    <span class="card-source">Fuente: {{ $rental->source_path }}</span>
-                                @endif
-                            </div>
-                            @if($rental->price)
-                                <span class="text-xl font-bold text-green-600">${{ number_format($rental->price, 0, ',', '.') }}/mes</span>
-                            @endif
-                        </div>
-                    </div>
-                </div>
-            @endforeach
-        </div>
-    @else
+@php
+    $unavailableRentals = $rentals->reject(fn ($rental) => $rental->isAvailable());
+    [$oldRentals, $recentRentals] = $rentals
+        ->filter(fn ($rental) => $rental->isAvailable())
+        ->partition(fn ($rental) => $rental->isOld());
+
+    $sections = [
+        [
+            'title' => 'Propiedades Disponibles',
+            'subtitle' => null,
+            'rentals' => $recentRentals,
+        ],
+        [
+            'title' => 'Antiguas',
+            'subtitle' => 'Detectadas hace más de ' . \App\Models\Rental::OLD_AFTER_MONTHS . ' meses. Siguen publicadas, pero probablemente ya no estén disponibles.',
+            'rentals' => $oldRentals,
+        ],
+        [
+            'title' => 'No disponibles',
+            'subtitle' => 'Alquiladas (según el cartel en la foto) o que ya no aparecen en el sitio de la inmobiliaria.',
+            'rentals' => $unavailableRentals,
+        ],
+    ];
+@endphp
+
+<div class="mt-8 space-y-10">
+    @forelse(collect($sections)->filter(fn ($section) => $section['rentals']->isNotEmpty()) as $section)
+        <section>
+            <div class="mb-6">
+                <h2 @class([
+                    'text-2xl font-bold',
+                    'text-gray-900 dark:text-gray-100' => $loop->first,
+                    'text-gray-500 dark:text-gray-400' => !$loop->first,
+                ])>
+                    {{ $section['title'] }}
+                    <span class="text-base font-medium text-gray-400">({{ $section['rentals']->count() }})</span>
+                </h2>
+                @if($section['subtitle'])
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ $section['subtitle'] }}</p>
+                @endif
+            </div>
+            <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                @foreach($section['rentals'] as $rental)
+                    @include('rentals.card', ['rental' => $rental])
+                @endforeach
+            </div>
+        </section>
+    @empty
         <div class="text-center py-8">
             <p class="text-gray-600 dark:text-gray-400 text-lg font-medium">No hay propiedades disponibles en este momento.</p>
         </div>
-    @endif
+    @endforelse
 </div>
 
 <script>

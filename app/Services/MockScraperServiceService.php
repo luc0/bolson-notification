@@ -16,7 +16,8 @@ class MockScraperServiceService implements IScraperService
     {
     }
 
-    public function scrape() {
+    public function scrape(): array
+    {
         Log::info('Utilizando Mock de scrapeo');
         $data = [
             [

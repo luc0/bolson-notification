@@ -4,64 +4,60 @@ namespace App\Http\Controllers;
 
 use App\Location;
 use App\Models\Rental;
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Throwable;
 
 class RentalController extends Controller
 {
     public function index(Request $request)
     {
-        // Obtener rentals de la base de datos (solo los activos)
-        $query = Rental::where('active', true);
+        $includeInactive = $request->boolean('include_inactive');
+        $locations = array_filter((array) $request->input('locations', []));
 
-        // Filter by location if 'locations' parameter is provided
-        if ($request->has('locations') && !empty($request->input('locations'))) {
-            $locations = $request->input('locations');
-            // Filtrar por ubicaciones (tanto del enum como personalizadas)
-            $query->whereIn('location', $locations);
-        }
+        $rentals = Rental::query()
+            ->when(!$includeInactive, fn (Builder $query) => $query->available())
+            ->when(!empty($locations), fn (Builder $query) => $query->whereIn('location', $locations))
+            ->tap(fn (Builder $query) => $this->applyDateFilter($query, $request->input('date')))
+            ->orderByDesc('active')
+            ->orderByDesc('created_at')
+            ->get();
 
-        // Filter by date if 'date' parameter is provided in the request
-        if (!$request->has('date')) {
-            $rentals = $query->orderBy('created_at', 'desc')->get();
-            $locationOptions = $this->getLocationOptions();
-            return view('rentals.index', compact('rentals', 'locationOptions'));
-        }
-
-        $date = $request->input('date');
-        
-        // If it's 'today', filter by current date
-        if ($date === 'today') {
-            $query->whereDate('created_at', today());
-            $rentals = $query->orderBy('created_at', 'desc')->get();
-            $locationOptions = $this->getLocationOptions();
-            return view('rentals.index', compact('rentals', 'locationOptions'));
-        }
-
-        // If it's a specific date, use that date
-        try {
-            $formattedDate = \Carbon\Carbon::parse($date)->format('Y-m-d');
-            $query->whereDate('created_at', $formattedDate);
-        } catch (\Exception $e) {
-            // If date is invalid, show all active rentals
-        }
-
-        $rentals = $query->orderBy('created_at', 'desc')->get();
         $locationOptions = $this->getLocationOptions();
 
-        return view('rentals.index', compact('rentals', 'locationOptions'));
+        return view('rentals.index', compact('rentals', 'locationOptions', 'includeInactive'));
+    }
+
+    private function applyDateFilter(Builder $query, ?string $date): void
+    {
+        if ($date === null) {
+            return;
+        }
+
+        if ($date === 'today') {
+            $query->whereDate('created_at', today());
+            return;
+        }
+
+        try {
+            $query->whereDate('created_at', Carbon::parse($date)->format('Y-m-d'));
+        } catch (Throwable) {
+            // Invalid date: ignore the filter.
+        }
     }
 
     private function getLocationOptions(): array
     {
-        // Obtener todas las ubicaciones disponibles (enum + personalizadas de la DB)
+        // Enum locations + custom ones found in the DB.
         $enumLocations = Location::options();
-        $customLocations = Rental::where('active', true)
+        $customLocations = Rental::available()
             ->whereNotNull('location')
             ->whereNotIn('location', Location::values())
             ->distinct()
             ->pluck('location', 'location')
             ->toArray();
-        
+
         return array_merge($enumLocations, $customLocations);
     }
 }

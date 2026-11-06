@@ -63,9 +63,15 @@ const sites = [
                 }
             });
 
-            const cleanBody = await page.evaluate(() => {
+            const capture = await page.evaluate(() => {
                 // Eliminar estilos embebidos y hojas de estilo externas
                 document.querySelectorAll('style, link[rel="stylesheet"]').forEach(el => el.remove());
+
+                // Save the rendered width of each image before cloning (clones aren't rendered),
+                // to drop icons. Lazy images not loaded yet have width 0 and are kept.
+                document.querySelectorAll('img').forEach(img => {
+                    img.setAttribute('data-rendered-width', String(img.naturalWidth || img.width || 0));
+                });
 
                 const bodyClone = document.body.cloneNode(true);
 
@@ -89,16 +95,36 @@ const sites = [
                 };
                 removeComments(bodyClone);
 
-                // 🧹 Remover todos los atributos de las etiquetas (excepto href)
+                // 🖼️ Replace each image src with a short id ("#img-3") so the AI can return the main
+                // photo without copying long URLs. The real URLs are saved next to the capture.
+                const images = [];
+                const replaceImageSources = (node) => {
+                    for (const img of node.querySelectorAll('img')) {
+                        const lazySrc = img.getAttribute('data-src') || img.getAttribute('data-lazy-src');
+                        const rawSrc = lazySrc || img.getAttribute('src') || '';
+                        const isHttpImage = rawSrc !== '' && !rawSrc.startsWith('data:');
+                        const renderedWidth = Number(img.getAttribute('data-rendered-width'));
+                        const isIcon = renderedWidth > 0 && renderedWidth < 80;
+                        if (!isHttpImage || isIcon) {
+                            img.remove();
+                            continue;
+                        }
+                        images.push(new URL(rawSrc, document.baseURI).href);
+                        img.setAttribute('src', `#img-${images.length - 1}`);
+                    }
+                };
+                replaceImageSources(bodyClone);
+
+                // 🧹 Remover todos los atributos de las etiquetas (excepto href y src de imágenes)
                 const removeAttributes = (node) => {
-                    // console.log('limpiando', node.tagName);
                     // Incluye el nodo raíz también
                     const allElements = [node, ...node.querySelectorAll('*')];
 
                     for (const el of allElements) {
-                        const attrs = Array.from(el.attributes).map(attr => attr.name);
+                        const attrs = Array.from(el.attributes).map(attr => attr.name.toLowerCase());
                         for (const attrName of attrs) {
-                            if (attrName.toLowerCase() !== 'href') {
+                            const isKeptAttribute = attrName === 'href' || (el.tagName === 'IMG' && attrName === 'src');
+                            if (!isKeptAttribute) {
                                 el.removeAttribute(attrName);
                             }
                         }
@@ -110,7 +136,8 @@ const sites = [
                 const removeEmptyNodes = (node) => {
                     const isEmpty = (el) =>
                         el.nodeType === Node.ELEMENT_NODE &&
-                        !el.innerText.trim() &&
+                        el.tagName !== 'IMG' &&
+                        !(el.textContent || '').trim() &&
                         el.children.length === 0;
 
                     for (let i = node.children.length - 1; i >= 0; i--) {
@@ -131,11 +158,15 @@ const sites = [
                 tempContainer.appendChild(bodyClone);
 
                 // Devolver outerHTML para incluir el nodo raíz limpio
-                return tempContainer.innerHTML.replace(/\s+/g, ' ').trim();
+                return {
+                    html: tempContainer.innerHTML.replace(/\s+/g, ' ').trim(),
+                    images,
+                };
 
             });
 
-            saveCapture(site.file, cleanBody);
+            saveCapture(site.file, capture.html);
+            saveCapture(imagesFileName(site.file), JSON.stringify(capture.images, null, 1));
             console.log(`✅ HTML limpio guardado en captures/${site.file}`);
         } catch (err) {
             console.error(`❌ Error con ${site.url}:`, err.message);
@@ -154,4 +185,9 @@ function saveCapture(fileName, html) {
     }
 
     fs.writeFileSync(filePath, html, 'utf-8');
+}
+
+// "anezca.html" -> "anezca.images.json" (read by ScraperServiceService)
+function imagesFileName(htmlFileName) {
+    return htmlFileName.replace(/\.html$/, '.images.json');
 }

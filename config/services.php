@@ -37,6 +37,9 @@ return [
 
     'groq' => [
         'api_key' => env('GROQ_API_KEY'),
+        'model' => env('GROQ_MODEL', 'openai/gpt-oss-20b'),
+        'reasoning_effort' => env('GROQ_REASONING_EFFORT', 'low'),
+        'vision_model' => env('GROQ_VISION_MODEL', 'qwen/qwen3.6-27b'),
     ],
 
     'twilio' => [
