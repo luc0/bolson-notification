@@ -51,6 +51,12 @@ Algunas inmobiliarias (ej: Punto Patagonia) no despublican lo alquilado: le pone
 - `RentalImageChecker` le pregunta a un modelo de visión (`GROQ_VISION_MODEL`, default `qwen/qwen3.6-27b`) si la foto tiene el cartel. Cada URL se revisa una sola vez (`image_checked_url`).
 - Si da alquilado se setea `rented_at`: no se notifica y se muestra en "No disponibles". Si la revisión falla, el aviso queda disponible y se reintenta.
 
+# Detalle de cada aviso (superficie, dormitorios, servicios...)
+El listado no trae estos datos: están en la página de detalle de cada aviso.
+- `RentalDetailService` (corre en `analyze:rentals`) baja el detalle por HTTP (`RentalDetailFetcher`, con reintentos: Tokko da 500 intermitentes) y lo extrae con el LLM (`RentalDetailExtractor`).
+- Solo datos explícitos: cada valor se descarta si la página no tiene la palabra que lo respalda (ej: antigüedad sin "antigüedad"/"estrenar").
+- Una vez por aviso disponible, hasta 3 intentos. Backfill manual: `php artisan rentals:fetch-details`.
+
 # Modelos (Groq)
 - `GROQ_MODEL` (default `openai/gpt-oss-20b`) y `GROQ_REASONING_EFFORT` (default `low`) para extraer avisos del HTML.
 - Si Groq da de baja un modelo, el log muestra `model_not_found`: cambiar el env.

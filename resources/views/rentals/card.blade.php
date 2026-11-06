@@ -40,29 +40,39 @@
             <!-- <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">{{ $rental->source }}</span> -->
         </div>
         
-        <p class="card-description mb-4">{{ $rental->description }}</p>
-        
-        <div class="flex items-center justify-between mb-4">
-            <div class="flex items-center space-x-4 card-meta">
-                @if($rental->rooms)
-                    <span class="flex items-center">
-                        <svg class="w-4 h-4 mr-1 flex-shrink-0" style="width: 16px; height: 16px;" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
-                        </svg>
-                        {{ $rental->rooms }} dorm.
-                    </span>
-                @endif
-                @if($rental->bathrooms)
-                    <span class="flex items-center">
-                        <svg class="w-4 h-4 mr-1 flex-shrink-0" style="width: 16px; height: 16px;" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"></path>
-                        </svg>
-                        {{ $rental->bathrooms }} baños
-                    </span>
-                @endif
+        @php
+            $features = \App\Support\RentalFeatures::extract($rental->description, $rental->content);
+            $specs = $rental->specs();
+            $services = $rental->serviceLabels();
+        @endphp
+
+        @if(!empty($specs))
+            <ul class="card-meta mb-3 space-y-0.5">
+                @foreach($specs as $spec)
+                    <li>{{ $spec }}</li>
+                @endforeach
+            </ul>
+        @endif
+
+        @if(!empty($services))
+            <div class="mb-3" title="Servicios informados por la inmobiliaria">
+                <span class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Servicios</span>
+                <div class="flex flex-wrap gap-1.5 mt-1">
+                    @foreach($services as $service)
+                        <span class="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 text-xs font-medium px-2 py-0.5 rounded-full">✓ {{ $service }}</span>
+                    @endforeach
+                </div>
             </div>
-        </div>
-        
+        @endif
+
+        @if(!empty($features))
+            <ul class="card-description mb-4 space-y-0.5">
+                @foreach($features as $feature)
+                    <li>{{ $feature }}</li>
+                @endforeach
+            </ul>
+        @endif
+
         <div class="flex items-center justify-between">
             <div class="flex flex-col">
                 @if($rental->location)
@@ -73,9 +83,9 @@
                 @endif
             </div>
             @if($rental->price_amount)
-                <span class="text-xl font-bold text-green-600">{{ $rental->price_currency === 'USD' ? 'U$S' : '$' }}{{ number_format($rental->price_amount, 0, ',', '.') }}/mes</span>
-            @elseif($rental->price)
-                <span class="text-sm font-semibold text-gray-600 dark:text-gray-300">{{ $rental->price }}</span>
+                <span class="text-xl font-bold text-green-600">{{ $rental->formattedPrice() }}/mes</span>
+            @else
+                <span class="text-sm font-semibold text-gray-600 dark:text-gray-300">{{ $rental->formattedPrice() ?? 'Consultar precio' }}</span>
             @endif
         </div>
     </div>

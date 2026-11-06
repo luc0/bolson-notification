@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -11,6 +10,10 @@ use Throwable;
  */
 class RentalImageChecker
 {
+    public function __construct(private readonly GroqClient $groq)
+    {
+    }
+
     private const PROMPT = <<<EOT
         Does this real-estate photo have a stamp, banner or overlay text saying the property is already
         rented or reserved (e.g. 'ALQUILADO', 'ALQUILADA', 'RESERVADO', 'RESERVADA'), in any orientation
@@ -24,22 +27,20 @@ class RentalImageChecker
     public function isRented(string $imageUrl): ?bool
     {
         try {
-            $response = Http::withToken(config('services.groq.api_key'))
-                ->timeout(60)
-                ->post('https://api.groq.com/openai/v1/chat/completions', [
-                    'model' => config('services.groq.vision_model'),
-                    'temperature' => 0,
-                    'max_tokens' => 50,
-                    'reasoning_effort' => 'none',
-                    'response_format' => ['type' => 'json_object'],
-                    'messages' => [[
-                        'role' => 'user',
-                        'content' => [
-                            ['type' => 'text', 'text' => self::PROMPT],
-                            ['type' => 'image_url', 'image_url' => ['url' => $imageUrl]],
-                        ],
-                    ]],
-                ]);
+            $response = $this->groq->chat([
+                'model' => config('services.groq.vision_model'),
+                'temperature' => 0,
+                'max_tokens' => 50,
+                'reasoning_effort' => 'none',
+                'response_format' => ['type' => 'json_object'],
+                'messages' => [[
+                    'role' => 'user',
+                    'content' => [
+                        ['type' => 'text', 'text' => self::PROMPT],
+                        ['type' => 'image_url', 'image_url' => ['url' => $imageUrl]],
+                    ],
+                ]],
+            ], timeoutSeconds: 60);
         } catch (Throwable $e) {
             Log::error("❌ Image check request failed for {$imageUrl}: " . $e->getMessage());
             return null;

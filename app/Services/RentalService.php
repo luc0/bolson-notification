@@ -62,7 +62,7 @@ class RentalService
             return $existingRental;
         }
 
-        $price = $this->priceParser->parse($item['Price'] ?? null);
+        $price = $this->priceParser->parse($item['Price'] ?? null, $item['Currency'] ?? null);
 
         return Rental::create([
             'source' => $link,

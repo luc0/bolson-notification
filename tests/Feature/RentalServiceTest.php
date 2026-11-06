@@ -119,3 +119,10 @@ it('treats encoded and decoded links as the same rental', function () {
         ->and(Rental::first()->source)->toBe('https://example.com/p/1-Cabaña')
         ->and(Rental::first()->active)->toBeTrue();
 });
+
+it('uses the currency returned by the AI', function () {
+    app(RentalService::class)->store([[...scrapedItem('https://example.com/1', '4500'), 'Currency' => 'USD']], SITE_URL);
+
+    expect(Rental::first()->price_currency)->toBe('USD')
+        ->and(Rental::first()->formattedPrice())->toBe('U$S 4.500');
+});

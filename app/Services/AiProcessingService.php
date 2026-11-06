@@ -3,11 +3,14 @@
 namespace App\Services;
 
 use Illuminate\Http\Client\Response;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class AiProcessingService
 {
+    public function __construct(private readonly GroqClient $groq)
+    {
+    }
+
     private const SYSTEM_PROMPT = <<<EOT
         You are a data extraction assistant for a public real-estate listings aggregator.
         The user gives you the HTML of a public listings page from a real-estate agency in Argentina.
@@ -40,24 +43,22 @@ class AiProcessingService
 
     private function requestRentals(array $site, string $html): Response
     {
-        return Http::withToken(config('services.groq.api_key'))
-            ->timeout(120)
-            ->post('https://api.groq.com/openai/v1/chat/completions', [
-                'model' => config('services.groq.model'),
-                'messages' => [
-                    ['role' => 'system', 'content' => self::SYSTEM_PROMPT],
-                    ['role' => 'user', 'content' => $this->buildUserPrompt($site)],
-                    ['role' => 'user', 'content' => $html],
-                ],
-                'temperature' => 0.3,
-                // gpt-oss is a reasoning model: reasoning tokens also count towards max_tokens.
-                'reasoning_effort' => config('services.groq.reasoning_effort'),
-                'max_tokens' => 32768,
-                'response_format' => [
-                    'type' => 'json_schema',
-                    'json_schema' => ['name' => 'rentals', 'strict' => true, 'schema' => $this->responseSchema()],
-                ],
-            ]);
+        return $this->groq->chat([
+            'model' => config('services.groq.model'),
+            'messages' => [
+                ['role' => 'system', 'content' => self::SYSTEM_PROMPT],
+                ['role' => 'user', 'content' => $this->buildUserPrompt($site)],
+                ['role' => 'user', 'content' => $html],
+            ],
+            'temperature' => 0.3,
+            // gpt-oss is a reasoning model: reasoning tokens also count towards max_tokens.
+            'reasoning_effort' => config('services.groq.reasoning_effort'),
+            'max_tokens' => 32768,
+            'response_format' => [
+                'type' => 'json_schema',
+                'json_schema' => ['name' => 'rentals', 'strict' => true, 'schema' => $this->responseSchema()],
+            ],
+        ]);
     }
 
     private function parseRentals(Response $response, array $site): ?array
@@ -106,8 +107,9 @@ class AiProcessingService
             Para cada aviso:
             - "Content": título o descripción del aviso (texto completo).
             - "Link": URL completa al aviso. Si es relativa, completala con el baseUrl: {$site['postUrl']}
-            - "Caracteristicas": ubicación, precio, cantidad de ambientes, baños, etc. Una por línea (separadas por \\n), cada una empezando con un emoji.
+            - "Caracteristicas": solo datos extra que NO estén en los otros campos (ej: superficie, cochera, amoblado, temporal/permanente, mascotas). Una por línea (separadas por \\n), cada una empezando con un emoji. No incluyas precio, ubicación, ambientes ni baños. Omití los datos sin valor (null, N/A, 0, 0 m²). String vacío si no hay ninguno.
             - "Price": precio de alquiler con la moneda, tal como aparece (ej: "$650.000", "U\$S 550", "Consultar"). null si no figura.
+            - "Currency": "USD" si el precio es en dólares (U\$S, USD, US\$), "ARS" si es en pesos, null si no hay precio.
             - "Location": ubicación del alquiler.
             - "Rooms": cantidad de ambientes. null si no se especifica.
             - "Bathrooms": cantidad de baños. null si no se especifica.
@@ -132,12 +134,13 @@ class AiProcessingService
                             'Link' => ['type' => 'string'],
                             'Caracteristicas' => ['type' => 'string'],
                             'Price' => $nullableString,
+                            'Currency' => ['type' => ['string', 'null'], 'enum' => ['ARS', 'USD', null]],
                             'Location' => $nullableString,
                             'Rooms' => $nullableInteger,
                             'Bathrooms' => $nullableInteger,
                             'Image' => $nullableString,
                         ],
-                        'required' => ['Content', 'Link', 'Caracteristicas', 'Price', 'Location', 'Rooms', 'Bathrooms', 'Image'],
+                        'required' => ['Content', 'Link', 'Caracteristicas', 'Price', 'Currency', 'Location', 'Rooms', 'Bathrooms', 'Image'],
                         'additionalProperties' => false,
                     ],
                 ],

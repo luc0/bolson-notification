@@ -11,6 +11,7 @@ use App\Services\AiProcessingService;
 use App\Services\ScraperServiceService;
 use App\Services\TwilioService;
 use App\Services\NotificationService;
+use App\Services\RentalDetailService;
 use Illuminate\Console\Command;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Http;
@@ -33,6 +34,7 @@ class AnalyzeRentals extends Command
         readonly private IWhatsappService $IWhatsapp,
         readonly private AiProcessingService $aiProcessingService,
         readonly private NotificationService $notificationService,
+        readonly private RentalDetailService $rentalDetailService,
     )
     {
         parent::__construct();
@@ -43,6 +45,9 @@ class AnalyzeRentals extends Command
         Log::info("📦 Comando analyze:rentals ejecutado.", ['timestamp' => now()]);
 
         $allItems = $this->scraperService->scrape();
+
+        // Runs even when no site changed: completes new rentals and retries previous failures.
+        $this->rentalDetailService->enrichPending();
 
         // Guardar todo en rental.json
         Log::info('💾 Guardando resultados combinados...');

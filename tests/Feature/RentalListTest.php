@@ -71,3 +71,44 @@ it('treats rented rentals as unavailable', function () {
         ->assertSeeInOrder(['No disponibles', 'Rental https://example.com/rented'])
         ->assertSee('Alquilado</span>', false);
 });
+
+it('shows clean features, the price once and friendly fallbacks', function () {
+    $rental = createRental('https://example.com/1');
+    $rental->update([
+        'description' => "💸 precio: \$420.000\n🚿 baños: null\n🏠 0 m²\n📏 superficie: 45m²",
+        'price' => '$420.000',
+        'price_amount' => 420000,
+        'price_currency' => 'ARS',
+        'rooms' => 1,
+        'bathrooms' => 0,
+    ]);
+    $withoutPrice = createRental('https://example.com/2');
+    $withoutPrice->update(['description' => '💰 precio: N/A', 'price' => 'N/A', 'rooms' => 3]);
+
+    $this->get('/')
+        ->assertOk()
+        ->assertSee('📏 superficie: 45m²')
+        ->assertDontSee('0 m²')
+        ->assertDontSeeText('baños: null')
+        ->assertSeeText('🛏️ 1 ambiente')
+        ->assertSeeText('🛏️ 3 ambientes')
+        ->assertDontSee('baño')
+        ->assertSee('Consultar precio')
+        ->assertDontSee('N/A');
+
+    expect(substr_count($this->get('/')->getContent(), '$420.000'))->toBe(1);
+});
+
+it('shows specs and services from the detail page', function () {
+    createRental('https://example.com/1')->update([
+        'covered_area' => 45, 'bedrooms' => 1, 'parking_spaces' => 1, 'age_years' => 6,
+        'services' => ['electricity', 'running_water', 'natural_gas', 'sewer'],
+    ]);
+
+    $this->get('/')
+        ->assertSeeText('📐 45 m² cubiertos')
+        ->assertSeeText('1 dormitorio')
+        ->assertSeeText('🚗 1 cochera')
+        ->assertSeeText('🏗️ 6 años de antigüedad')
+        ->assertSeeTextInOrder(['Servicios', '✓ Gas natural', '✓ Luz', '✓ Agua corriente', '✓ Cloacas']);
+});
