@@ -1,18 +1,17 @@
 <?php
 
-namespace App\Services;
+namespace App\Domains\Harvesting\Services;
 
 use App\Domains\Sources\Data\Source;
+use App\Integrations\Groq\GroqClient;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Log;
 
-class AiProcessingService
+class ListingExtractor
 {
-    public function __construct(private readonly GroqClient $groq)
-    {
-    }
+    public function __construct(private readonly GroqClient $groq) {}
 
-    private const SYSTEM_PROMPT = <<<EOT
+    private const SYSTEM_PROMPT = <<<'EOT'
         You are a data extraction assistant for a public real-estate listings aggregator.
         The user gives you the HTML of a public listings page from a real-estate agency in Argentina.
         Your only job is to extract the rental listings that appear on that page into structured JSON.
@@ -24,13 +23,13 @@ class AiProcessingService
     /**
      * @return array|null null when the AI call fails or returns no usable rentals.
      */
-    public function process(Source $source, string $html): ?array
+    public function extract(Source $source, string $html): ?array
     {
         $response = $this->requestRentals($source, $html);
 
         // The model occasionally generates output that doesn't match the schema: worth one retry.
         for ($attempt = 2; $attempt <= self::MAX_ATTEMPTS && $this->failedSchemaValidation($response); $attempt++) {
-            Log::warning("⚠️ AI output didn't match the schema, retrying ({$attempt}/" . self::MAX_ATTEMPTS . '): ' . $source->key);
+            Log::warning("⚠️ AI output didn't match the schema, retrying ({$attempt}/".self::MAX_ATTEMPTS.'): '.$source->key);
             $response = $this->requestRentals($source, $html);
         }
 
@@ -64,15 +63,17 @@ class AiProcessingService
 
     private function parseRentals(Response $response, Source $source): ?array
     {
-        if (!$response->successful()) {
-            Log::error('❌ AI request failed for ' . $source->key, ['status' => $response->status()]);
+        if (! $response->successful()) {
+            Log::error('❌ AI request failed for '.$source->key, ['status' => $response->status()]);
             Log::info($response->body());
+
             return null;
         }
 
         $wasTruncated = ($response['choices'][0]['finish_reason'] ?? null) === 'length';
         if ($wasTruncated) {
-            Log::error('❌ AI response truncated (max_tokens reached) for ' . $source->key);
+            Log::error('❌ AI response truncated (max_tokens reached) for '.$source->key);
+
             return null;
         }
 
@@ -81,19 +82,22 @@ class AiProcessingService
 
         $decoded = json_decode($jsonRaw, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
-            Log::error('❌ Malformed JSON for ' . $source->key . ': ' . json_last_error_msg());
+            Log::error('❌ Malformed JSON for '.$source->key.': '.json_last_error_msg());
+
             return null;
         }
 
         $rentals = $decoded['rentals'] ?? null;
-        if (!is_array($rentals)) {
-            Log::error('❌ AI response has no "rentals" array for ' . $source->key);
+        if (! is_array($rentals)) {
+            Log::error('❌ AI response has no "rentals" array for '.$source->key);
+
             return null;
         }
 
         // An empty list almost always means the model failed, not that the site has no rentals.
         if (empty($rentals)) {
-            Log::error('❌ AI returned no rentals for ' . $source->key);
+            Log::error('❌ AI returned no rentals for '.$source->key);
+
             return null;
         }
 

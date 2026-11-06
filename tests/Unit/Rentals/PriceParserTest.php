@@ -3,7 +3,7 @@
 use App\Domains\Rentals\Support\PriceParser;
 
 it('parses prices returned by the scraper', function (mixed $raw, ?float $amount, ?string $currency) {
-    $price = (new PriceParser())->parse($raw);
+    $price = (new PriceParser)->parse($raw);
 
     expect($price->amount)->toBe($amount)
         ->and($price->currency)->toBe($currency);
@@ -22,21 +22,21 @@ it('parses prices returned by the scraper', function (mixed $raw, ?float $amount
 ]);
 
 it('keeps the raw text', function () {
-    expect((new PriceParser())->parse('Consultar')->raw)->toBe('Consultar');
+    expect((new PriceParser)->parse('Consultar')->raw)->toBe('Consultar');
 });
 
 it('prefers the currency given by the AI', function () {
-    $price = (new PriceParser())->parse('4500', 'USD');
+    $price = (new PriceParser)->parse('4500', 'USD');
 
     expect($price->amount)->toBe(4500.0)->and($price->currency)->toBe('USD');
 });
 
 it('ignores unknown currency hints', function () {
-    expect((new PriceParser())->parse('U$S 550', 'EUR')->currency)->toBe('USD');
+    expect((new PriceParser)->parse('U$S 550', 'EUR')->currency)->toBe('USD');
 });
 
 it('treats placeholder amounts as no price', function (string $raw) {
-    $price = (new PriceParser())->parse($raw);
+    $price = (new PriceParser)->parse($raw);
 
     expect($price->amount)->toBeNull()->and($price->raw)->toBe($raw);
 })->with(['$1', 'AR$ 0', '0']);

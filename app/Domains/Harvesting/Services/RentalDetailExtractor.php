@@ -1,8 +1,9 @@
 <?php
 
-namespace App\Services;
+namespace App\Domains\Harvesting\Services;
 
 use App\Domains\Rentals\Enums\Utility;
+use App\Integrations\Groq\GroqClient;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -10,14 +11,14 @@ use Illuminate\Support\Facades\Log;
  */
 class RentalDetailExtractor
 {
-    private const SYSTEM_PROMPT = <<<EOT
+    private const SYSTEM_PROMPT = <<<'EOT'
         You are a data extraction assistant for a public real-estate listings aggregator in Argentina.
         You receive the text of ONE property detail page. Extract only data explicitly stated for that property.
         Never guess or infer missing data: use null (or an empty list) when something isn't stated.
         Ignore search filters, menus, sidebars and other properties listed on the page (e.g. a "Servicios" search filter).
         EOT;
 
-    private const USER_PROMPT = <<<EOT
+    private const USER_PROMPT = <<<'EOT'
         Extraé los datos de esta propiedad:
         - "CoveredArea": superficie cubierta en m² (número). null si no figura o es 0.
         - "TotalArea": superficie total del terreno/lote en m² (número). null si no figura o es 0.
@@ -47,9 +48,7 @@ class RentalDetailExtractor
         'AgeYears' => '/antig[üu]edad|estrenar/iu',
     ];
 
-    public function __construct(private readonly GroqClient $groq)
-    {
-    }
+    public function __construct(private readonly GroqClient $groq) {}
 
     /**
      * @return array|null null when the AI call fails.
@@ -60,7 +59,7 @@ class RentalDetailExtractor
             'model' => config('services.groq.model'),
             'messages' => [
                 ['role' => 'system', 'content' => self::SYSTEM_PROMPT],
-                ['role' => 'user', 'content' => self::USER_PROMPT . "\n" . $pageText],
+                ['role' => 'user', 'content' => self::USER_PROMPT."\n".$pageText],
             ],
             'temperature' => 0,
             'reasoning_effort' => config('services.groq.reasoning_effort'),
@@ -71,14 +70,16 @@ class RentalDetailExtractor
             ],
         ]);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             Log::error("❌ Detail extraction failed for {$url}", ['status' => $response->status(), 'body' => $response->body()]);
+
             return null;
         }
 
         $detail = json_decode($response['choices'][0]['message']['content'] ?? '', true);
-        if (!is_array($detail)) {
+        if (! is_array($detail)) {
             Log::error("❌ Detail extraction returned invalid JSON for {$url}");
+
             return null;
         }
 
@@ -89,7 +90,7 @@ class RentalDetailExtractor
     {
         foreach (self::EVIDENCE_PATTERNS as $field => $pattern) {
             $hasEvidence = preg_match($pattern, $pageText) === 1;
-            if (!$hasEvidence) {
+            if (! $hasEvidence) {
                 $detail[$field] = null;
             }
         }

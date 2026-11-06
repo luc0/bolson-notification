@@ -1,20 +1,13 @@
 <?php
 
-namespace App\Services;
+namespace App\Domains\Harvesting\Services;
 
-use App\Contracts\RentalScraper;
-use Illuminate\Console\Command;
-use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Http;
+use App\Domains\Harvesting\Contracts\RentalScraper;
 use Illuminate\Support\Facades\Log;
-use Symfony\Component\Process\Exception\ProcessFailedException;
-use Symfony\Component\Process\Process;
 
 class FakeRentalScraper implements RentalScraper
 {
-    public function __construct(private readonly AiProcessingService $aiProcessingService, private readonly RentalService $rentalService)
-    {
-    }
+    public function __construct(private readonly ListingExtractor $listingExtractor, private readonly RentalImporter $rentalImporter) {}
 
     public function scrape(): array
     {

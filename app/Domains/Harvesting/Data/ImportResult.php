@@ -1,17 +1,16 @@
 <?php
 
-namespace App\Support;
+namespace App\Domains\Harvesting\Data;
 
-final readonly class RentalStoreResult
+final readonly class ImportResult
 {
     /**
-     * @param array<int, array> $newItems Items that were not in the DB before this run.
+     * @param  array<int, array>  $newItems  Items that were not in the DB before this run.
      */
     public function __construct(
         public array $newItems,
         public int $failedCount,
-    ) {
-    }
+    ) {}
 
     public function hasFailures(): bool
     {

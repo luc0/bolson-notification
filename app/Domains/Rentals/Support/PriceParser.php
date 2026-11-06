@@ -7,13 +7,14 @@ use App\Domains\Rentals\Data\ParsedPrice;
 class PriceParser
 {
     private const USD_PATTERN = '/u\$s|u\$d|us\$|usd|d[oó]lar/i';
+
     private const KNOWN_CURRENCIES = ['ARS', 'USD'];
 
     // Agencies use "$1" or "$0" as a placeholder for "ask for the price".
     private const MIN_REAL_AMOUNT = 10;
 
     /**
-     * @param string|null $currencyHint currency given by the AI ("ARS"/"USD"), preferred over detection.
+     * @param  string|null  $currencyHint  currency given by the AI ("ARS"/"USD"), preferred over detection.
      */
     public function parse(mixed $rawPrice, ?string $currencyHint = null): ParsedPrice
     {
@@ -38,7 +39,7 @@ class PriceParser
     private function extractAmount(string $raw): ?float
     {
         $hasDigits = preg_match('/\d/', $raw) === 1;
-        if (!$hasDigits) {
+        if (! $hasDigits) {
             return null;
         }
 

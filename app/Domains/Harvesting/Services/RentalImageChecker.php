@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Services;
+namespace App\Domains\Harvesting\Services;
 
+use App\Integrations\Groq\GroqClient;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -10,11 +11,9 @@ use Throwable;
  */
 class RentalImageChecker
 {
-    public function __construct(private readonly GroqClient $groq)
-    {
-    }
+    public function __construct(private readonly GroqClient $groq) {}
 
-    private const PROMPT = <<<EOT
+    private const PROMPT = <<<'EOT'
         Does this real-estate photo have a stamp, banner or overlay text saying the property is already
         rented or reserved (e.g. 'ALQUILADO', 'ALQUILADA', 'RESERVADO', 'RESERVADA'), in any orientation
         (horizontal or diagonal)? Ignore "SE ALQUILA" / "EN ALQUILER" signs, those mean it's available.
@@ -42,20 +41,23 @@ class RentalImageChecker
                 ]],
             ], timeoutSeconds: 60);
         } catch (Throwable $e) {
-            Log::error("❌ Image check request failed for {$imageUrl}: " . $e->getMessage());
+            Log::error("❌ Image check request failed for {$imageUrl}: ".$e->getMessage());
+
             return null;
         }
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             Log::error("❌ Image check failed for {$imageUrl}", ['status' => $response->status(), 'body' => $response->body()]);
+
             return null;
         }
 
         $answer = json_decode($response['choices'][0]['message']['content'] ?? '', true);
         $rented = $answer['rented'] ?? null;
 
-        if (!is_bool($rented)) {
+        if (! is_bool($rented)) {
             Log::error("❌ Image check returned an invalid answer for {$imageUrl}");
+
             return null;
         }
 

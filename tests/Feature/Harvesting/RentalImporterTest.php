@@ -1,8 +1,7 @@
 <?php
 
+use App\Domains\Harvesting\Services\RentalImporter;
 use App\Domains\Rentals\Models\Rental;
-use App\Services\RentalService;
-
 
 const SITE_URL = 'https://example.com/alquileres';
 
@@ -20,7 +19,7 @@ function scrapedItem(string $link, mixed $price = '$650.000 ARS'): array
 }
 
 it('stores "Consultar" prices without failing', function () {
-    $result = app(RentalService::class)->store([scrapedItem('https://example.com/1', 'Consultar')], SITE_URL);
+    $result = app(RentalImporter::class)->import([scrapedItem('https://example.com/1', 'Consultar')], SITE_URL);
 
     expect($result->hasFailures())->toBeFalse()
         ->and($result->newItems)->toHaveCount(1);
@@ -33,7 +32,7 @@ it('stores "Consultar" prices without failing', function () {
 it('keeps storing the rest of the items when one fails', function () {
     $brokenItem = ['Content' => 'no link'];
 
-    $result = app(RentalService::class)->store([
+    $result = app(RentalImporter::class)->import([
         scrapedItem('https://example.com/1'),
         $brokenItem,
         scrapedItem('https://example.com/2'),
@@ -45,10 +44,10 @@ it('keeps storing the rest of the items when one fails', function () {
 });
 
 it('only returns new rentals and deactivates missing ones', function () {
-    $service = app(RentalService::class);
-    $service->store([scrapedItem('https://example.com/1'), scrapedItem('https://example.com/2')], SITE_URL);
+    $service = app(RentalImporter::class);
+    $service->import([scrapedItem('https://example.com/1'), scrapedItem('https://example.com/2')], SITE_URL);
 
-    $result = $service->store([scrapedItem('https://example.com/1'), scrapedItem('https://example.com/3')], SITE_URL);
+    $result = $service->import([scrapedItem('https://example.com/1'), scrapedItem('https://example.com/3')], SITE_URL);
 
     expect(collect($result->newItems)->pluck('Link')->all())->toBe(['https://example.com/3'])
         ->and(Rental::where('source', 'https://example.com/2')->first()->active)->toBeFalse()
@@ -57,7 +56,8 @@ it('only returns new rentals and deactivates missing ones', function () {
 
 function fakeImageChecker(?bool $answer): object
 {
-    $checker = new class($answer) extends \App\Services\RentalImageChecker {
+    $checker = new class($answer) extends \App\Domains\Harvesting\Services\RentalImageChecker
+    {
         public array $checkedUrls = [];
 
         public function __construct(private ?bool $answer) {}
@@ -65,10 +65,11 @@ function fakeImageChecker(?bool $answer): object
         public function isRented(string $imageUrl): ?bool
         {
             $this->checkedUrls[] = $imageUrl;
+
             return $this->answer;
         }
     };
-    app()->instance(\App\Services\RentalImageChecker::class, $checker);
+    app()->instance(\App\Domains\Harvesting\Services\RentalImageChecker::class, $checker);
 
     return $checker;
 }
@@ -76,7 +77,7 @@ function fakeImageChecker(?bool $answer): object
 it('marks rentals with a rented photo and does not notify them as new', function () {
     fakeImageChecker(true);
 
-    $result = app(RentalService::class)->store([[...scrapedItem('https://example.com/1'), 'Image' => 'https://img/1.jpg']], SITE_URL);
+    $result = app(RentalImporter::class)->import([[...scrapedItem('https://example.com/1'), 'Image' => 'https://img/1.jpg']], SITE_URL);
 
     $rental = Rental::first();
     expect($result->newItems)->toBeEmpty()
@@ -86,12 +87,12 @@ it('marks rentals with a rented photo and does not notify them as new', function
 
 it('checks each image only once and rechecks when the image changes', function () {
     $checker = fakeImageChecker(false);
-    $service = app(RentalService::class);
+    $service = app(RentalImporter::class);
     $item = [...scrapedItem('https://example.com/1'), 'Image' => 'https://img/1.jpg'];
 
-    $service->store([$item], SITE_URL);
-    $service->store([$item], SITE_URL);
-    $service->store([[...$item, 'Image' => 'https://img/1-stamped.jpg']], SITE_URL);
+    $service->import([$item], SITE_URL);
+    $service->import([$item], SITE_URL);
+    $service->import([[...$item, 'Image' => 'https://img/1-stamped.jpg']], SITE_URL);
 
     expect($checker->checkedUrls)->toBe(['https://img/1.jpg', 'https://img/1-stamped.jpg']);
 });
@@ -99,7 +100,7 @@ it('checks each image only once and rechecks when the image changes', function (
 it('keeps the rental available and retries later when the image check fails', function () {
     fakeImageChecker(null);
 
-    $result = app(RentalService::class)->store([[...scrapedItem('https://example.com/1'), 'Image' => 'https://img/1.jpg']], SITE_URL);
+    $result = app(RentalImporter::class)->import([[...scrapedItem('https://example.com/1'), 'Image' => 'https://img/1.jpg']], SITE_URL);
 
     $rental = Rental::first();
     expect($result->newItems)->toHaveCount(1)
@@ -109,10 +110,10 @@ it('keeps the rental available and retries later when the image check fails', fu
 });
 
 it('treats encoded and decoded links as the same rental', function () {
-    $service = app(RentalService::class);
-    $service->store([scrapedItem('https://example.com/p/1-Caba%C3%B1a')], SITE_URL);
+    $service = app(RentalImporter::class);
+    $service->import([scrapedItem('https://example.com/p/1-Caba%C3%B1a')], SITE_URL);
 
-    $result = $service->store([scrapedItem('https://example.com/p/1-Cabaña')], SITE_URL);
+    $result = $service->import([scrapedItem('https://example.com/p/1-Cabaña')], SITE_URL);
 
     expect($result->newItems)->toBeEmpty()
         ->and(Rental::count())->toBe(1)
@@ -121,7 +122,7 @@ it('treats encoded and decoded links as the same rental', function () {
 });
 
 it('uses the currency returned by the AI', function () {
-    app(RentalService::class)->store([[...scrapedItem('https://example.com/1', '4500'), 'Currency' => 'USD']], SITE_URL);
+    app(RentalImporter::class)->import([[...scrapedItem('https://example.com/1', '4500'), 'Currency' => 'USD']], SITE_URL);
 
     expect(Rental::first()->price_currency)->toBe('USD')
         ->and(Rental::first()->formattedPrice())->toBe('U$S 4.500');

@@ -71,4 +71,4 @@ El listado no trae estos datos: están en la página de detalle de cada aviso.
 - Si Groq da de baja un modelo, el log muestra `model_not_found`: cambiar el env.
 
 # TODO
-- Desactivar un aviso recién cuando falta en N corridas seguidas (ver TODO en `RentalService::deactivateMissingRentals`). Hoy el LLM a veces saltea algunos avisos y quedan inactivos hasta la próxima corrida.
+- Desactivar un aviso recién cuando falta en N corridas seguidas (ver TODO en `RentalImporter::deactivateMissingRentals`). Hoy el LLM a veces saltea algunos avisos y quedan inactivos hasta la próxima corrida.

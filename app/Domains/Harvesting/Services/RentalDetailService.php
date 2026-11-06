@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services;
+namespace App\Domains\Harvesting\Services;
 
 use App\Domains\Rentals\Enums\Utility;
 use App\Domains\Rentals\Models\Rental;
@@ -20,8 +20,7 @@ class RentalDetailService
     public function __construct(
         private readonly RentalDetailFetcher $fetcher,
         private readonly RentalDetailExtractor $extractor,
-    ) {
-    }
+    ) {}
 
     /**
      * @return int how many rentals were completed.
@@ -79,7 +78,7 @@ class RentalDetailService
     private function positiveOrNull(int|float|null $value): int|float|null
     {
         $isPositive = $value !== null && $value > 0;
-        if (!$isPositive) {
+        if (! $isPositive) {
             return null;
         }
 

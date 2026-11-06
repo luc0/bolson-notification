@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services;
+namespace App\Integrations\Groq;
 
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;

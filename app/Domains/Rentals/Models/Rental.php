@@ -62,7 +62,7 @@ class Rental extends Model
 
     public function isAvailable(): bool
     {
-        return $this->active && !$this->isRented();
+        return $this->active && ! $this->isRented();
     }
 
     public function scopeAvailable($query)
@@ -77,14 +77,15 @@ class Rental extends Model
     {
         if ($this->price_amount !== null) {
             $symbol = $this->price_currency === 'USD' ? 'U$S ' : '$';
-            return $symbol . number_format((float) $this->price_amount, 0, ',', '.');
+
+            return $symbol.number_format((float) $this->price_amount, 0, ',', '.');
         }
 
         // Raw text is only worth showing when it's a message ("Consultar"), not a placeholder ("$1", "N/A").
         $hasMeaningfulRawPrice = $this->price !== null
             && preg_match('/\d/', $this->price) !== 1
             && preg_match('/^(n\/?a|null|-+)$/i', trim($this->price)) !== 1;
-        if (!$hasMeaningfulRawPrice) {
+        if (! $hasMeaningfulRawPrice) {
             return null;
         }
 
@@ -101,17 +102,17 @@ class Rental extends Model
             $this->countLabel($this->bedrooms, 'dormitorio', 'dormitorios'),
         ]);
         $areas = array_filter([
-            $this->covered_area ? $this->formatArea($this->covered_area) . ' cubiertos' : null,
-            $this->total_area ? $this->formatArea($this->total_area) . ' de terreno' : null,
+            $this->covered_area ? $this->formatArea($this->covered_area).' cubiertos' : null,
+            $this->total_area ? $this->formatArea($this->total_area).' de terreno' : null,
         ]);
         $bathrooms = $this->countLabel($this->bathrooms, 'baño', 'baños');
         $parkingSpaces = $this->countLabel($this->parking_spaces, 'cochera', 'cocheras');
 
         return array_values(array_filter([
-            $areas ? '📐 ' . implode(' · ', $areas) : null,
-            $rooms ? '🛏️ ' . implode(' · ', $rooms) : null,
-            $bathrooms ? '🚿 ' . $bathrooms : null,
-            $parkingSpaces ? '🚗 ' . $parkingSpaces : null,
+            $areas ? '📐 '.implode(' · ', $areas) : null,
+            $rooms ? '🛏️ '.implode(' · ', $rooms) : null,
+            $bathrooms ? '🚿 '.$bathrooms : null,
+            $parkingSpaces ? '🚗 '.$parkingSpaces : null,
             $this->ageLabel(),
         ]));
     }
@@ -132,16 +133,16 @@ class Rental extends Model
 
     private function countLabel(?int $count, string $singular, string $plural): ?string
     {
-        if (!$count) {
+        if (! $count) {
             return null;
         }
 
-        return $count . ' ' . ($count === 1 ? $singular : $plural);
+        return $count.' '.($count === 1 ? $singular : $plural);
     }
 
     private function formatArea(float $squareMeters): string
     {
-        return number_format($squareMeters, 0, ',', '.') . ' m²';
+        return number_format($squareMeters, 0, ',', '.').' m²';
     }
 
     private function ageLabel(): ?string
@@ -154,7 +155,7 @@ class Rental extends Model
             return '🏗️ A estrenar';
         }
 
-        return '🏗️ ' . $this->countLabel($this->age_years, 'año', 'años') . ' de antigüedad';
+        return '🏗️ '.$this->countLabel($this->age_years, 'año', 'años').' de antigüedad';
     }
 
     /**

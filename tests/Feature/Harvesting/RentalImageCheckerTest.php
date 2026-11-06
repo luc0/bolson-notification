@@ -1,6 +1,6 @@
 <?php
 
-use App\Services\RentalImageChecker;
+use App\Domains\Harvesting\Services\RentalImageChecker;
 use Illuminate\Support\Facades\Http;
 
 function fakeVisionAnswer(string $content): void

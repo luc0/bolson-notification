@@ -17,8 +17,7 @@ final readonly class Source
         public string $listingUrl,
         public string $linkBaseUrl,
         public ?string $waitFor = null,
-    ) {
-    }
+    ) {}
 
     /**
      * @return self[]

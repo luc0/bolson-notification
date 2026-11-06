@@ -1,9 +1,9 @@
 <?php
 
+use App\Domains\Harvesting\Services\RentalDetailExtractor;
+use App\Domains\Harvesting\Services\RentalDetailFetcher;
+use App\Domains\Harvesting\Services\RentalDetailService;
 use App\Domains\Rentals\Models\Rental;
-use App\Services\RentalDetailExtractor;
-use App\Services\RentalDetailFetcher;
-use App\Services\RentalDetailService;
 use Illuminate\Support\Facades\Http;
 
 const DETAIL_PAGE_TEXT = "Superficie cubierta 45 m²\nAmbientes : 2\nDormitorios : 1\nBaños : 1\nCocheras : 1\nAntigüedad : 6 Años\nSERVICIOS\nAgua Corriente\nCloaca\nGas Natural";

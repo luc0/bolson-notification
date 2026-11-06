@@ -26,7 +26,7 @@ Sources ──► Harvesting ──► Rentals ◄── Subscriptions ──►
 | Dominio | Qué resuelve | Tipo | Estado |
 |---|---|---|---|
 | [Sources](#sources) | Qué sitios se scrapean y cómo | Soporte | ✅ `app/Domains/Sources` |
-| [Harvesting](#harvesting) | Pasar de la web a datos: captura, extracción con IA y enriquecimiento | **Core** | Pendiente de migrar |
+| [Harvesting](#harvesting) | Pasar de la web a datos: captura, extracción con IA y enriquecimiento | **Core** | ✅ `app/Domains/Harvesting` |
 | [Rentals](#rentals) | El catálogo de alquileres y su ciclo de vida | **Core** | ✅ `app/Domains/Rentals` |
 | [Subscriptions](#subscriptions) | Avisarle a cada persona los alquileres que le interesan | **Core** | Pendiente de migrar |
 | [Members](#members) | Identidad de los usuarios | Genérico | Pendiente de migrar |
@@ -63,7 +63,18 @@ Dónde se guardan las capturas y snapshots no es parte de Sources sino de Harves
 | Detección de alquilados | Revisar la foto del aviso para detectar carteles de "ALQUILADO" o "RESERVADO". |
 | Deduplicación | (Futuro, con portales) Reconocer el mismo aviso publicado en varias fuentes. |
 
-**Hoy:** `config/harvesting.php`, `BrowserRentalScraper`, `FakeRentalScraper`, `AiProcessingService`, `RentalService` (importa los avisos en Rentals), `RentalDetailService`, `RentalDetailFetcher`, `RentalDetailExtractor`, `RentalImageChecker`, `app/Contracts/RentalScraper.php`.
+**Hoy:** `config/harvesting.php`, `app/Domains/Harvesting/`:
+
+| Clase | Subdominio |
+|---|---|
+| `Contracts/RentalScraper`, `Services/BrowserRentalScraper`, `Services/FakeRentalScraper` | Captura (orquesta todo el proceso de un sitio) |
+| `Data/Capture`, `Support/CaptureStore` | Captura y detección de cambios |
+| `Services/ListingExtractor` | Extracción |
+| `Services/RentalImporter`, `Data/ImportResult` | Importación de los avisos en Rentals (alta, reactivación y desactivación) |
+| `Services/RentalDetailService`, `RentalDetailFetcher`, `RentalDetailExtractor` | Enriquecimiento |
+| `Services/RentalImageChecker` | Detección de alquilados |
+
+Usa `App\Integrations\Groq\GroqClient` para hablar con la IA.
 
 ## Rentals
 

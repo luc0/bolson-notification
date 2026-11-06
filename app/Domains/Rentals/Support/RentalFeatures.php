@@ -11,7 +11,9 @@ class RentalFeatures
 {
     // Labels or emojis of lines already shown from their own columns.
     private const REDUNDANT_LABELS = ['ubicación', 'ubicacion', 'precio', 'ambientes', 'dormitorios', 'baños', 'banos'];
+
     private const REDUNDANT_EMOJIS = ['📍', '🌎', '🌟', '💰', '💸'];
+
     // Only redundant with a bare number ("🛏️ 3"): "🛋️ Amueblado" is a real feature.
     private const ROOM_EMOJIS = ['🛏', '🛋', '🚿', '🛁'];
 

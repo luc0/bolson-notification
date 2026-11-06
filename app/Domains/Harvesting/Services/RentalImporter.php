@@ -1,26 +1,25 @@
 <?php
 
-namespace App\Services;
+namespace App\Domains\Harvesting\Services;
 
+use App\Domains\Harvesting\Data\ImportResult;
 use App\Domains\Rentals\Models\Rental;
 use App\Domains\Rentals\Support\PriceParser;
 use App\Domains\Rentals\Support\RentalLink;
-use App\Support\RentalStoreResult;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
-class RentalService
+class RentalImporter
 {
     public function __construct(
         private readonly PriceParser $priceParser,
         private readonly RentalImageChecker $imageChecker,
-    ) {
-    }
+    ) {}
 
     /**
      * Each item is stored independently: one bad item doesn't drop the rest of the site.
      */
-    public function store(array $scrapedItems, string $siteUrl): RentalStoreResult
+    public function import(array $scrapedItems, string $siteUrl): ImportResult
     {
         $newItems = [];
         $failedCount = 0;
@@ -30,22 +29,22 @@ class RentalService
                 $rental = $this->storeItem($item, $siteUrl);
                 $this->refreshRentedStatus($rental);
 
-                $isNewAndAvailable = $rental->wasRecentlyCreated && !$rental->isRented();
+                $isNewAndAvailable = $rental->wasRecentlyCreated && ! $rental->isRented();
                 if ($isNewAndAvailable) {
                     $newItems[] = [...$item, 'site_url' => $siteUrl];
                 }
             } catch (Throwable $e) {
                 $failedCount++;
                 $link = is_array($item) ? ($item['Link'] ?? 'unknown') : 'invalid item';
-                Log::error("❌ Error storing rental {$link} from {$siteUrl}: " . $e->getMessage());
+                Log::error("❌ Error storing rental {$link} from {$siteUrl}: ".$e->getMessage());
             }
         }
 
         $this->deactivateMissingRentals($scrapedItems, $siteUrl);
 
-        Log::info('✅ Stored ' . count($newItems) . " new rentals from {$siteUrl} ({$failedCount} failed).");
+        Log::info('✅ Stored '.count($newItems)." new rentals from {$siteUrl} ({$failedCount} failed).");
 
-        return new RentalStoreResult($newItems, $failedCount);
+        return new ImportResult($newItems, $failedCount);
     }
 
     private function storeItem(array $item, string $siteUrl): Rental
@@ -59,6 +58,7 @@ class RentalService
                 'active' => true,
                 'image_url' => $imageUrl ?? $existingRental->image_url,
             ]);
+
             return $existingRental;
         }
 
@@ -87,7 +87,7 @@ class RentalService
     private function refreshRentedStatus(Rental $rental): void
     {
         $hasUncheckedImage = $rental->image_url !== null && $rental->image_url !== $rental->image_checked_url;
-        if (!$hasUncheckedImage) {
+        if (! $hasUncheckedImage) {
             return;
         }
 
@@ -110,7 +110,7 @@ class RentalService
     private function deactivateMissingRentals(array $scrapedItems, string $siteUrl): void
     {
         $scrapedSources = collect($scrapedItems)
-            ->filter(fn ($item) => is_array($item) && !empty($item['Link']))
+            ->filter(fn ($item) => is_array($item) && ! empty($item['Link']))
             ->map(fn ($item) => RentalLink::normalize($item['Link']))
             ->all();
 
@@ -127,7 +127,7 @@ class RentalService
 
             Log::info("🔄 {$deactivatedCount} rentals deactivated for site: {$siteUrl}");
         } catch (Throwable $e) {
-            Log::error("❌ Error deactivating rentals for {$siteUrl}: " . $e->getMessage());
+            Log::error("❌ Error deactivating rentals for {$siteUrl}: ".$e->getMessage());
         }
     }
 }

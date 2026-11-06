@@ -8,6 +8,5 @@ final readonly class ParsedPrice
         public ?string $raw,
         public ?float $amount,
         public ?string $currency,
-    ) {
-    }
+    ) {}
 }

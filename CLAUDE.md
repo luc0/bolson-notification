@@ -23,7 +23,7 @@ Laravel app that scrapes rental listings (El Bolsón / Lago Puelo), processes th
 - Framework entry points stay where Laravel expects them: `app/Http`, `app/Console`, `resources/views`, `database/migrations`.
 - Shared external clients (Groq, Puppeteer, HTTP fetch) go to `app/Integrations/`.
 - Dependency rule: Rentals depends on no other domain; Harvesting writes into Rentals; Subscriptions reads from Rentals.
-- Migrated so far: Rentals, Sources. The rest still lives in `app/Services`, `app/Models`, `app/Support`.
+- Migrated so far: Rentals, Sources, Harvesting (+ `app/Integrations/Groq`). Subscriptions and Members still live in `app/Services`, `app/Models`, `app/Contracts`.
 
 ## Domain
 - `Rental`:
@@ -44,11 +44,13 @@ Laravel app that scrapes rental listings (El Bolsón / Lago Puelo), processes th
 
 ## Architecture
 - `app/Console/Commands/AnalyzeRentals.php` (`rentals:analyze`) → main flow: capture → AI extraction → store → detail enrichment → notify. Scheduled in `routes/console.php`.
-- `app/Contracts/RentalScraper.php` → `BrowserRentalScraper` (Puppeteer) and `FakeRentalScraper` (`SCRAPE_MOCK=true`).
-- `app/Services/AiProcessingService.php` → extracts rentals from a listing page capture.
-- `app/Services/RentalService.php` → persistence, deactivation and rented photo check (`RentalImageChecker`).
-- `app/Services/RentalDetailService.php` → detail page data (`RentalDetailFetcher` + `RentalDetailExtractor`). Backfill: `rentals:fetch-details`.
-- `app/Services/GroqClient.php` → shared Groq API client (models in `config/services.php`).
+- Harvesting (`app/Domains/Harvesting`):
+  - `Contracts/RentalScraper` → `BrowserRentalScraper` (Puppeteer) and `FakeRentalScraper` (`SCRAPE_MOCK=true`).
+  - `Support/CaptureStore` + `Data/Capture` → captures and snapshots (change detection).
+  - `ListingExtractor` → extracts rentals from a listing page capture.
+  - `RentalImporter` → imports them into Rentals: create, reactivate, deactivate and rented photo check (`RentalImageChecker`).
+  - `RentalDetailService` → detail page data (`RentalDetailFetcher` + `RentalDetailExtractor`). Backfill: `rentals:fetch-details`.
+- `app/Integrations/Groq/GroqClient.php` → shared Groq API client (models in `config/services.php`).
 - `app/Services/NotificationService.php` → web push to `AnonSubscriber`s.
 - WhatsApp (`app/Contracts/WhatsappSender.php`: `TwilioWhatsappSender`, `KapsoWhatsappSender`) exists but is currently disabled.
 
@@ -60,6 +62,7 @@ Laravel app that scrapes rental listings (El Bolsón / Lago Puelo), processes th
 - Config over hardcoded values: read `config()` in code, `env()` only inside `config/*.php`. Config defaults must be safe for production.
 - Generated files go in `storage/app/...`; non-PHP scripts in `scripts/`; nothing generated in the repo root.
 - Routes: no debug/test endpoints outside `app()->isLocal()`.
+- Code style: Laravel Pint (`vendor/bin/pint <paths>`), run it on the files you touch.
 - Tests: Pest, `RefreshDatabase` is applied to `tests/Feature` in `tests/Pest.php`. Fake external calls (`Http::fake()`, `Process::fake()`).
 
 ## Roadmap

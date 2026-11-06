@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services;
+namespace App\Domains\Harvesting\Services;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -13,6 +13,7 @@ use Throwable;
 class RentalDetailFetcher
 {
     private const USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
+
     private const MAX_TEXT_LENGTH = 15000;
 
     public function fetchText(string $url): ?string
@@ -23,12 +24,14 @@ class RentalDetailFetcher
                 ->retry(4, 3000, throw: false)
                 ->get($this->encodeUrl($url));
         } catch (Throwable $e) {
-            Log::error("❌ Detail page request failed for {$url}: " . $e->getMessage());
+            Log::error("❌ Detail page request failed for {$url}: ".$e->getMessage());
+
             return null;
         }
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             Log::error("❌ Detail page returned {$response->status()} for {$url}");
+
             return null;
         }
 

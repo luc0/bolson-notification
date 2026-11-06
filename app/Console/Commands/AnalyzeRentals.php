@@ -2,9 +2,9 @@
 
 namespace App\Console\Commands;
 
-use App\Contracts\RentalScraper;
+use App\Domains\Harvesting\Contracts\RentalScraper;
+use App\Domains\Harvesting\Services\RentalDetailService;
 use App\Services\NotificationService;
-use App\Services\RentalDetailService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Storage;
 class AnalyzeRentals extends Command
 {
     protected $signature = 'rentals:analyze';
+
     protected $description = 'Scrapes the rental sources, completes details and notifies subscribers about new rentals';
 
     public function handle(
@@ -31,6 +32,7 @@ class AnalyzeRentals extends Command
 
         if (empty($newRentals)) {
             Log::info('⚠️ No new rentals to notify.');
+
             return self::SUCCESS;
         }
 
