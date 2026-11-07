@@ -104,6 +104,7 @@ return [
             'listing_url' => 'https://puntosurpropiedades.ar/web/index.php?search_tipo_de_propiedad=8&search_locality=El%20Bols%C3%B3n&search_tipo_de_operacion=1#listado',
             'link_base_url' => 'https://puntosurpropiedades.ar/web/',
             'wait_for' => null,
+            'default_city' => 'el_bolson', // listing filtered by search_locality
         ],
 
         'rioazulpropiedades' => [

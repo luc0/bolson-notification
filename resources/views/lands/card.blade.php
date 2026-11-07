@@ -35,8 +35,8 @@
         @endif
 
         <div class="flex items-center justify-between gap-3">
-            @if($land->location)
-                <span class="card-location text-sm">📍 {{ $land->location }}</span>
+            @if($land->locationLabel())
+                <span class="card-location text-sm" title="{{ $land->location }}">📍 {{ $land->locationLabel() }}</span>
             @else
                 <span></span>
             @endif

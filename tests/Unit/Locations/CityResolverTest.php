@@ -1,7 +1,7 @@
 <?php
 
-use App\Domains\Rentals\Enums\City;
-use App\Domains\Rentals\Support\CityResolver;
+use App\Domains\Locations\Enums\City;
+use App\Domains\Locations\Support\CityResolver;
 
 it('resolves city and neighborhood from real listing texts', function (array $texts, ?City $city, ?string $neighborhood) {
     $resolved = (new CityResolver)->resolve($texts);

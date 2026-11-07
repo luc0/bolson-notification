@@ -1,7 +1,7 @@
 <?php
 
 use App\Domains\Harvesting\Services\RentalImporter;
-use App\Domains\Rentals\Enums\City;
+use App\Domains\Locations\Enums\City;
 use App\Domains\Rentals\Models\Rental;
 use App\Domains\Sources\Data\Source;
 use App\Domains\Sources\Enums\SourceType;

@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Domains\Rentals\Support;
+namespace App\Domains\Locations\Support;
 
-use App\Domains\Rentals\Data\ResolvedLocation;
-use App\Domains\Rentals\Enums\City;
+use App\Domains\Locations\Data\ResolvedLocation;
+use App\Domains\Locations\Enums\City;
 use Illuminate\Support\Str;
 
 /**

@@ -2,6 +2,7 @@
 
 use App\Domains\Harvesting\Services\BrowserLandScraper;
 use App\Domains\Lands\Models\Land;
+use App\Domains\Locations\Enums\City;
 use App\Domains\Rentals\Models\Rental;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
@@ -75,6 +76,29 @@ it('stores new lands with parsed price, area and image, without touching rentals
         ->and(File::exists("{$this->tempPath}/snapshots/lands/example.html"))->toBeTrue();
 
     Http::assertSent(fn ($request) => $request['response_format']['json_schema']['name'] === 'lands');
+});
+
+it('resolves the city and neighborhood, falling back to the source default city', function () {
+    config(['sources.land_sites.example.default_city' => 'el_bolson']);
+    fakeLandsResponse([
+        landItem(),
+        landItem(['Link' => 'https://example.com/p/2', 'Content' => 'Lote', 'Location' => 'Lago Puelo']),
+        landItem(['Link' => 'https://example.com/p/3', 'Content' => 'Lote con vista', 'Location' => null]),
+    ]);
+
+    app(BrowserLandScraper::class)->scrape();
+
+    expect(Land::where('source', 'https://example.com/p/1')->first())->city->toBe(City::ElBolson)->neighborhood->toBe('Mallín Ahogado')
+        ->and(Land::where('source', 'https://example.com/p/2')->value('city'))->toBe(City::LagoPuelo)
+        ->and(Land::where('source', 'https://example.com/p/3')->value('city'))->toBe(City::ElBolson);
+});
+
+it('classifies existing lands from the lands:classify command', function () {
+    Land::create(['source' => 'https://example.com/p/9', 'content' => 'Lote en Epuyén', 'site_path' => 'https://example.com/terrenos']);
+
+    $this->artisan('lands:classify')->assertSuccessful();
+
+    expect(Land::first()->city)->toBe(City::Epuyen);
 });
 
 it('skips unchanged captures', function () {

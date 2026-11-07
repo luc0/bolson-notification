@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Domains\Rentals\Data;
+namespace App\Domains\Locations\Data;
 
-use App\Domains\Rentals\Enums\City;
+use App\Domains\Locations\Enums\City;
 
 final readonly class ResolvedLocation
 {

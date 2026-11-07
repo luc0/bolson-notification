@@ -1,7 +1,7 @@
 <?php
 
 use App\Domains\Members\Models\User;
-use App\Domains\Rentals\Enums\City;
+use App\Domains\Locations\Enums\City;
 use App\Domains\Rentals\Enums\PropertyUse;
 use App\Domains\Rentals\Models\Rental;
 

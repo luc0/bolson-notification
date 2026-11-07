@@ -19,12 +19,12 @@ Laravel app that scrapes rental listings (El Bolsón / Lago Puelo), processes th
   `rm -f bootstrap/cache/*.php && mkdir -p storage/logs && chmod -R 777 storage bootstrap/cache`
 
 ## Structure (modular monolith)
-- Domains and their subdomains are documented in `docs/domains.md` (read it before adding features): Sources, Harvesting, Rentals, Lands, Subscriptions, Members, Payments.
+- Domains and their subdomains are documented in `docs/domains.md` (read it before adding features): Sources, Harvesting, Locations, Rentals, Lands, Subscriptions, Members, Payments.
 - Each domain lives in `app/Domains/<Domain>/` using Laravel's folder names inside (`Models`, `Enums`, `Data`, `Support`, `Services`...).
 - Framework entry points stay where Laravel expects them: `app/Http`, `app/Console`, `resources/views`, `database/migrations`.
 - Shared external clients (Groq, Puppeteer, HTTP fetch) go to `app/Integrations/`.
-- Dependency rule: Rentals and Lands depend on no other domain (and not on each other); Harvesting writes into Rentals and Lands; Subscriptions reads from Rentals.
-- Migrated: Rentals, Lands, Sources, Harvesting (+ `app/Integrations/Groq`), Subscriptions, Members. Payments will be created with the checkout (v1.1).
+- Dependency rule: Locations (shared kernel: `City`, `CityResolver`) depends on nothing; Rentals and Lands depend only on Locations (never on each other); Harvesting writes into Rentals and Lands; Subscriptions reads from Rentals.
+- Migrated: Locations, Rentals, Lands, Sources, Harvesting (+ `app/Integrations/Groq`), Subscriptions, Members. Payments will be created with the checkout (v1.1).
 - Models outside `App\Models` need `#[UseFactory(...)]` (and `$model` in the factory) because Laravel can't guess the factory name.
 - Polymorphic models must be registered in `Relation::morphMap()` (`AppServiceProvider::boot()`) so stored types don't depend on class names.
 
@@ -38,13 +38,13 @@ Laravel app that scrapes rental listings (El Bolsón / Lago Puelo), processes th
   - Availability: `active` (still listed on the site) + `rented_at` (photo stamped "ALQUILADO"). Use `Rental::available()`.
   - Old = detected 3+ months ago (`Rental::OLD_AFTER_MONTHS`).
   - Detail page data: `covered_area`, `total_area`, `bedrooms`, `parking_spaces`, `age_years`, `services` (json of `App\Domains\Rentals\Enums\Utility` values).
-- Location: `location` is the raw text from the agency; `city` (`App\Domains\Rentals\Enums\City`) and `neighborhood` are resolved from it by `CityResolver` (aliases + known neighborhoods per city, evidence-based). Fallbacks: city from the detail page (AI, only if on the page), then the source `default_city`.
+- Location: `location` is the raw text from the agency; `city` (`App\Domains\Locations\Enums\City`) and `neighborhood` are resolved from it by `CityResolver` (aliases + known neighborhoods per city, evidence-based). Fallbacks: city from the detail page (AI, only if on the page), then the source `default_city`.
 - Property use: `property_use` (`PropertyUse`: residential / commercial) resolved from the property type in the title by `PropertyUseResolver`; fallback: detail page (AI, only if the type is on the page).
 - Both are set by `Harvesting\Services\RentalClassifier` on import. Filters (one-click chips, `<x-filter-chip>`): city, and under "Más filtros" (`<details>`, opens when one is not default) property use (default: residential; `uses=all` for every use), price range (`PriceRange`: pesos ranges + dollars), rooms (4+ grouped), natural gas; include unavailable; sort (`RentalSort`: newest by default with no chip, price chips sort pesos, then dollars, then no price). Query in `Rentals\Queries\RentalSearch`.
-- To recognize a new city/neighborhood/property type: add it to `City::aliases()` / `City::neighborhoods()` / `PropertyUse::keywords()` and run `rentals:classify` (no AI cost).
+- To recognize a new city/neighborhood/property type: add it to `City::aliases()` / `City::neighborhoods()` / `PropertyUse::keywords()` and run `rentals:classify` / `lands:classify` (no AI cost).
 
 ## Lands
-- `Land` (`app/Domains/Lands`): lands for sale, separate from rentals (own table, `/terrenos` tab, `LandController`). Same `source` / `site_path` / `content` / price columns as `Rental`, plus `area` (m²). No notifications yet.
+- `Land` (`app/Domains/Lands`): lands for sale, separate from rentals (own table, `/terrenos` tab, `LandController`). Same `source` / `site_path` / `content` / price columns as `Rental`, plus `area` (m²) and `city` / `neighborhood` (set by `Harvesting\Services\LandClassifier` on import, backfill with `lands:classify`). Filters: city chips, include unavailable, sort (`LandSort`). Query in `Lands\Queries\LandSearch`. No notifications yet.
 - Flow: `lands:analyze` → `Harvesting\Services\BrowserLandScraper` (capture in `storage/app/captures/lands`) → `LandListingExtractor` → `LandImporter`. Scheduled weekly in prod (Mondays 18:00), every 3 minutes in debug mode like rentals.
 - The AI uses `services.groq.land_reasoning_effort` (default `medium`): with `low` it gives up on long land listings and returns an empty list.
 

@@ -2,7 +2,7 @@
 
 namespace App\Domains\Harvesting\Services;
 
-use App\Domains\Rentals\Enums\City;
+use App\Domains\Locations\Enums\City;
 use App\Domains\Rentals\Enums\PropertyUse;
 use App\Domains\Rentals\Enums\Utility;
 use App\Integrations\Groq\GroqClient;

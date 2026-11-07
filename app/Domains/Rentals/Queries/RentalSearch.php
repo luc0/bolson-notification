@@ -2,7 +2,7 @@
 
 namespace App\Domains\Rentals\Queries;
 
-use App\Domains\Rentals\Enums\City;
+use App\Domains\Locations\Enums\City;
 use App\Domains\Rentals\Enums\PriceRange;
 use App\Domains\Rentals\Enums\PropertyUse;
 use App\Domains\Rentals\Enums\RentalSort;

@@ -55,6 +55,11 @@ final readonly class Source
         return collect(self::rentals())->first(fn (self $source) => $source->listingUrl === $listingUrl);
     }
 
+    public static function findLandByListingUrl(string $listingUrl): ?self
+    {
+        return collect(self::lands())->first(fn (self $source) => $source->listingUrl === $listingUrl);
+    }
+
     /**
      * @return self[]
      */

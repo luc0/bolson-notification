@@ -13,12 +13,17 @@
             <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-3">Terrenos en venta en la Comarca Andina</h1>
 
             {{-- One-click filters: each chip is a link --}}
-            <nav class="mt-6 -mb-2 flex flex-wrap items-center gap-2 text-sm" aria-label="Orden">
-                <span class="text-gray-500 dark:text-gray-400">Ordenar:</span>
-                @foreach($filterChips['sort'] as $chip) <x-filter-chip :chip="$chip" /> @endforeach
-                <span class="filter-divider" aria-hidden="true"></span>
-                @foreach($filterChips['include_inactive'] as $chip) <x-filter-chip :chip="$chip" /> @endforeach
-            </nav>
+            <div class="mt-6 -mb-2 space-y-2">
+                <nav class="flex flex-wrap items-center gap-2" aria-label="Ciudad">
+                    @foreach($filterChips['cities'] as $chip) <x-filter-chip :chip="$chip" /> @endforeach
+                </nav>
+                <nav class="flex flex-wrap items-center gap-2 text-sm" aria-label="Orden">
+                    <span class="text-gray-500 dark:text-gray-400">Ordenar:</span>
+                    @foreach($filterChips['sort'] as $chip) <x-filter-chip :chip="$chip" /> @endforeach
+                    <span class="filter-divider" aria-hidden="true"></span>
+                    @foreach($filterChips['include_inactive'] as $chip) <x-filter-chip :chip="$chip" /> @endforeach
+                </nav>
+            </div>
 
             <div class="mt-8 space-y-10">
                 @forelse(collect($sections)->filter(fn ($section) => $section['lands']->isNotEmpty()) as $section)

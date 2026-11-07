@@ -2,9 +2,9 @@
 
 namespace App\Domains\Harvesting\Services;
 
-use App\Domains\Rentals\Enums\City;
+use App\Domains\Locations\Enums\City;
+use App\Domains\Locations\Support\CityResolver;
 use App\Domains\Rentals\Models\Rental;
-use App\Domains\Rentals\Support\CityResolver;
 use App\Domains\Rentals\Support\PropertyUseResolver;
 use App\Domains\Sources\Data\Source;
 

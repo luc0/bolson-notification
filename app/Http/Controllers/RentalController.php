@@ -5,11 +5,14 @@ namespace App\Http\Controllers;
 use App\Domains\Rentals\Enums\PropertyUse;
 use App\Domains\Rentals\Enums\RentalSort;
 use App\Domains\Rentals\Queries\RentalSearch;
+use App\Http\Controllers\Concerns\BuildsFilterChips;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class RentalController extends Controller
 {
+    use BuildsFilterChips;
+
     /**
      * Without a `uses` param the listing shows rentals to live in; `uses=all` shows every use.
      */
@@ -138,47 +141,5 @@ class RentalController extends Controller
         $isDefault = $uses === self::DEFAULT_USES;
 
         return $isDefault ? null : $uses;
-    }
-
-    /**
-     * Optional "all" chip + one chip per option that adds or removes it from the selection.
-     *
-     * @param  array<string, string>  $options  value => label
-     * @param  string[]  $selected
-     */
-    private function toggleChips(string $parameter, ?string $allLabel, array $options, array $selected, callable $url): array
-    {
-        $optionChips = collect($options)->map(function (string $label, string|int $value) use ($parameter, $selected, $url) {
-            $value = (string) $value;
-            $isSelected = in_array($value, $selected, true);
-            $toggled = $isSelected ? array_diff($selected, [$value]) : [...$selected, $value];
-
-            return ['label' => $label, 'url' => $url([$parameter => $toggled]), 'active' => $isSelected];
-        })->values()->all();
-
-        if ($allLabel === null) {
-            return $optionChips;
-        }
-
-        return [['label' => $allLabel, 'url' => $url([$parameter => []]), 'active' => empty($selected)], ...$optionChips];
-    }
-
-    /**
-     * One option at a time: clicking the active one clears it.
-     *
-     * @param  array<string, string>  $options  value => label
-     */
-    private function singleChoiceChips(string $parameter, array $options, ?string $selected, callable $url): array
-    {
-        return collect($options)->map(function (string $label, string $value) use ($parameter, $selected, $url) {
-            $isSelected = $value === $selected;
-
-            return ['label' => $label, 'url' => $url([$parameter => $isSelected ? null : $value]), 'active' => $isSelected];
-        })->values()->all();
-    }
-
-    private function switchChip(string $parameter, string $label, bool $isOn, callable $url): array
-    {
-        return ['label' => ($isOn ? '✓ ' : '').$label, 'url' => $url([$parameter => ! $isOn]), 'active' => $isOn];
     }
 }

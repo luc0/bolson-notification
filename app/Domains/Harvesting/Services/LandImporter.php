@@ -11,14 +11,17 @@ use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * Imports the lands extracted from a source into Lands: create, reactivate and deactivate.
+ * Imports the lands extracted from a source into Lands: create, reactivate, classify and deactivate.
  */
 class LandImporter
 {
     // A sale price below this is a placeholder (agencies publish "U\$S 200" for "ask for the price").
     private const MIN_REAL_SALE_PRICE = 1000;
 
-    public function __construct(private readonly PriceParser $priceParser) {}
+    public function __construct(
+        private readonly PriceParser $priceParser,
+        private readonly LandClassifier $landClassifier,
+    ) {}
 
     /**
      * Each item is stored independently: one bad item doesn't drop the rest of the site.
@@ -32,6 +35,7 @@ class LandImporter
         foreach ($scrapedItems as $item) {
             try {
                 $land = $this->storeItem($item, $siteUrl);
+                $this->landClassifier->classify($land, $source);
                 if ($land->wasRecentlyCreated) {
                     $newItems[] = [...$item, 'site_url' => $siteUrl];
                 }

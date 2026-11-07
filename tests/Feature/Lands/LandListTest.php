@@ -1,6 +1,7 @@
 <?php
 
 use App\Domains\Lands\Models\Land;
+use App\Domains\Locations\Enums\City;
 use App\Domains\Members\Models\User;
 
 function createLand(string $link, array $attributes = []): Land
@@ -22,7 +23,7 @@ it('requires login', function () {
 });
 
 it('shows available lands with area, price and price per m²', function () {
-    createLand('https://example.com/1', ['price_amount' => 36000, 'price_currency' => 'USD', 'area' => 1200, 'location' => 'Mallín Ahogado']);
+    createLand('https://example.com/1', ['price_amount' => 36000, 'price_currency' => 'USD', 'area' => 1200, 'location' => 'Ruta 40 km 1900', 'city' => City::ElBolson, 'neighborhood' => 'Mallín Ahogado']);
     createLand('https://example.com/inactive', ['active' => false]);
 
     $this->get('/terrenos')
@@ -32,7 +33,7 @@ it('shows available lands with area, price and price per m²', function () {
         ->assertSee('1.200 m²')
         ->assertSee('U$S 36.000')
         ->assertSee('U$S 30/m²')
-        ->assertSee('Mallín Ahogado')
+        ->assertSee('Mallín Ahogado, El Bolsón')
         ->assertDontSee('Land https://example.com/inactive');
 });
 
@@ -69,4 +70,32 @@ it('sorts by area with unknown areas last', function () {
 
 it('has a Terrenos tab in the navigation', function () {
     $this->get('/')->assertSee(route('lands.index'), false)->assertSee('Terrenos');
+});
+
+it('filters by city, including lands without a known city', function () {
+    createLand('https://example.com/bolson', ['city' => City::ElBolson]);
+    createLand('https://example.com/puelo', ['city' => City::LagoPuelo]);
+    createLand('https://example.com/unknown');
+
+    $this->get('/terrenos')
+        ->assertSee('El Bolsón (1)')
+        ->assertSee('Lago Puelo (1)')
+        ->assertSee('Sin especificar (1)');
+
+    $this->get('/terrenos?cities[]=lago_puelo')
+        ->assertSee('Land https://example.com/puelo')
+        ->assertDontSee('Land https://example.com/bolson')
+        ->assertDontSee('Land https://example.com/unknown');
+
+    $this->get('/terrenos?cities[]=el_bolson&cities[]=unknown')
+        ->assertSee('Land https://example.com/bolson')
+        ->assertSee('Land https://example.com/unknown')
+        ->assertDontSee('Land https://example.com/puelo');
+});
+
+it('keeps the city filter when changing the sort', function () {
+    createLand('https://example.com/bolson', ['city' => City::ElBolson]);
+
+    $this->get('/terrenos?cities[]=el_bolson')
+        ->assertSee(e(route('lands.index', ['cities' => ['el_bolson'], 'sort' => 'price_asc'], absolute: false)), false);
 });

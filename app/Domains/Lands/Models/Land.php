@@ -2,6 +2,7 @@
 
 namespace App\Domains\Lands\Models;
 
+use App\Domains\Locations\Enums\City;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -10,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
  * - source: URL of the listing (stored decoded), site_path: listing_url of the source it was scraped from.
  * - content: the agency's title; description: extra features, one per line.
  * - price (raw text) + price_amount / price_currency (parsed); area in m².
+ * - location: raw text from the agency; city / neighborhood resolved from it (LandClassifier).
  */
 class Land extends Model
 {
@@ -23,6 +25,8 @@ class Land extends Model
         'price_amount',
         'price_currency',
         'location',
+        'city',
+        'neighborhood',
         'area',
         'image_url',
         'site_path',
@@ -30,10 +34,37 @@ class Land extends Model
     ];
 
     protected $casts = [
+        'city' => City::class,
         'price_amount' => 'decimal:2',
         'area' => 'float',
         'active' => 'boolean',
     ];
+
+    /**
+     * @param  array<int, City|null>  $cities  null = lands without a known city.
+     */
+    public function scopeByCity($query, array $cities)
+    {
+        $knownCities = array_values(array_filter($cities));
+        $includesUnknown = in_array(null, $cities, true);
+
+        return $query->where(function ($query) use ($knownCities, $includesUnknown) {
+            $query->whereIn('city', $knownCities)
+                ->when($includesUnknown, fn ($query) => $query->orWhereNull('city'));
+        });
+    }
+
+    /**
+     * "Mallín Ahogado, El Bolsón"; the raw location when the city is unknown.
+     */
+    public function locationLabel(): ?string
+    {
+        if ($this->city === null) {
+            return $this->location;
+        }
+
+        return collect([$this->neighborhood, $this->city->label()])->filter()->implode(', ');
+    }
 
     public function scopeAvailable($query)
     {

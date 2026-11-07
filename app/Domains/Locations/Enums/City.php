@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Domains\Rentals\Enums;
+namespace App\Domains\Locations\Enums;
 
 /**
- * Cities of the Comarca Andina we show rentals for (filter options).
+ * Cities of the Comarca Andina we show listings for (rentals and lands filter options).
  */
 enum City: string
 {

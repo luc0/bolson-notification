@@ -13,12 +13,16 @@ Lo que es propio del framework se queda donde Laravel lo espera:
 
 ```
 Sources ──► Harvesting ──► Rentals ◄── Subscriptions ──► Members
-                 │                          ▲
-                 └───────► Lands         Payments
+                 │            │             ▲
+                 │            ▼          Payments
+                 │        Locations
+                 │            ▲
+                 └───────► Lands
 ```
 
-- **Rentals no depende de ningún otro dominio.** Es el núcleo que los demás leen o escriben.
-- **Lands tampoco depende de ningún otro dominio** y está separado de Rentals: Harvesting lo escribe con su propio flujo (`lands:analyze`) y no tiene notificaciones.
+- **Locations** es un núcleo compartido chico (ciudades de la Comarca y cómo reconocerlas en un texto): no depende de nadie y lo usan Rentals, Lands y Harvesting.
+- **Rentals solo depende de Locations.** Es el núcleo que los demás leen o escriben.
+- **Lands solo depende de Locations** y está separado de Rentals: Harvesting lo escribe con su propio flujo (`lands:analyze`) y no tiene notificaciones.
 - Harvesting escribe en Rentals. Subscriptions lee de Rentals (idealmente a partir de un evento `RentalPublished`).
 - Agregar una fuente o un canal de notificación no debería tocar Rentals.
 
@@ -28,6 +32,7 @@ Sources ──► Harvesting ──► Rentals ◄── Subscriptions ──►
 |---|---|---|---|
 | [Sources](#sources) | Qué sitios se scrapean y cómo | Soporte | ✅ `app/Domains/Sources` |
 | [Harvesting](#harvesting) | Pasar de la web a datos: captura, extracción con IA y enriquecimiento | **Core** | ✅ `app/Domains/Harvesting` |
+| [Locations](#locations) | Ciudades y barrios de la Comarca, compartidos por los catálogos | Soporte | ✅ `app/Domains/Locations` |
 | [Rentals](#rentals) | El catálogo de alquileres y su ciclo de vida | **Core** | ✅ `app/Domains/Rentals` |
 | [Lands](#lands) | El catálogo de terrenos en venta | **Core** | ✅ `app/Domains/Lands` |
 | [Subscriptions](#subscriptions) | Avisarle a cada persona los alquileres que le interesan | **Core** | ✅ `app/Domains/Subscriptions` |
@@ -103,7 +108,7 @@ Usa `App\Integrations\Groq\GroqClient` para hablar con la IA.
 |---|---|
 | Disponibilidad | Ciclo de vida del aviso: activo, inactivo (ya no está en el sitio), alquilado (cartel en la foto) y antiguo (3+ meses). |
 | Precio | Precio tal como lo publica la inmobiliaria más el monto y la moneda normalizados; detecta precios de relleno ("$1"). |
-| Ubicación | Ciudad (`City`: El Bolsón, Lago Puelo, El Hoyo, Epuyén, Cholila) y barrio del aviso, resueltos del texto por `CityResolver` (alias + barrios conocidos). Son las opciones del filtro. |
+| Ubicación | Ciudad y barrio del aviso (ver [Locations](#locations)). Son las opciones del filtro. |
 | Características | Superficie, ambientes, dormitorios, baños, cocheras, antigüedad, servicios y datos extra limpios. |
 | Identidad del aviso | Normalización del link para que el mismo aviso no se guarde dos veces. |
 | Uso | `PropertyUse`: para vivir o local / comercial, resuelto del tipo de propiedad que nombra el título (`PropertyUseResolver`). |
@@ -120,11 +125,23 @@ Usa `App\Integrations\Groq\GroqClient` para hablar con la IA.
 | Disponibilidad | Activo (sigue publicado en el sitio) o no disponible. |
 | Precio | Texto de la inmobiliaria + monto y moneda normalizados (montos menores a 1.000 se toman como relleno). Precio por m² cuando hay superficie. |
 | Superficie | `area` en m² (la IA convierte hectáreas); se muestra en ha desde 1 ha. |
-| Búsqueda | `Queries/LandSearch`: incluir no disponibles y orden (`LandSort`: más nuevos, precio con dólares primero, más grandes). |
+| Ubicación | Ciudad y barrio (ver [Locations](#locations)), resueltos al importar por `Harvesting\Services\LandClassifier`: texto del aviso → valor ya conocido → `default_city` de la fuente. Reclasificar sin IA: `lands:classify`. |
+| Búsqueda | `Queries/LandSearch`: ciudad (chips, incluye "Sin especificar"), incluir no disponibles y orden (`LandSort`: más nuevos, precio con dólares primero, más grandes). |
 
 **Hoy:** `app/Domains/Lands/` (`Models/Land`, `Enums/LandSort`, `Queries/LandSearch`). Pantalla: pestaña "Terrenos" (`/terrenos`, `LandController`, `resources/views/lands`). Comando: `lands:analyze` (en producción una vez por semana, los lunes a las 18:00).
 
-Pendiente: ciudad/barrio para filtrar (hoy `City` vive en Rentals; habría que moverlo a un lugar compartido para no acoplar Lands a Rentals) y notificaciones.
+Pendiente: notificaciones.
+
+## Locations
+
+**Qué resuelve:** las ciudades de la Comarca Andina y cómo reconocerlas en el texto de un aviso. Lo comparten Rentals y Lands para filtrar por ciudad sin depender uno del otro.
+
+| Subdominio | Descripción |
+|---|---|
+| Ciudades | `Enums/City` (El Bolsón, Lago Puelo, El Hoyo, Epuyén, Cholila): etiqueta, alias y barrios conocidos de cada una. |
+| Reconocimiento | `Support/CityResolver` → `Data/ResolvedLocation`: ciudad y barrio a partir de los textos del aviso (alias + barrios conocidos, basado en evidencia, nunca adivina). |
+
+**Hoy:** `app/Domains/Locations/`. Para reconocer una ciudad o barrio nuevo: agregarlo en `City` y correr `rentals:classify` y `lands:classify` (sin IA).
 
 ## Subscriptions
 
