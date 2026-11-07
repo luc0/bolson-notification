@@ -1,13 +1,13 @@
 <?php
 
-namespace App\Domains\Harvesting\Services;
+namespace App\Domains\Harvesting\Rentals\Services;
 
-use App\Domains\Harvesting\Contracts\RentalScraper;
+use App\Domains\Harvesting\Rentals\Contracts\RentalScraper;
 use Illuminate\Support\Facades\Log;
 
 class FakeRentalScraper implements RentalScraper
 {
-    public function __construct(private readonly ListingExtractor $listingExtractor, private readonly RentalImporter $rentalImporter) {}
+    public function __construct(private readonly RentalListingExtractor $rentalListingExtractor, private readonly RentalImporter $rentalImporter) {}
 
     public function scrape(): array
     {

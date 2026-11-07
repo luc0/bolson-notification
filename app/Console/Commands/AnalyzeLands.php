@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Domains\Harvesting\Services\LandScraper;
+use App\Domains\Harvesting\Lands\Services\BrowserLandScraper;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -12,7 +12,7 @@ class AnalyzeLands extends Command
 
     protected $description = 'Scrapes the land sources and stores the lands for sale (no notifications)';
 
-    public function handle(LandScraper $scraper): int
+    public function handle(BrowserLandScraper $scraper): int
     {
         Log::info('📦 lands:analyze started.');
 

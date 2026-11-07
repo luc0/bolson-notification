@@ -44,7 +44,7 @@ Sources ──► Harvesting ──► Rentals ◄── Subscriptions ──►
 
 | Subdominio | Descripción |
 |---|---|
-| Catálogo de fuentes | Lista de sitios en `config/sources.php` (clave, URL del listado, URL base de los links, selector a esperar). Alquileres en `sites` (`Source::all()` / `Source::find()`), terrenos en `land_sites` (`Source::lands()`). |
+| Catálogo de fuentes | Lista de sitios en `config/sources.php` (clave, URL del listado, URL base de los links, selector a esperar). Alquileres en `rental_sites` (`Source::rentals()` / `Source::findRental()`), terrenos en `land_sites` (`Source::lands()`). |
 | Tipo de fuente | `SourceType`: inmobiliaria (`agency`, publica solo lo suyo) o portal (`portal`: Properati, MercadoLibre, agrega de muchos y puede repetir avisos). |
 | Configuración por sitio | Particularidades de cada sitio: si renderiza con JS (`wait_for`), cómo se arman los links, etc. |
 
@@ -65,20 +65,33 @@ Dónde se guardan las capturas y snapshots no es parte de Sources sino de Harves
 | Detección de alquilados | Revisar la foto del aviso para detectar carteles de "ALQUILADO" o "RESERVADO". |
 | Deduplicación | (Futuro, con portales) Reconocer el mismo aviso publicado en varias fuentes. |
 
-**Hoy:** `config/harvesting.php`, `app/Domains/Harvesting/`:
+**Hoy:** `config/harvesting.php`, `app/Domains/Harvesting/`. Lo de cada catálogo va en su carpeta (`Rentals/`, `Lands/`) y lo compartido queda en la raíz:
 
 | Clase | Subdominio |
 |---|---|
-| `Contracts/RentalScraper`, `Services/BrowserRentalScraper`, `Services/FakeRentalScraper` | Captura (orquesta todo el proceso de un sitio) |
-| `Data/Capture`, `Support/CaptureStore` | Captura y detección de cambios |
-| `Services/ListingExtractor` | Extracción |
-| `Services/RentalImporter`, `Data/ImportResult` | Importación de los avisos en Rentals (alta, reactivación y desactivación) |
+| `Services/SourceCapturer` | Captura (corre `scripts/scrape.cjs`) |
+| `Data/Capture`, `Support/CaptureStore` | Captura y detección de cambios (carpetas por catálogo: `CaptureStore::forRentals()` / `forLands()`) |
+| `Services/AiListingExtractor` | Base de la extracción con IA (pedido con schema estricto, reintento y validación) |
+| `Data/ImportResult` | Resultado de una importación |
+
+**Alquileres** (`Harvesting/Rentals/`):
+
+| Clase | Subdominio |
+|---|---|
+| `Contracts/RentalScraper`, `Services/BrowserRentalScraper`, `Services/FakeRentalScraper` | Orquesta todo el proceso de un sitio |
+| `Services/RentalListingExtractor` | Extracción |
+| `Services/RentalImporter` | Importación de los avisos en Rentals (alta, reactivación y desactivación) |
 | `Services/RentalDetailService`, `RentalDetailFetcher`, `RentalDetailExtractor` | Enriquecimiento |
 | `Services/RentalImageChecker` | Detección de alquilados |
 | `Services/RentalClassifier` | Ciudad, barrio y uso (para vivir / comercial) al importar: texto del aviso → valor ya conocido (detalle) → `default_city` de la fuente |
-| `Services/SourceCapturer` | Captura compartida por alquileres y terrenos (corre `scripts/scrape.cjs`) |
-| `Services/AiListingExtractor` | Base de la extracción con IA (pedido con schema estricto, reintento y validación); la extienden `ListingExtractor` y `LandListingExtractor` |
-| `Services/LandScraper`, `LandListingExtractor`, `LandImporter` | Terrenos: captura (en `captures/lands`), extracción e importación en Lands (alta, reactivación y desactivación). Sin enriquecimiento ni notificaciones por ahora. |
+
+**Terrenos** (`Harvesting/Lands/`):
+
+| Clase | Subdominio |
+|---|---|
+| `Services/BrowserLandScraper` | Orquesta todo el proceso de un sitio (capturas en `captures/lands`) |
+| `Services/LandListingExtractor` | Extracción |
+| `Services/LandImporter` | Importación en Lands (alta, reactivación y desactivación). Sin enriquecimiento ni notificaciones por ahora. |
 
 Usa `App\Integrations\Groq\GroqClient` para hablar con la IA.
 
@@ -109,7 +122,7 @@ Usa `App\Integrations\Groq\GroqClient` para hablar con la IA.
 | Superficie | `area` en m² (la IA convierte hectáreas); se muestra en ha desde 1 ha. |
 | Búsqueda | `Queries/LandSearch`: incluir no disponibles y orden (`LandSort`: más nuevos, precio con dólares primero, más grandes). |
 
-**Hoy:** `app/Domains/Lands/` (`Models/Land`, `Enums/LandSort`, `Queries/LandSearch`). Pantalla: pestaña "Terrenos" (`/terrenos`, `LandController`, `resources/views/lands`). Comando: `lands:analyze` (todos los días a las 18:00).
+**Hoy:** `app/Domains/Lands/` (`Models/Land`, `Enums/LandSort`, `Queries/LandSearch`). Pantalla: pestaña "Terrenos" (`/terrenos`, `LandController`, `resources/views/lands`). Comando: `lands:analyze` (en producción una vez por semana, los lunes a las 18:00).
 
 Pendiente: ciudad/barrio para filtrar (hoy `City` vive en Rentals; habría que moverlo a un lugar compartido para no acoplar Lands a Rentals) y notificaciones.
 

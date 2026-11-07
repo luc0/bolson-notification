@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Domains\Harvesting\Services;
+namespace App\Domains\Harvesting\Rentals\Services;
 
 use App\Domains\Rentals\Enums\City;
 use App\Domains\Rentals\Models\Rental;

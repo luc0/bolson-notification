@@ -1,8 +1,9 @@
 <?php
 
-namespace App\Domains\Harvesting\Services;
+namespace App\Domains\Harvesting\Rentals\Services;
 
-use App\Domains\Harvesting\Contracts\RentalScraper;
+use App\Domains\Harvesting\Rentals\Contracts\RentalScraper;
+use App\Domains\Harvesting\Services\SourceCapturer;
 use App\Domains\Harvesting\Support\CaptureStore;
 use App\Domains\Sources\Data\Source;
 use Illuminate\Support\Facades\Log;
@@ -13,16 +14,19 @@ use Illuminate\Support\Facades\Log;
  */
 class BrowserRentalScraper implements RentalScraper
 {
+    private readonly CaptureStore $captureStore;
+
     public function __construct(
         private readonly SourceCapturer $sourceCapturer,
-        private readonly CaptureStore $captureStore,
-        private readonly ListingExtractor $listingExtractor,
+        private readonly RentalListingExtractor $rentalListingExtractor,
         private readonly RentalImporter $rentalImporter,
-    ) {}
+    ) {
+        $this->captureStore = CaptureStore::forRentals();
+    }
 
     public function scrape(): array
     {
-        $sources = Source::all();
+        $sources = Source::rentals();
 
         $captured = $this->sourceCapturer->capture($sources, $this->captureStore->capturePath());
         if (! $captured) {
@@ -53,7 +57,7 @@ class BrowserRentalScraper implements RentalScraper
         }
 
         Log::info("📤 Sending {$source->key} to AI for analysis.");
-        $extractedRentals = $this->listingExtractor->extract($source, $capture->html);
+        $extractedRentals = $this->rentalListingExtractor->extract($source, $capture->html);
 
         $aiFailed = $extractedRentals === null;
         if ($aiFailed) {

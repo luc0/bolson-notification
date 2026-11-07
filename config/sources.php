@@ -8,8 +8,8 @@
 | Single source of truth for the sites we scrape (Sources domain).
 | To add a site, add it here only.
 |
-| - sites: rental listings (Rentals), read with Source::all().
-| - land_sites: lands for sale (Lands), read with Source::lands(). Same keys as `sites` are fine:
+| - rental_sites: rental listings (Rentals), read with Source::rentals().
+| - land_sites: lands for sale (Lands), read with Source::lands(). Same keys as `rental_sites` are fine:
 |   land captures are stored in their own folder (config/harvesting.php).
 |
 | - key (array key): identifies the source (also used for capture file names).
@@ -24,7 +24,7 @@
 
 return [
 
-    'sites' => [
+    'rental_sites' => [
 
         'anezca' => [
             'name' => 'Anezca Propiedades',

@@ -1,6 +1,6 @@
 <?php
 
-use App\Domains\Harvesting\Services\BrowserRentalScraper;
+use App\Domains\Harvesting\Rentals\Services\BrowserRentalScraper;
 use App\Domains\Rentals\Models\Rental;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
@@ -9,9 +9,9 @@ use Illuminate\Support\Facades\Process;
 beforeEach(function () {
     $this->tempPath = storage_path('framework/testing/scraper-'.uniqid());
     config([
-        'harvesting.capture_path' => "{$this->tempPath}/captures",
-        'harvesting.snapshot_path' => "{$this->tempPath}/snapshots",
-        'sources.sites' => [
+        'harvesting.rentals.capture_path' => "{$this->tempPath}/captures",
+        'harvesting.rentals.snapshot_path' => "{$this->tempPath}/snapshots",
+        'sources.rental_sites' => [
             'example' => [
                 'name' => 'Example', 'listing_url' => 'https://example.com/alquileres',
                 'link_base_url' => 'https://example.com/p/', 'wait_for' => '.item',
@@ -30,7 +30,7 @@ beforeEach(function () {
         ]]])],
         'finish_reason' => 'stop',
     ]]])]);
-    app()->instance(\App\Domains\Harvesting\Services\RentalImageChecker::class, Mockery::mock(\App\Domains\Harvesting\Services\RentalImageChecker::class, ['isRented' => false]));
+    app()->instance(\App\Domains\Harvesting\Rentals\Services\RentalImageChecker::class, Mockery::mock(\App\Domains\Harvesting\Rentals\Services\RentalImageChecker::class, ['isRented' => false]));
 });
 
 afterEach(fn () => File::deleteDirectory($this->tempPath));

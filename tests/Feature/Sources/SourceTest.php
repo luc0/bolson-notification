@@ -4,7 +4,7 @@ use App\Domains\Sources\Data\Source;
 use App\Domains\Sources\Enums\SourceType;
 
 beforeEach(function () {
-    config(['sources.sites' => [
+    config(['sources.rental_sites' => [
         'agency' => [
             'name' => 'Agency', 'type' => 'agency', 'listing_url' => 'https://agency.com/alquileres',
             'link_base_url' => 'https://agency.com/p/', 'wait_for' => '.item',
@@ -16,8 +16,8 @@ beforeEach(function () {
     ]]);
 });
 
-it('reads all the sources from config', function () {
-    $sources = Source::all();
+it('reads the rental sources from config', function () {
+    $sources = Source::rentals();
 
     expect($sources)->toHaveCount(2)
         ->and($sources[0])->toEqual(new Source('agency', 'Agency', SourceType::Agency, 'https://agency.com/alquileres', 'https://agency.com/p/', '.item'))
@@ -25,19 +25,19 @@ it('reads all the sources from config', function () {
         ->and($sources[1]->waitFor)->toBeNull();
 });
 
-it('finds a source by key', function () {
-    expect(Source::find('portal')->name)->toBe('Portal');
+it('finds a rental source by key', function () {
+    expect(Source::findRental('portal')->name)->toBe('Portal');
 });
 
 it('fails for unknown sources', function () {
-    Source::find('missing');
-})->throws(InvalidArgumentException::class, 'Unknown source [missing].');
+    Source::findRental('missing');
+})->throws(InvalidArgumentException::class, 'Unknown rental source [missing].');
 
-it('has a valid definition for every configured site', function () {
+it('has a valid definition for every configured rental site', function () {
     // beforeEach replaced them with fixtures: load the real ones.
-    config(['sources.sites' => (require config_path('sources.php'))['sites']]);
+    config(['sources.rental_sites' => (require config_path('sources.php'))['rental_sites']]);
 
-    expect(Source::all())->not->toBeEmpty()
+    expect(Source::rentals())->not->toBeEmpty()
         ->each(fn ($source) => $source->listingUrl->toStartWith('https://'));
 });
 
@@ -48,7 +48,7 @@ it('reads the land sources apart from the rental ones', function () {
 
     expect(Source::lands())->toHaveCount(1)
         ->and(Source::lands()[0]->listingUrl)->toBe('https://agency.com/terrenos')
-        ->and(Source::all())->toHaveCount(2);
+        ->and(Source::rentals())->toHaveCount(2);
 });
 
 it('has a valid definition for every configured land site', function () {

@@ -18,5 +18,5 @@ if ($isDebugMode) {
 
 $analyzeRentals->weekdays()->at('17:00');
 
-// Lands change slowly and nobody is notified: once a day, after the rentals run.
-$analyzeLands->daily()->at('18:00');
+// Lands change slowly and nobody is notified: once a week, after the rentals run.
+$analyzeLands->weeklyOn(1, '18:00');

@@ -5,7 +5,7 @@ use App\Domains\Rentals\Enums\PropertyUse;
 use App\Domains\Rentals\Models\Rental;
 
 it('classifies existing rentals without AI', function () {
-    config(['sources.sites' => [
+    config(['sources.rental_sites' => [
         'agency' => ['name' => 'Agency', 'listing_url' => 'https://agency.com/l', 'link_base_url' => 'https://agency.com', 'default_city' => 'el_bolson'],
     ]]);
     $fromText = Rental::create(['source' => 'https://a.com/1', 'content' => 'Local comercial', 'description' => '', 'location' => 'El Bolsón, Mallín Ahogado']);

@@ -1,7 +1,8 @@
 <?php
 
-namespace App\Domains\Harvesting\Services;
+namespace App\Domains\Harvesting\Lands\Services;
 
+use App\Domains\Harvesting\Services\SourceCapturer;
 use App\Domains\Harvesting\Support\CaptureStore;
 use App\Domains\Sources\Data\Source;
 use Illuminate\Support\Facades\Log;
@@ -10,7 +11,7 @@ use Illuminate\Support\Facades\Log;
  * Captures every land source with Puppeteer, then extracts and imports the lands of the sources
  * whose capture changed since the last successful run. Captures live apart from the rental ones.
  */
-class LandScraper
+class BrowserLandScraper
 {
     private readonly CaptureStore $captureStore;
 

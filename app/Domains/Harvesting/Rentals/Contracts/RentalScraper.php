@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Domains\Harvesting\Contracts;
+namespace App\Domains\Harvesting\Rentals\Contracts;
 
 interface RentalScraper
 {

@@ -1,6 +1,6 @@
 <?php
 
-use App\Domains\Harvesting\Services\ListingExtractor;
+use App\Domains\Harvesting\Rentals\Services\RentalListingExtractor;
 use App\Domains\Sources\Data\Source;
 use App\Domains\Sources\Enums\SourceType;
 use Illuminate\Support\Facades\Http;
@@ -19,7 +19,7 @@ $site = new Source('example', 'Example', SourceType::Agency, 'https://example.co
 it('returns the rentals array and requests a strict json schema', function () use ($site) {
     fakeGroqResponse(json_encode(['rentals' => [['Content' => 'Depto', 'Link' => 'https://example.com/p/1', 'Price' => 'Consultar']]]));
 
-    $result = app(ListingExtractor::class)->extract($site, '<html></html>');
+    $result = app(RentalListingExtractor::class)->extract($site, '<html></html>');
 
     expect($result)->toHaveCount(1)
         ->and($result[0]['Price'])->toBe('Consultar');
@@ -31,25 +31,25 @@ it('returns the rentals array and requests a strict json schema', function () us
 it('returns null when the AI request fails', function () use ($site) {
     Http::fake(['api.groq.com/*' => Http::response(['error' => 'model_not_found'], 404)]);
 
-    expect(app(ListingExtractor::class)->extract($site, '<html></html>'))->toBeNull();
+    expect(app(RentalListingExtractor::class)->extract($site, '<html></html>'))->toBeNull();
 });
 
 it('returns null when the model refuses', function () use ($site) {
     fakeGroqResponse('I’m sorry, but I can’t provide that.');
 
-    expect(app(ListingExtractor::class)->extract($site, '<html></html>'))->toBeNull();
+    expect(app(RentalListingExtractor::class)->extract($site, '<html></html>'))->toBeNull();
 });
 
 it('returns null when the model returns no rentals', function () use ($site) {
     fakeGroqResponse('{"rentals": []}');
 
-    expect(app(ListingExtractor::class)->extract($site, '<html></html>'))->toBeNull();
+    expect(app(RentalListingExtractor::class)->extract($site, '<html></html>'))->toBeNull();
 });
 
 it('returns null when the response was truncated', function () use ($site) {
     fakeGroqResponse('{"rentals": [{"Content": "Dep', 'length');
 
-    expect(app(ListingExtractor::class)->extract($site, '<html></html>'))->toBeNull();
+    expect(app(RentalListingExtractor::class)->extract($site, '<html></html>'))->toBeNull();
 });
 
 it('retries once when the output does not match the schema', function () use ($site) {
@@ -57,13 +57,13 @@ it('retries once when the output does not match the schema', function () use ($s
         ->push(['error' => ['code' => 'json_validate_failed']], 400)
         ->push(['choices' => [['message' => ['content' => '{"rentals": [{"Link": "https://example.com/p/1"}]}'], 'finish_reason' => 'stop']]]);
 
-    expect(app(ListingExtractor::class)->extract($site, '<html></html>'))->toHaveCount(1);
+    expect(app(RentalListingExtractor::class)->extract($site, '<html></html>'))->toHaveCount(1);
     Http::assertSentCount(2);
 });
 
 it('does not retry other errors', function () use ($site) {
     Http::fake(['api.groq.com/*' => Http::response(['error' => ['code' => 'model_not_found']], 404)]);
 
-    expect(app(ListingExtractor::class)->extract($site, '<html></html>'))->toBeNull();
+    expect(app(RentalListingExtractor::class)->extract($site, '<html></html>'))->toBeNull();
     Http::assertSentCount(1);
 });

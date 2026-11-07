@@ -25,9 +25,9 @@ final readonly class Source
      *
      * @return self[]
      */
-    public static function all(): array
+    public static function rentals(): array
     {
-        return self::fromConfigList(config('sources.sites'));
+        return self::fromConfigList(config('sources.rental_sites', []));
     }
 
     /**
@@ -40,19 +40,19 @@ final readonly class Source
         return self::fromConfigList(config('sources.land_sites', []));
     }
 
-    public static function find(string $key): self
+    public static function findRental(string $key): self
     {
-        $site = config("sources.sites.{$key}");
+        $site = config("sources.rental_sites.{$key}");
         if ($site === null) {
-            throw new InvalidArgumentException("Unknown source [{$key}].");
+            throw new InvalidArgumentException("Unknown rental source [{$key}].");
         }
 
         return self::fromConfig($key, $site);
     }
 
-    public static function findByListingUrl(string $listingUrl): ?self
+    public static function findRentalByListingUrl(string $listingUrl): ?self
     {
-        return collect(self::all())->first(fn (self $source) => $source->listingUrl === $listingUrl);
+        return collect(self::rentals())->first(fn (self $source) => $source->listingUrl === $listingUrl);
     }
 
     /**

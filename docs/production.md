@@ -77,7 +77,7 @@ En Forge → Scheduler, un cron cada minuto:
 php /home/forge/<sitio>/artisan schedule:run
 ```
 
-Corre `rentals:analyze` los días hábiles a las 17:00 y `lands:analyze` (terrenos, sin notificaciones) todos los días a las 18:00 (`routes/console.php`). Para ver qué está programado:
+Corre `rentals:analyze` los días hábiles a las 17:00 y `lands:analyze` (terrenos, sin notificaciones) una vez por semana, los lunes a las 18:00 (`routes/console.php`). Para ver qué está programado:
 
 ```bash
 php artisan schedule:list

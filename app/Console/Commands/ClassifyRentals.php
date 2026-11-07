@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Domains\Harvesting\Services\RentalClassifier;
+use App\Domains\Harvesting\Rentals\Services\RentalClassifier;
 use App\Domains\Rentals\Models\Rental;
 use App\Domains\Sources\Data\Source;
 use Illuminate\Console\Command;
@@ -15,7 +15,7 @@ class ClassifyRentals extends Command
 
     public function handle(RentalClassifier $rentalClassifier): int
     {
-        Rental::query()->each(fn (Rental $rental) => $rentalClassifier->classify($rental, Source::findByListingUrl((string) $rental->site_path)));
+        Rental::query()->each(fn (Rental $rental) => $rentalClassifier->classify($rental, Source::findRentalByListingUrl((string) $rental->site_path)));
 
         $this->table(['City', 'Rentals'], $this->countBy('city', fn (Rental $row) => $row->city?->label()));
         $this->table(['Property use', 'Rentals'], $this->countBy('property_use', fn (Rental $row) => $row->property_use?->label()));

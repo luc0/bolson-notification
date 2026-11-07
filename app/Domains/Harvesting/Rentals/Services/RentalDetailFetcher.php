@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Domains\Harvesting\Services;
+namespace App\Domains\Harvesting\Rentals\Services;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;

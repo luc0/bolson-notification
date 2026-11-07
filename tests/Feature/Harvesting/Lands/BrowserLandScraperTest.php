@@ -1,6 +1,6 @@
 <?php
 
-use App\Domains\Harvesting\Services\LandScraper;
+use App\Domains\Harvesting\Lands\Services\BrowserLandScraper;
 use App\Domains\Lands\Models\Land;
 use App\Domains\Rentals\Models\Rental;
 use Illuminate\Support\Facades\File;
@@ -51,7 +51,7 @@ beforeEach(function () {
 afterEach(fn () => File::deleteDirectory($this->tempPath));
 
 it('passes the land sites and their own capture folder to the node scraper', function () {
-    app(LandScraper::class)->scrape();
+    app(BrowserLandScraper::class)->scrape();
 
     Process::assertRan(function ($process) {
         $input = json_decode($process->input, true);
@@ -62,7 +62,7 @@ it('passes the land sites and their own capture folder to the node scraper', fun
 });
 
 it('stores new lands with parsed price, area and image, without touching rentals', function () {
-    expect(app(LandScraper::class)->scrape())->toHaveCount(1);
+    expect(app(BrowserLandScraper::class)->scrape())->toHaveCount(1);
 
     $land = Land::first();
     expect($land->content)->toBe('Lote en Mallín Ahogado')
@@ -78,7 +78,7 @@ it('stores new lands with parsed price, area and image, without touching rentals
 });
 
 it('skips unchanged captures', function () {
-    $scraper = app(LandScraper::class);
+    $scraper = app(BrowserLandScraper::class);
     $scraper->scrape();
     $scraper->scrape();
 
@@ -86,7 +86,7 @@ it('skips unchanged captures', function () {
 });
 
 it('deactivates lands that are no longer listed and reactivates them when they come back', function () {
-    $scraper = app(LandScraper::class);
+    $scraper = app(BrowserLandScraper::class);
     fakeLandsResponse([landItem(), landItem(['Link' => 'https://example.com/p/2'])]);
     $scraper->scrape();
 
@@ -104,7 +104,7 @@ it('deactivates lands that are no longer listed and reactivates them when they c
 it('stores a zero area as unknown', function () {
     fakeLandsResponse([landItem(['Area' => 0])]);
 
-    app(LandScraper::class)->scrape();
+    app(BrowserLandScraper::class)->scrape();
 
     expect(Land::first()->area)->toBeNull();
 });
@@ -112,7 +112,7 @@ it('stores a zero area as unknown', function () {
 it('treats placeholder sale prices as unknown', function () {
     fakeLandsResponse([landItem(['Price' => 'U\$S 200'])]);
 
-    app(LandScraper::class)->scrape();
+    app(BrowserLandScraper::class)->scrape();
 
     expect(Land::first())->price->toBe('U\$S 200')->price_amount->toBeNull()->price_currency->toBeNull();
 });
@@ -120,7 +120,7 @@ it('treats placeholder sale prices as unknown', function () {
 it('does nothing when the node scraper fails', function () {
     Process::fake(['*' => Process::result(errorOutput: 'boom', exitCode: 1)]);
 
-    expect(app(LandScraper::class)->scrape())->toBe([]);
+    expect(app(BrowserLandScraper::class)->scrape())->toBe([]);
     Http::assertNothingSent();
 });
 

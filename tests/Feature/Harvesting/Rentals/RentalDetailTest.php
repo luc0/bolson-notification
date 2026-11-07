@@ -1,8 +1,8 @@
 <?php
 
-use App\Domains\Harvesting\Services\RentalDetailExtractor;
-use App\Domains\Harvesting\Services\RentalDetailFetcher;
-use App\Domains\Harvesting\Services\RentalDetailService;
+use App\Domains\Harvesting\Rentals\Services\RentalDetailExtractor;
+use App\Domains\Harvesting\Rentals\Services\RentalDetailFetcher;
+use App\Domains\Harvesting\Rentals\Services\RentalDetailService;
 use App\Domains\Members\Models\User;
 use App\Domains\Rentals\Models\Rental;
 use Illuminate\Support\Facades\Http;

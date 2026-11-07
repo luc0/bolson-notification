@@ -1,6 +1,6 @@
 <?php
 
-use App\Domains\Harvesting\Services\RentalImporter;
+use App\Domains\Harvesting\Rentals\Services\RentalImporter;
 use App\Domains\Rentals\Enums\City;
 use App\Domains\Rentals\Models\Rental;
 use App\Domains\Sources\Data\Source;
@@ -64,7 +64,7 @@ it('only returns new rentals and deactivates missing ones', function () {
 
 function fakeImageChecker(?bool $answer): object
 {
-    $checker = new class($answer) extends \App\Domains\Harvesting\Services\RentalImageChecker
+    $checker = new class($answer) extends \App\Domains\Harvesting\Rentals\Services\RentalImageChecker
     {
         public array $checkedUrls = [];
 
@@ -77,7 +77,7 @@ function fakeImageChecker(?bool $answer): object
             return $this->answer;
         }
     };
-    app()->instance(\App\Domains\Harvesting\Services\RentalImageChecker::class, $checker);
+    app()->instance(\App\Domains\Harvesting\Rentals\Services\RentalImageChecker::class, $checker);
 
     return $checker;
 }

@@ -8,15 +8,20 @@ use Illuminate\Support\Facades\File;
 
 /**
  * Captures written by scripts/scrape.cjs and snapshots of the last fully processed capture
- * of each source (see config/harvesting.php). Rentals use the default folders; lands use their own
- * (`forLands()`), so an agency key can appear in both catalogs.
+ * of each source (see config/harvesting.php). Each catalog has its own folders (`forRentals()`, `forLands()`),
+ * so an agency key can appear in both.
  */
 class CaptureStore
 {
     public function __construct(
-        private readonly ?string $capturePath = null,
-        private readonly ?string $snapshotPath = null,
+        private readonly string $capturePath,
+        private readonly string $snapshotPath,
     ) {}
+
+    public static function forRentals(): self
+    {
+        return new self(config('harvesting.rentals.capture_path'), config('harvesting.rentals.snapshot_path'));
+    }
 
     public static function forLands(): self
     {
@@ -25,7 +30,7 @@ class CaptureStore
 
     public function capturePath(): string
     {
-        return $this->capturePath ?? config('harvesting.capture_path');
+        return $this->capturePath;
     }
 
     public function find(Source $source): ?Capture
@@ -53,17 +58,12 @@ class CaptureStore
      */
     public function markProcessed(Source $source, Capture $capture): void
     {
-        File::ensureDirectoryExists($this->snapshotPath());
+        File::ensureDirectoryExists($this->snapshotPath);
         File::put($this->snapshotFile($source), $capture->snapshot());
-    }
-
-    private function snapshotPath(): string
-    {
-        return $this->snapshotPath ?? config('harvesting.snapshot_path');
     }
 
     private function snapshotFile(Source $source): string
     {
-        return $this->snapshotPath()."/{$source->key}.html";
+        return $this->snapshotPath."/{$source->key}.html";
     }
 }
