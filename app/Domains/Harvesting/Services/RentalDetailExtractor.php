@@ -23,6 +23,13 @@ class RentalDetailExtractor
 
     private const USER_PROMPT = <<<'EOT'
         Extraé los datos de esta propiedad:
+        - "Title": título corto y descriptivo para un listado (máximo 70 caracteres), en español. Mayúscula solo al inicio y en nombres propios (barrios, calles).
+          Que se entienda cómo es la propiedad: tipo, tamaño (preferí dormitorios; si no, ambientes o m²), lo que la distingue según la descripción (ej: amoblado, con parque, con patio, con cochera, luminoso, frente al río) y el barrio o paraje si figura.
+          Abreviaturas: "Depto." es departamento, "Dpto." también.
+          Usá el "Título del aviso" como dato pero reescribilo: no lo copies, y nunca en mayúsculas sostenidas.
+          No pongas la ciudad (ya se muestra aparte): "en el centro" alcanza.
+          Ejemplos: "Casa de 2 dormitorios con parque en Mallín Ahogado", "Monoambiente amoblado en el centro", "Local de 45 m² sobre Av. Belgrano".
+          Solo con datos que figuran en la página: no agregues adjetivos ni rasgos que no estén. "A estrenar" solo si lo dice la descripción. Sin precio, sin nombre de la inmobiliaria, sin "en alquiler", sin emojis.
         - "CoveredArea": superficie cubierta en m² (número). null si no figura o es 0.
         - "TotalArea": superficie total del terreno/lote en m² (número). null si no figura o es 0.
         - "Rooms": cantidad de ambientes. null si no figura.
@@ -53,6 +60,8 @@ class RentalDetailExtractor
         'ParkingSpaces' => '/cochera|garaje|garage|estacionamiento/iu',
         'AgeYears' => '/antig[üu]edad|estrenar/iu',
     ];
+
+    private const MAX_TITLE_LENGTH = 90;
 
     public function __construct(private readonly GroqClient $groq) {}
 
@@ -115,7 +124,25 @@ class RentalDetailExtractor
         $isNeighborhoodOnPage = $neighborhood !== '' && str_contains($normalizedPage, Str::of($neighborhood)->ascii()->lower()->squish()->toString());
         $detail['Neighborhood'] = $isNeighborhoodOnPage ? $neighborhood : null;
 
+        $detail['Title'] = $this->cleanTitle($detail['Title'] ?? null);
+
         return $detail;
+    }
+
+    /**
+     * A title with a price, in capitals or longer than a listing line is discarded: the agency's title is shown instead.
+     */
+    private function cleanTitle(?string $title): ?string
+    {
+        $title = Str::of((string) $title)->squish()->rtrim('.')->toString();
+        $hasPrice = preg_match('/\$|\busd\b|u\$s/iu', $title) === 1;
+        $isShouting = preg_match_all('/\p{Lu}/u', $title) > mb_strlen($title) / 2;
+        $isUsable = $title !== '' && mb_strlen($title) <= self::MAX_TITLE_LENGTH && ! $hasPrice && ! $isShouting;
+        if (! $isUsable) {
+            return null;
+        }
+
+        return Str::ucfirst($title);
     }
 
     private function responseSchema(): array
@@ -126,6 +153,7 @@ class RentalDetailExtractor
         return [
             'type' => 'object',
             'properties' => [
+                'Title' => ['type' => ['string', 'null']],
                 'CoveredArea' => $nullableNumber,
                 'TotalArea' => $nullableNumber,
                 'Rooms' => $nullableInteger,
@@ -138,7 +166,7 @@ class RentalDetailExtractor
                 'Neighborhood' => ['type' => ['string', 'null']],
                 'Services' => ['type' => 'array', 'items' => ['type' => 'string', 'enum' => Utility::values()]],
             ],
-            'required' => ['CoveredArea', 'TotalArea', 'Rooms', 'Bedrooms', 'Bathrooms', 'ParkingSpaces', 'AgeYears', 'City', 'Neighborhood', 'PropertyUse', 'Services'],
+            'required' => ['Title', 'CoveredArea', 'TotalArea', 'Rooms', 'Bedrooms', 'Bathrooms', 'ParkingSpaces', 'AgeYears', 'City', 'Neighborhood', 'PropertyUse', 'Services'],
             'additionalProperties' => false,
         ];
     }

@@ -3,6 +3,7 @@
 use App\Domains\Harvesting\Services\RentalDetailExtractor;
 use App\Domains\Harvesting\Services\RentalDetailFetcher;
 use App\Domains\Harvesting\Services\RentalDetailService;
+use App\Domains\Members\Models\User;
 use App\Domains\Rentals\Models\Rental;
 use Illuminate\Support\Facades\Http;
 
@@ -18,7 +19,7 @@ function fakeDetailAnswer(array $detail): void
 function detailAnswer(array $overrides = []): array
 {
     return [
-        'CoveredArea' => 45, 'TotalArea' => null, 'Rooms' => 2, 'Bedrooms' => 1, 'Bathrooms' => 1,
+        'Title' => 'Departamento de 1 dormitorio con cochera', 'CoveredArea' => 45, 'TotalArea' => null, 'Rooms' => 2, 'Bedrooms' => 1, 'Bathrooms' => 1,
         'ParkingSpaces' => 1, 'AgeYears' => 6, 'City' => null, 'Neighborhood' => null, 'PropertyUse' => null,
         'Services' => ['running_water', 'sewer', 'natural_gas'],
         ...$overrides,
@@ -78,6 +79,7 @@ it('stores the detail and prefers its values over the listing card', function ()
         ->and($rental->bathrooms)->toBe(1)
         ->and($rental->parking_spaces)->toBe(1)
         ->and($rental->age_years)->toBe(6)
+        ->and($rental->title)->toBe('Departamento de 1 dormitorio con cochera')
         ->and($rental->services)->toBe(['running_water', 'sewer', 'natural_gas'])
         ->and($rental->details_fetched_at)->not->toBeNull();
 });
@@ -141,3 +143,37 @@ it('uses the detail city only when the rental has none', function (?string $curr
     'without city' => [null, 'lago_puelo'],
     'with city from the listing' => ['el_bolson', 'el_bolson'],
 ]);
+
+it('cleans the ai title and drops it when it has a price or is too long', function (?string $aiTitle, ?string $expected) {
+    fakeDetailAnswer(detailAnswer(['Title' => $aiTitle]));
+
+    $detail = app(RentalDetailExtractor::class)->extract(DETAIL_PAGE_TEXT, 'https://example.com/p/1');
+
+    expect($detail['Title'])->toBe($expected);
+})->with([
+    'trimmed and capitalized' => ['  casa con parque en  Mallín Ahogado. ', 'Casa con parque en Mallín Ahogado'],
+    'with price' => ['Casa de 2 dormitorios a $500.000', null],
+    'too long' => [str_repeat('casa linda ', 12), null],
+    'in capitals' => ['DEPARTAMENTO DE 2 DORMITORIOS EN LOS ALAMOS', null],
+    'empty' => ['', null],
+]);
+
+it('backfills only rentals without an ai title', function () {
+    fakeDetailAnswer(detailAnswer());
+    $fetcher = Mockery::mock(RentalDetailFetcher::class);
+    $fetcher->shouldReceive('fetchText')->once()->andReturn(DETAIL_PAGE_TEXT);
+    app()->instance(RentalDetailFetcher::class, $fetcher);
+    $withoutTitle = rentalForDetail(['details_fetched_at' => now()]);
+    rentalForDetail(['source' => 'https://example.com/p/2', 'details_fetched_at' => now(), 'title' => 'Casa']);
+
+    expect(app(RentalDetailService::class)->enrichPending(missingTitlesOnly: true))->toBe(1)
+        ->and($withoutTitle->refresh()->title)->toBe('Departamento de 1 dormitorio con cochera');
+});
+
+it('shows the ai title on the card and keeps the agency title as tooltip', function () {
+    rentalForDetail(['content' => 'Departamento en Alquiler en El Bolson, Rio Negro', 'title' => 'Departamento de 1 dormitorio con cochera']);
+
+    $this->actingAs(User::factory()->create())->get(route('rentals.index'))
+        ->assertSee('Departamento de 1 dormitorio con cochera')
+        ->assertSee('title="Departamento en Alquiler en El Bolson, Rio Negro"', false);
+});

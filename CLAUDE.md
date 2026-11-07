@@ -31,6 +31,7 @@ Laravel app that scrapes rental listings (El Bolsón / Lago Puelo), processes th
 - `Rental`:
   - `source` → URL of the specific listing (item), stored decoded (`app/Domains/Rentals/Support/RentalLink.php`).
   - `site_path` → `listing_url` of the source it was scraped from.
+  - `content` → the agency's title; `title` → short descriptive title written by the AI from the detail page (`RentalDetailExtractor`, shown on the card, falls back to `content`). Backfill: `rentals:fetch-details --missing-titles`.
   - `source_path` → unused, pending removal.
   - `price` (raw text) + `price_amount` / `price_currency` (parsed via `app/Domains/Rentals/Support/PriceParser.php`).
   - Availability: `active` (still listed on the site) + `rented_at` (photo stamped "ALQUILADO"). Use `Rental::available()`.

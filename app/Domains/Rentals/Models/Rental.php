@@ -18,6 +18,7 @@ class Rental extends Model
     protected $fillable = [
         'source',
         'content',
+        'title',
         'description',
         'price',
         'price_amount',

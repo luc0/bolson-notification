@@ -28,17 +28,17 @@
         </div>
         <div class="flex justify-between items-start mb-3">
             @if($rental->source)
-                <h3 class="card-title">
+                <h3 class="card-title" @if($rental->title) title="{{ $rental->content }}" @endif>
                     <a href="{{ $rental->source }}" 
                        data-fallback-url="{{ $rental->site_path }}" 
                        class="rental-link hover:text-blue-600 hover:underline transition-colors duration-200" 
                        target="_blank" 
                        rel="noopener noreferrer">
-                        {{ $rental->content }}
+                        {{ $rental->title ?: $rental->content }}
                     </a>
                 </h3>
             @else
-                <h3 class="card-title">{{ $rental->content }}</h3>
+                <h3 class="card-title" @if($rental->title) title="{{ $rental->content }}" @endif>{{ $rental->title ?: $rental->content }}</h3>
             @endif
             <!-- <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">{{ $rental->source }}</span> -->
         </div>

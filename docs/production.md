@@ -108,10 +108,12 @@ Esta rama trae varias migraciones con cambios de datos. Pasos:
    - `add_detail_columns`: superficie, dormitorios, cocheras, antigüedad, servicios.
    - `use_morph_alias_for_push_subscriptions` y `link_subscribers_to_users`: `anon_subscribers` pasa a `subscribers` con `user_id`; las suscripciones push existentes siguen funcionando.
    - `add_city_and_neighborhood` y `add_property_use`: columnas `city`, `neighborhood` y `property_use` (vacías hasta el paso 4).
+   - `add_title`: título descriptivo generado por la IA (vacío hasta el paso 4; mientras tanto se muestra el título de la inmobiliaria).
 4. Clasificar los avisos existentes (ciudad, barrio y uso; sin IA, instantáneo) y después completar el detalle (tarda unos minutos):
    ```bash
    php artisan rentals:classify
    php artisan rentals:fetch-details
+   php artisan rentals:fetch-details --missing-titles   # títulos IA de los avisos que ya tenían detalle (1 llamada c/u)
    ```
 5. Correr una vez el análisis completo y revisar el log:
    ```bash
@@ -142,7 +144,7 @@ Esta rama trae varias migraciones con cambios de datos. Pasos:
 | Tema | Qué pasa | Qué hacer |
 |---|---|---|
 | Modelos de Groq | Groq da de baja modelos (ya pasó con `llama-4-scout`). Todos los sitios fallan con `model_not_found`. | Cambiar `GROQ_MODEL` / `GROQ_VISION_MODEL` y `config:cache`. Los sitios se reintentan solos en la próxima corrida. |
-| Costo de IA | Cada sitio con cambios = 1 llamada; cada aviso nuevo = 1 llamada de detalle + 1 de foto. Del Agua cambia su HTML en cada corrida y se re-analiza siempre. | Ver consumo en console.groq.com (key que termina en la del `.env`). No dejar `ANALYZE_RENTALS_DEBUG_MODE=true`. |
+| Costo de IA | Cada sitio con cambios = 1 llamada; cada aviso nuevo = 1 llamada de detalle (incluye el título) + 1 de foto. Del Agua cambia su HTML en cada corrida y se re-analiza siempre. | Ver consumo en console.groq.com (key que termina en la del `.env`). No dejar `ANALYZE_RENTALS_DEBUG_MODE=true`. |
 | Sitios de Tokko | Punto Patagonia y Río Azul devuelven errores 500 intermitentes. | El fetch del detalle reintenta solo; si un aviso falla 3 veces queda sin detalle (`details_attempts`). Para reintentar: poner `details_attempts = 0`. |
 | Avisos que aparecen y desaparecen | La IA a veces saltea algunos avisos de un listado largo: quedan inactivos hasta la corrida siguiente. | Pendiente en `todo.md`: desactivar recién tras N corridas. |
 | Fallas por sitio | Si la IA o la importación falla, no se guarda el snapshot y el sitio se reintenta en la próxima corrida. | Nada; revisar el log si se repite. |

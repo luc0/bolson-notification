@@ -27,11 +27,15 @@ class RentalDetailService
     /**
      * @return int how many rentals were completed.
      */
-    public function enrichPending(int $limit = 200): int
+    public function enrichPending(int $limit = 200, bool $missingTitlesOnly = false): int
     {
         $pendingRentals = Rental::available()
-            ->whereNull('details_fetched_at')
-            ->where('details_attempts', '<', self::MAX_ATTEMPTS)
+            ->when(
+                $missingTitlesOnly,
+                // Backfill: rentals that already have their detail but no AI title (one AI call each).
+                fn ($query) => $query->whereNull('title'),
+                fn ($query) => $query->whereNull('details_fetched_at')->where('details_attempts', '<', self::MAX_ATTEMPTS),
+            )
             ->limit($limit)
             ->get();
 
@@ -56,12 +60,14 @@ class RentalDetailService
             return false;
         }
 
-        $detail = $this->extractor->extract($pageText, $rental->source);
+        // The agency's title helps the AI title (bedrooms, neighborhood) when the page text lacks it.
+        $detail = $this->extractor->extract("Título del aviso: {$rental->content}\n\n{$pageText}", $rental->source);
         if ($detail === null) {
             return false;
         }
 
         $rental->update([
+            'title' => $detail['Title'] ?? $rental->title,
             'covered_area' => $this->positiveOrNull($detail['CoveredArea']),
             'total_area' => $this->positiveOrNull($detail['TotalArea']),
             'bedrooms' => $detail['Bedrooms'],
