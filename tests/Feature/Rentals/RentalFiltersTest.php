@@ -5,7 +5,7 @@ use App\Domains\Rentals\Models\Rental;
 
 function listedRental(string $name, array $attributes = []): Rental
 {
-    return Rental::create(['source' => "https://example.com/{$name}", 'content' => "Rental {$name}", 'description' => '', 'active' => true, ...$attributes]);
+    return Rental::create(['source' => "https://example.com/{$name}", 'content' => "Rental {$name}", 'description' => '', 'active' => true, 'property_use' => 'residential', ...$attributes]);
 }
 
 function pesos(int $amount): array
@@ -67,6 +67,10 @@ it('sorts by price: pesos, then dollars, then without price', function () {
 
     $this->get('/?sort=price_asc')->assertSeeInOrder(['Rental low', 'Rental mid', 'Rental dollars', 'Rental ask']);
     $this->get('/?sort=price_desc')->assertSeeInOrder(['Rental mid', 'Rental low', 'Rental dollars', 'Rental ask']);
+
+    // Only the price sorts have a chip; newest is the default.
+    $page = $this->get('/')->assertSeeInOrder(['Menor precio', 'Mayor precio'])->assertDontSee('Más nuevos');
+    $page->assertSee('href="'.e(route('rentals.index', ['sort' => 'price_asc'], false)).'"', false);
 });
 
 it('keeps the other filters in the chip links', function () {
@@ -80,4 +84,16 @@ it('keeps the other filters in the chip links', function () {
         ->assertSee('href="'.e(route('rentals.index', ['price' => '400k_600k', 'rooms' => ['2']], false)).'"', false)
         // The gas switch adds gas=1 to the current filters.
         ->assertSee('href="'.e(route('rentals.index', ['price' => '400k_600k', 'rooms' => ['2'], 'gas' => 1, 'sort' => 'price_asc'], false)).'"', false);
+});
+
+it('hides use, price, rooms and gas under "Más filtros", opened when one is not default', function () {
+    listedRental('one', ['rooms' => 1]);
+
+    expect($this->get('/')->getContent())->toMatch('/<details class="more-filters"\s*>.*Para vivir \(1\).*<\/details>/s');
+    expect($this->get('/?uses=all')->getContent())->toMatch('/<details class="more-filters"\s+open\s*>/');
+
+    expect($this->get('/')->getContent())->toMatch('/<details class="more-filters"\s*>/')
+        ->toContain('1 amb. (1)');
+    expect($this->get('/?rooms[]=1')->getContent())->toMatch('/<details class="more-filters"\s+open\s*>/')
+        ->toMatch('/Más filtros\s+\(1\)/');
 });

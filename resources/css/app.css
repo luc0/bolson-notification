@@ -33,6 +33,24 @@
         @apply inline-flex items-center rounded-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors;
     }
 
+    /* "Más filtros": <details> sin JS, el chip es el <summary> */
+    .more-filters > summary {
+        @apply list-none;
+    }
+
+    .more-filters > summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .more-filters > summary::after {
+        content: '▾';
+        @apply ml-1.5 text-xs transition-transform;
+    }
+
+    .more-filters[open] > summary::after {
+        @apply rotate-180;
+    }
+
     .filter-divider {
         @apply mx-1 h-5 w-px bg-gray-300 dark:bg-gray-600;
     }

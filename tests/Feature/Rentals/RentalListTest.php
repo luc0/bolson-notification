@@ -7,7 +7,7 @@ use App\Domains\Rentals\Models\Rental;
 
 function createRental(string $link, bool $active = true, ?string $createdAt = null): Rental
 {
-    $rental = Rental::create(['source' => $link, 'content' => "Rental {$link}", 'description' => 'desc', 'active' => $active]);
+    $rental = Rental::create(['source' => $link, 'content' => "Rental {$link}", 'description' => 'desc', 'active' => $active, 'property_use' => 'residential']);
     $rental->forceFill(['created_at' => $createdAt ?? now()])->save();
 
     return $rental;
@@ -150,24 +150,39 @@ it('shows one-click city chips that toggle the filter', function () {
     expect($page->getContent())->toMatch('/aria-current="true"\s*>El Bolsón \(1\)/');
 });
 
+it('shows rentals to live in by default and every use with "Todos"', function () {
+    createRental('https://example.com/house')->update(['city' => City::ElBolson, 'property_use' => PropertyUse::Residential]);
+    createRental('https://example.com/store')->update(['city' => City::ElBolson, 'property_use' => PropertyUse::Commercial]);
+    createRental('https://example.com/unknown')->update(['property_use' => null]);
+
+    $page = $this->get('/')
+        ->assertSee('Rental https://example.com/house')
+        ->assertDontSee('Rental https://example.com/store')
+        ->assertDontSee('Rental https://example.com/unknown')
+        ->assertSeeInOrder(['Para vivir (1)', 'Local / comercial (1)'])
+        ->assertSee('href="'.e(route('rentals.index', ['uses' => 'all'], false)).'"', false);
+    expect($page->getContent())->toMatch('/aria-current="true"\s*>Para vivir \(1\)/');
+
+    $this->get('/?uses=all')
+        ->assertSee('Rental https://example.com/house')
+        ->assertSee('Rental https://example.com/store')
+        ->assertSee('Rental https://example.com/unknown')
+        ->assertSee('🏪 Local / comercial');
+});
+
 it('filters by property use and combines it with the city', function () {
     createRental('https://example.com/house')->update(['city' => City::ElBolson, 'property_use' => PropertyUse::Residential]);
     createRental('https://example.com/store')->update(['city' => City::ElBolson, 'property_use' => PropertyUse::Commercial]);
     createRental('https://example.com/puelo-store')->update(['city' => City::LagoPuelo, 'property_use' => PropertyUse::Commercial]);
-
-    $this->get('/')
-        ->assertSeeInOrder(['Para vivir (1)', 'Local / comercial (2)'])
-        ->assertSee('🏪 Local / comercial');
-
-    $this->get('/?uses[]=residential')
-        ->assertSee('Rental https://example.com/house')
-        ->assertDontSee('Rental https://example.com/store');
 
     $page = $this->get('/?cities[]=el_bolson&uses[]=commercial')
         ->assertSee('Rental https://example.com/store')
         ->assertDontSee('Rental https://example.com/house')
         ->assertDontSee('Rental https://example.com/puelo-store');
 
-    // Toggling the use keeps the selected city.
-    $page->assertSee('href="'.e(route('rentals.index', ['cities' => ['el_bolson'], 'uses' => ['commercial', 'residential']], false)).'"', false);
+    // Toggling the use keeps the selected city; going back to the default use drops it from the URL.
+    $page->assertSee('href="'.e(route('rentals.index', ['cities' => ['el_bolson'], 'uses' => ['commercial', 'residential']], false)).'"', false)
+        ->assertSee('href="'.e(route('rentals.index', ['cities' => ['el_bolson'], 'uses' => 'all'], false)).'"', false);
+    $this->get('/?uses[]=commercial&uses[]=residential')
+        ->assertSee('href="'.e(route('rentals.index', ['uses' => 'all'], false)).'"', false);
 });

@@ -4,8 +4,8 @@ self.addEventListener('push', (event) => {
     event.waitUntil(
         self.registration.showNotification(payload.title || 'Nuevo', {
             body: payload.body || '',
-            icon: payload.icon || '/icons/icon-icon-192.png',
-            badge: payload.badge || '/icons/icon-icon-192.png',
+            icon: payload.icon || '/icons/icon-192.png',
+            badge: payload.badge || '/icons/icon-192.png',
             data: payload.data || {},
         })
     );

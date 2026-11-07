@@ -1,9 +1,5 @@
 {{-- resources/views/rentals/index.blade.php --}}
 <x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-900 dark:text-gray-100">Alquileres</h2>
-    </x-slot>
-
     <div class="min-h-screen">
         {{-- Contenido principal --}}
         <div class="px-4 sm:px-6 lg:px-8 py-6">
@@ -34,21 +30,28 @@
 
                 {{-- One-click filters: each chip is a link --}}
                 <div class="mt-6 -mb-2 space-y-2">
-                    <nav class="flex flex-wrap items-center gap-2" aria-label="Ciudad y tipo">
+                    <nav class="flex flex-wrap items-center gap-2" aria-label="Ciudad">
                         @foreach($filterChips['cities'] as $chip) <x-filter-chip :chip="$chip" /> @endforeach
-                        <span class="filter-divider" aria-hidden="true"></span>
-                        @foreach($filterChips['uses'] as $chip) <x-filter-chip :chip="$chip" /> @endforeach
                     </nav>
-                    <nav class="flex flex-wrap items-center gap-2" aria-label="Precio, ambientes y servicios">
-                        @foreach($filterChips['price'] as $chip) <x-filter-chip :chip="$chip" /> @endforeach
-                        <span class="filter-divider" aria-hidden="true"></span>
-                        @foreach($filterChips['rooms'] as $chip) <x-filter-chip :chip="$chip" /> @endforeach
-                        <span class="filter-divider" aria-hidden="true"></span>
-                        @foreach($filterChips['switches'] as $chip) <x-filter-chip :chip="$chip" /> @endforeach
-                    </nav>
+                    <details class="more-filters" @if($moreFiltersCount) open @endif>
+                        <summary class="filter-chip cursor-pointer select-none">
+                            Más filtros @if($moreFiltersCount) ({{ $moreFiltersCount }}) @endif
+                        </summary>
+                        <nav class="mt-2 flex flex-wrap items-center gap-2" aria-label="Tipo, precio, ambientes y servicios">
+                            @foreach($filterChips['uses'] as $chip) <x-filter-chip :chip="$chip" /> @endforeach
+                            <span class="filter-divider" aria-hidden="true"></span>
+                            @foreach($filterChips['price'] as $chip) <x-filter-chip :chip="$chip" /> @endforeach
+                            <span class="filter-divider" aria-hidden="true"></span>
+                            @foreach($filterChips['rooms'] as $chip) <x-filter-chip :chip="$chip" /> @endforeach
+                            <span class="filter-divider" aria-hidden="true"></span>
+                            @foreach($filterChips['gas'] as $chip) <x-filter-chip :chip="$chip" /> @endforeach
+                        </nav>
+                    </details>
                     <nav class="flex flex-wrap items-center gap-2 text-sm" aria-label="Orden">
                         <span class="text-gray-500 dark:text-gray-400">Ordenar:</span>
                         @foreach($filterChips['sort'] as $chip) <x-filter-chip :chip="$chip" /> @endforeach
+                        <span class="filter-divider" aria-hidden="true"></span>
+                        @foreach($filterChips['include_inactive'] as $chip) <x-filter-chip :chip="$chip" /> @endforeach
                     </nav>
                 </div>
 

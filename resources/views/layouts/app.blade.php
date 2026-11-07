@@ -7,11 +7,14 @@
 
         <!-- Load manifest sirve para webapp, para que sea instalable como PWA -->
         <link rel="manifest" href="/manifest.webmanifest">
+        <meta name="apple-mobile-web-app-title" content="{{ config('app.name') }}">
         <meta name="theme-color" content="#0d6efd">
 
-        <title>{{ config('app.name', 'Laravel') }}</title>
+        <title>{{ config('app.name') }}</title>
 
         <!-- Fonts -->
+        <link rel="icon" type="image/png" href="/images/favicon.png">
+        <link rel="apple-touch-icon" href="/images/logo.png">
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 

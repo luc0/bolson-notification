@@ -1,7 +1,7 @@
 {
    "id": "/?source=pwa",
-  "name": "Bolson Prop", /*13 chars maso*/
-  "short_name": "Bolson Prop",
+  "name": "Techito",
+  "short_name": "Techito",
   "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",

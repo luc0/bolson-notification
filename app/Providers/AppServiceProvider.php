@@ -8,6 +8,7 @@ use App\Domains\Harvesting\Services\FakeRentalScraper;
 use App\Domains\Members\Models\User;
 use App\Domains\Subscriptions\Models\Subscriber;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -26,6 +27,13 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Local behind an HTTPS tunnel (ngrok, to test from a phone): Sail receives plain http,
+        // so URLs would be generated as http and the browser would block assets and push.
+        $isLocalHttpsTunnel = $this->app->isLocal() && str_starts_with((string) config('app.url'), 'https://');
+        if ($isLocalHttpsTunnel) {
+            URL::forceScheme('https');
+        }
+
         // Stable aliases instead of class names in polymorphic columns (e.g. push_subscriptions.subscribable_type),
         // so moving or renaming a model doesn't break stored rows.
         Relation::morphMap([

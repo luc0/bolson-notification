@@ -171,7 +171,7 @@ it('backfills only rentals without an ai title', function () {
 });
 
 it('shows the ai title on the card and keeps the agency title as tooltip', function () {
-    rentalForDetail(['content' => 'Departamento en Alquiler en El Bolson, Rio Negro', 'title' => 'Departamento de 1 dormitorio con cochera']);
+    rentalForDetail(['property_use' => 'residential', 'content' => 'Departamento en Alquiler en El Bolson, Rio Negro', 'title' => 'Departamento de 1 dormitorio con cochera']);
 
     $this->actingAs(User::factory()->create())->get(route('rentals.index'))
         ->assertSee('Departamento de 1 dormitorio con cochera')
