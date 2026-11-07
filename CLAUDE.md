@@ -11,6 +11,7 @@ Laravel app that scrapes rental listings (El Bolsón / Lago Puelo), processes th
 
 ## Commands
 - Start Sail and update rentals (`rentals:analyze` from local): `./scripts/local-up.sh`
+- Switch `APP_URL` between localhost and an ngrok tunnel (to test from a phone): `./scripts/switch-url.sh ngrok` / `./scripts/switch-url.sh local`
 - Tests (Pest): `./vendor/bin/sail test` (or locally: `DB_CONNECTION=sqlite DB_DATABASE=:memory: php vendor/bin/pest`)
 - Run scraper from local (no Sail, DB in container): `DB_HOST=127.0.0.1 DB_PORT=3307 php artisan rentals:analyze` (lands: `lands:analyze`)
 - Complete detail page data: `DB_HOST=127.0.0.1 DB_PORT=3307 php artisan rentals:fetch-details`
