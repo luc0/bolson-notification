@@ -6,7 +6,7 @@ use App\Domains\Sources\Enums\SourceType;
 use InvalidArgumentException;
 
 /**
- * A site we get rentals from (see config/sources.php).
+ * A site we get rentals or lands from (see config/sources.php).
  */
 final readonly class Source
 {
@@ -21,14 +21,23 @@ final readonly class Source
     ) {}
 
     /**
+     * Rental sources.
+     *
      * @return self[]
      */
     public static function all(): array
     {
-        return collect(config('sources.sites'))
-            ->map(fn (array $site, string $key) => self::fromConfig($key, $site))
-            ->values()
-            ->all();
+        return self::fromConfigList(config('sources.sites'));
+    }
+
+    /**
+     * Land sources (lands for sale).
+     *
+     * @return self[]
+     */
+    public static function lands(): array
+    {
+        return self::fromConfigList(config('sources.land_sites', []));
     }
 
     public static function find(string $key): self
@@ -44,6 +53,17 @@ final readonly class Source
     public static function findByListingUrl(string $listingUrl): ?self
     {
         return collect(self::all())->first(fn (self $source) => $source->listingUrl === $listingUrl);
+    }
+
+    /**
+     * @return self[]
+     */
+    private static function fromConfigList(array $sites): array
+    {
+        return collect($sites)
+            ->map(fn (array $site, string $key) => self::fromConfig($key, $site))
+            ->values()
+            ->all();
     }
 
     private static function fromConfig(string $key, array $site): self

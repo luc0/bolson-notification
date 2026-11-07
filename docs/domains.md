@@ -13,11 +13,12 @@ Lo que es propio del framework se queda donde Laravel lo espera:
 
 ```
 Sources ──► Harvesting ──► Rentals ◄── Subscriptions ──► Members
-                                            ▲
-                                         Payments
+                 │                          ▲
+                 └───────► Lands         Payments
 ```
 
 - **Rentals no depende de ningún otro dominio.** Es el núcleo que los demás leen o escriben.
+- **Lands tampoco depende de ningún otro dominio** y está separado de Rentals: Harvesting lo escribe con su propio flujo (`lands:analyze`) y no tiene notificaciones.
 - Harvesting escribe en Rentals. Subscriptions lee de Rentals (idealmente a partir de un evento `RentalPublished`).
 - Agregar una fuente o un canal de notificación no debería tocar Rentals.
 
@@ -28,6 +29,7 @@ Sources ──► Harvesting ──► Rentals ◄── Subscriptions ──►
 | [Sources](#sources) | Qué sitios se scrapean y cómo | Soporte | ✅ `app/Domains/Sources` |
 | [Harvesting](#harvesting) | Pasar de la web a datos: captura, extracción con IA y enriquecimiento | **Core** | ✅ `app/Domains/Harvesting` |
 | [Rentals](#rentals) | El catálogo de alquileres y su ciclo de vida | **Core** | ✅ `app/Domains/Rentals` |
+| [Lands](#lands) | El catálogo de terrenos en venta | **Core** | ✅ `app/Domains/Lands` |
 | [Subscriptions](#subscriptions) | Avisarle a cada persona los alquileres que le interesan | **Core** | ✅ `app/Domains/Subscriptions` |
 | [Members](#members) | Identidad de los usuarios | Genérico | ✅ `app/Domains/Members` |
 | [Payments](#payments) | Cobrar el acceso a las alertas | Genérico | Futuro (v1.1) |
@@ -42,7 +44,7 @@ Sources ──► Harvesting ──► Rentals ◄── Subscriptions ──►
 
 | Subdominio | Descripción |
 |---|---|
-| Catálogo de fuentes | Lista de sitios en `config/sources.php` (clave, URL del listado, URL base de los links, selector a esperar), leída con `Source::all()` / `Source::find()`. |
+| Catálogo de fuentes | Lista de sitios en `config/sources.php` (clave, URL del listado, URL base de los links, selector a esperar). Alquileres en `sites` (`Source::all()` / `Source::find()`), terrenos en `land_sites` (`Source::lands()`). |
 | Tipo de fuente | `SourceType`: inmobiliaria (`agency`, publica solo lo suyo) o portal (`portal`: Properati, MercadoLibre, agrega de muchos y puede repetir avisos). |
 | Configuración por sitio | Particularidades de cada sitio: si renderiza con JS (`wait_for`), cómo se arman los links, etc. |
 
@@ -74,6 +76,9 @@ Dónde se guardan las capturas y snapshots no es parte de Sources sino de Harves
 | `Services/RentalDetailService`, `RentalDetailFetcher`, `RentalDetailExtractor` | Enriquecimiento |
 | `Services/RentalImageChecker` | Detección de alquilados |
 | `Services/RentalClassifier` | Ciudad, barrio y uso (para vivir / comercial) al importar: texto del aviso → valor ya conocido (detalle) → `default_city` de la fuente |
+| `Services/SourceCapturer` | Captura compartida por alquileres y terrenos (corre `scripts/scrape.cjs`) |
+| `Services/AiListingExtractor` | Base de la extracción con IA (pedido con schema estricto, reintento y validación); la extienden `ListingExtractor` y `LandListingExtractor` |
+| `Services/LandScraper`, `LandListingExtractor`, `LandImporter` | Terrenos: captura (en `captures/lands`), extracción e importación en Lands (alta, reactivación y desactivación). Sin enriquecimiento ni notificaciones por ahora. |
 
 Usa `App\Integrations\Groq\GroqClient` para hablar con la IA.
 
@@ -92,6 +97,21 @@ Usa `App\Integrations\Groq\GroqClient` para hablar con la IA.
 | Búsqueda | `Queries/RentalSearch`: filtros del listado (ciudad, uso, rango de precio, ambientes, gas natural, fecha, incluir no disponibles), orden (`RentalSort`) y opciones con cantidades. |
 
 **Hoy:** `app/Domains/Rentals/`.
+
+## Lands
+
+**Qué resuelve:** es el catálogo de terrenos (lotes, fracciones, chacras) en venta. Está separado de Rentals: no comparte modelo, tabla ni pantalla.
+
+| Subdominio | Descripción |
+|---|---|
+| Disponibilidad | Activo (sigue publicado en el sitio) o no disponible. |
+| Precio | Texto de la inmobiliaria + monto y moneda normalizados (montos menores a 1.000 se toman como relleno). Precio por m² cuando hay superficie. |
+| Superficie | `area` en m² (la IA convierte hectáreas); se muestra en ha desde 1 ha. |
+| Búsqueda | `Queries/LandSearch`: incluir no disponibles y orden (`LandSort`: más nuevos, precio con dólares primero, más grandes). |
+
+**Hoy:** `app/Domains/Lands/` (`Models/Land`, `Enums/LandSort`, `Queries/LandSearch`). Pantalla: pestaña "Terrenos" (`/terrenos`, `LandController`, `resources/views/lands`). Comando: `lands:analyze` (todos los días a las 18:00).
+
+Pendiente: ciudad/barrio para filtrar (hoy `City` vive en Rentals; habría que moverlo a un lugar compartido para no acoplar Lands a Rentals) y notificaciones.
 
 ## Subscriptions
 

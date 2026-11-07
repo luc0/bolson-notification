@@ -39,6 +39,8 @@ return [
         'api_key' => env('GROQ_API_KEY'),
         'model' => env('GROQ_MODEL', 'openai/gpt-oss-20b'),
         'reasoning_effort' => env('GROQ_REASONING_EFFORT', 'low'),
+        // Land listings are long (40-60 items): with "low" the model gives up and returns an empty list.
+        'land_reasoning_effort' => env('GROQ_LAND_REASONING_EFFORT', 'medium'),
         'vision_model' => env('GROQ_VISION_MODEL', 'qwen/qwen3.6-27b'),
     ],
 
@@ -46,6 +48,6 @@ return [
         'sid' => env('TWILIO_SID', ''),
         'token' => env('TWILIO_TOKEN', ''),
         'from' => env('TWILIO_FROM', ''),
-    ]
+    ],
 
 ];

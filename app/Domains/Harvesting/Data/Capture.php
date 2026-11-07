@@ -36,4 +36,18 @@ final readonly class Capture
 
         return $this->images[(int) $matches[1]] ?? null;
     }
+
+    /**
+     * The AI returns the "#img-N" id of each item's main photo: replace it with the real URL.
+     */
+    public function withImageUrls(array $items): array
+    {
+        return array_map(function ($item) {
+            if (! is_array($item)) {
+                return $item;
+            }
+
+            return [...$item, 'Image' => $this->imageUrl($item['Image'] ?? null)];
+        }, $items);
+    }
 }

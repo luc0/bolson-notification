@@ -36,6 +36,7 @@ Las que usa la app además de las estándar de Laravel (`APP_*`, `DB_*`, `SESSIO
 | `GROQ_API_KEY` | (secreto) | IA para extraer avisos, el detalle y las fotos. |
 | `GROQ_MODEL` | `openai/gpt-oss-20b` (default) | Si Groq da de baja el modelo, el log muestra `model_not_found`: cambiarlo acá. |
 | `GROQ_REASONING_EFFORT` | `low` (default) | |
+| `GROQ_LAND_REASONING_EFFORT` | `medium` (default) | Extracción de terrenos. Con `low` el modelo se rinde con listados largos y devuelve una lista vacía. |
 | `GROQ_VISION_MODEL` | `qwen/qwen3.6-27b` (default) | Detección de carteles "ALQUILADO" en las fotos. |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | (secretos) | Web push. **No cambiarlas nunca**: si cambian, todas las suscripciones existentes dejan de funcionar y cada usuario tiene que volver a activar las notificaciones. Generarlas una sola vez con `php artisan webpush:vapid`. |
 | `ANALYZE_RENTALS_DEBUG_MODE` | `false` o sin definir | Con `true` el scraper corre cada 3 minutos (gasta tokens). |
@@ -76,7 +77,7 @@ En Forge → Scheduler, un cron cada minuto:
 php /home/forge/<sitio>/artisan schedule:run
 ```
 
-Corre `rentals:analyze` los días hábiles a las 17:00 (`routes/console.php`). Para ver qué está programado:
+Corre `rentals:analyze` los días hábiles a las 17:00 y `lands:analyze` (terrenos, sin notificaciones) todos los días a las 18:00 (`routes/console.php`). Para ver qué está programado:
 
 ```bash
 php artisan schedule:list
@@ -90,8 +91,8 @@ Todo dentro de `storage/` (tiene que ser escribible por el usuario de PHP y del 
 
 | Ruta | Qué es |
 |---|---|
-| `storage/app/captures/` | Última captura HTML de cada fuente + `<fuente>.images.json`. |
-| `storage/app/snapshots/` | Última captura procesada con éxito, para no reprocesar sitios sin cambios. Borrar un snapshot fuerza a re-analizar ese sitio. |
+| `storage/app/captures/` | Última captura HTML de cada fuente + `<fuente>.images.json`. Los terrenos en `captures/lands/`. |
+| `storage/app/snapshots/` | Última captura procesada con éxito, para no reprocesar sitios sin cambios. Borrar un snapshot fuerza a re-analizar ese sitio. Los terrenos en `snapshots/lands/`. |
 | `storage/app/rental.json` | Avisos nuevos de la última corrida (debug). |
 | `storage/logs/` | Logs. |
 

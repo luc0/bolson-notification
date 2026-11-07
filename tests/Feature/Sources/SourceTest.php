@@ -40,3 +40,20 @@ it('has a valid definition for every configured site', function () {
     expect(Source::all())->not->toBeEmpty()
         ->each(fn ($source) => $source->listingUrl->toStartWith('https://'));
 });
+
+it('reads the land sources apart from the rental ones', function () {
+    config(['sources.land_sites' => [
+        'agency' => ['name' => 'Agency', 'type' => 'agency', 'listing_url' => 'https://agency.com/terrenos', 'link_base_url' => 'https://agency.com/p/'],
+    ]]);
+
+    expect(Source::lands())->toHaveCount(1)
+        ->and(Source::lands()[0]->listingUrl)->toBe('https://agency.com/terrenos')
+        ->and(Source::all())->toHaveCount(2);
+});
+
+it('has a valid definition for every configured land site', function () {
+    config(['sources.land_sites' => (require config_path('sources.php'))['land_sites']]);
+
+    expect(Source::lands())->not->toBeEmpty()
+        ->each(fn ($source) => $source->listingUrl->toStartWith('https://'));
+});

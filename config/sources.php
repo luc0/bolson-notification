@@ -2,11 +2,15 @@
 
 /*
 |--------------------------------------------------------------------------
-| Rental sources
+| Sources
 |--------------------------------------------------------------------------
 |
-| Single source of truth for the sites we get rentals from (Sources domain).
+| Single source of truth for the sites we scrape (Sources domain).
 | To add a site, add it here only.
+|
+| - sites: rental listings (Rentals), read with Source::all().
+| - land_sites: lands for sale (Lands), read with Source::lands(). Same keys as `sites` are fine:
+|   land captures are stored in their own folder (config/harvesting.php).
 |
 | - key (array key): identifies the source (also used for capture file names).
 | - type: "agency" (own properties) or "portal" (aggregator), see SourceType.
@@ -69,6 +73,54 @@ return [
             'link_base_url' => 'https://inmobiliariadelagua.com.ar',
             'wait_for' => '.item',
             'default_city' => null, // listing mixes cities
+        ],
+
+    ],
+
+    'land_sites' => [
+
+        'anezca' => [
+            'name' => 'Anezca Propiedades',
+            'type' => 'agency',
+            // property_type_id=5 (Terreno), operation_id=1 (Venta), every location of the Comarca.
+            'listing_url' => 'https://anezcapropiedades.com.ar/properties?property_type_id=5&operation_id=1&location_id=&currency_id=&price_min=&price_max=&bathrooms=&bedrooms=&order=',
+            'link_base_url' => 'https://anezcapropiedades.com.ar/propiedades',
+            'wait_for' => null,
+        ],
+
+        'puntopatagonia' => [
+            'name' => 'Punto Patagonia',
+            'type' => 'agency',
+            'listing_url' => 'https://www.inmobiliariapuntopatagonia.com.ar/Terrenos',
+            // e.g. https://www.inmobiliariapuntopatagonia.com.ar/p/5399685-Terreno-en-Venta-en-Lago-Puelo-...
+            'link_base_url' => 'https://www.inmobiliariapuntopatagonia.com.ar/p/',
+            'wait_for' => '.prop-desc',
+        ],
+
+        'puntosurpropiedades' => [
+            'name' => 'Punto Sur Propiedades',
+            'type' => 'agency',
+            // search_tipo_de_propiedad=8 (Terreno), search_tipo_de_operacion=1 (Venta).
+            'listing_url' => 'https://puntosurpropiedades.ar/web/index.php?search_tipo_de_propiedad=8&search_locality=El%20Bols%C3%B3n&search_tipo_de_operacion=1#listado',
+            'link_base_url' => 'https://puntosurpropiedades.ar/web/',
+            'wait_for' => null,
+        ],
+
+        'rioazulpropiedades' => [
+            'name' => 'Río Azul Propiedades',
+            'type' => 'agency',
+            'listing_url' => 'https://www.rioazulpropiedades.com/Terrenos',
+            'link_base_url' => 'https://www.rioazulpropiedades.com/',
+            'wait_for' => null,
+        ],
+
+        'inmobiliariadelagua' => [
+            'name' => 'Inmobiliaria Del Agua',
+            'type' => 'agency',
+            'listing_url' => 'https://inmobiliariadelagua.com.ar/s/lote-terreno/venta?id_property_type=5&business_type%5B0%5D=for_sale',
+            // e.g. https://inmobiliariadelagua.com.ar/lote-terreno-venta-cerro-amigo-el-bolson/10349652
+            'link_base_url' => 'https://inmobiliariadelagua.com.ar',
+            'wait_for' => '.item',
         ],
 
     ],

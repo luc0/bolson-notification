@@ -8,13 +8,24 @@ use Illuminate\Support\Facades\File;
 
 /**
  * Captures written by scripts/scrape.cjs and snapshots of the last fully processed capture
- * of each source (see config/harvesting.php).
+ * of each source (see config/harvesting.php). Rentals use the default folders; lands use their own
+ * (`forLands()`), so an agency key can appear in both catalogs.
  */
 class CaptureStore
 {
+    public function __construct(
+        private readonly ?string $capturePath = null,
+        private readonly ?string $snapshotPath = null,
+    ) {}
+
+    public static function forLands(): self
+    {
+        return new self(config('harvesting.lands.capture_path'), config('harvesting.lands.snapshot_path'));
+    }
+
     public function capturePath(): string
     {
-        return config('harvesting.capture_path');
+        return $this->capturePath ?? config('harvesting.capture_path');
     }
 
     public function find(Source $source): ?Capture
@@ -32,9 +43,9 @@ class CaptureStore
 
     public function isUnchanged(Source $source, Capture $capture): bool
     {
-        $snapshotPath = $this->snapshotPath($source);
+        $snapshotFile = $this->snapshotFile($source);
 
-        return File::exists($snapshotPath) && File::get($snapshotPath) === $capture->snapshot();
+        return File::exists($snapshotFile) && File::get($snapshotFile) === $capture->snapshot();
     }
 
     /**
@@ -42,12 +53,17 @@ class CaptureStore
      */
     public function markProcessed(Source $source, Capture $capture): void
     {
-        File::ensureDirectoryExists(config('harvesting.snapshot_path'));
-        File::put($this->snapshotPath($source), $capture->snapshot());
+        File::ensureDirectoryExists($this->snapshotPath());
+        File::put($this->snapshotFile($source), $capture->snapshot());
     }
 
-    private function snapshotPath(Source $source): string
+    private function snapshotPath(): string
     {
-        return config('harvesting.snapshot_path')."/{$source->key}.html";
+        return $this->snapshotPath ?? config('harvesting.snapshot_path');
+    }
+
+    private function snapshotFile(Source $source): string
+    {
+        return $this->snapshotPath()."/{$source->key}.html";
     }
 }

@@ -12,19 +12,19 @@ Laravel app that scrapes rental listings (El Bolsón / Lago Puelo), processes th
 ## Commands
 - Start Sail and update rentals (`rentals:analyze` from local): `./scripts/local-up.sh`
 - Tests (Pest): `./vendor/bin/sail test` (or locally: `DB_CONNECTION=sqlite DB_DATABASE=:memory: php vendor/bin/pest`)
-- Run scraper from local (no Sail, DB in container): `DB_HOST=127.0.0.1 DB_PORT=3307 php artisan rentals:analyze`
+- Run scraper from local (no Sail, DB in container): `DB_HOST=127.0.0.1 DB_PORT=3307 php artisan rentals:analyze` (lands: `lands:analyze`)
 - Complete detail page data: `DB_HOST=127.0.0.1 DB_PORT=3307 php artisan rentals:fetch-details`
 - Check DB connection: `php artisan db:test`
 - If permission errors after using Sail:
   `rm -f bootstrap/cache/*.php && mkdir -p storage/logs && chmod -R 777 storage bootstrap/cache`
 
 ## Structure (modular monolith)
-- Domains and their subdomains are documented in `docs/domains.md` (read it before adding features): Sources, Harvesting, Rentals, Subscriptions, Members, Payments.
+- Domains and their subdomains are documented in `docs/domains.md` (read it before adding features): Sources, Harvesting, Rentals, Lands, Subscriptions, Members, Payments.
 - Each domain lives in `app/Domains/<Domain>/` using Laravel's folder names inside (`Models`, `Enums`, `Data`, `Support`, `Services`...).
 - Framework entry points stay where Laravel expects them: `app/Http`, `app/Console`, `resources/views`, `database/migrations`.
 - Shared external clients (Groq, Puppeteer, HTTP fetch) go to `app/Integrations/`.
-- Dependency rule: Rentals depends on no other domain; Harvesting writes into Rentals; Subscriptions reads from Rentals.
-- Migrated: Rentals, Sources, Harvesting (+ `app/Integrations/Groq`), Subscriptions, Members. Payments will be created with the checkout (v1.1).
+- Dependency rule: Rentals and Lands depend on no other domain (and not on each other); Harvesting writes into Rentals and Lands; Subscriptions reads from Rentals.
+- Migrated: Rentals, Lands, Sources, Harvesting (+ `app/Integrations/Groq`), Subscriptions, Members. Payments will be created with the checkout (v1.1).
 - Models outside `App\Models` need `#[UseFactory(...)]` (and `$model` in the factory) because Laravel can't guess the factory name.
 - Polymorphic models must be registered in `Relation::morphMap()` (`AppServiceProvider::boot()`) so stored types don't depend on class names.
 
@@ -43,9 +43,14 @@ Laravel app that scrapes rental listings (El Bolsón / Lago Puelo), processes th
 - Both are set by `Harvesting\Services\RentalClassifier` on import. Filters (one-click chips, `<x-filter-chip>`): city, and under "Más filtros" (`<details>`, opens when one is not default) property use (default: residential; `uses=all` for every use), price range (`PriceRange`: pesos ranges + dollars), rooms (4+ grouped), natural gas; include unavailable; sort (`RentalSort`: newest by default with no chip, price chips sort pesos, then dollars, then no price). Query in `Rentals\Queries\RentalSearch`.
 - To recognize a new city/neighborhood/property type: add it to `City::aliases()` / `City::neighborhoods()` / `PropertyUse::keywords()` and run `rentals:classify` (no AI cost).
 
+## Lands
+- `Land` (`app/Domains/Lands`): lands for sale, separate from rentals (own table, `/terrenos` tab, `LandController`). Same `source` / `site_path` / `content` / price columns as `Rental`, plus `area` (m²). No notifications yet.
+- Flow: `lands:analyze` → `Harvesting\Services\LandScraper` (capture in `storage/app/captures/lands`) → `LandListingExtractor` → `LandImporter`. Scheduled daily at 18:00.
+- The AI uses `services.groq.land_reasoning_effort` (default `medium`): with `low` it gives up on long land listings and returns an empty list.
+
 ## Sources
 - `config/sources.php` is the single source of truth for scraped sites (key, type, listing URL, link base URL, `wait_for`). To add a site, add it there only.
-- Read them with `App\Domains\Sources\Data\Source::all()` / `Source::find($key)`; `SourceType` is `agency` or `portal`.
+- Read them with `App\Domains\Sources\Data\Source::all()` / `Source::find($key)` (rentals, `sites`) and `Source::lands()` (lands, `land_sites`); `SourceType` is `agency` or `portal`.
 - `BrowserRentalScraper` passes the sites to `scripts/scrape.cjs` through stdin.
 - Captures (`storage/app/captures`) and snapshots (`storage/app/snapshots`) are Harvesting config: `config/harvesting.php`.
 

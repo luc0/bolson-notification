@@ -3,108 +3,28 @@
 namespace App\Domains\Harvesting\Services;
 
 use App\Domains\Sources\Data\Source;
-use App\Integrations\Groq\GroqClient;
-use Illuminate\Http\Client\Response;
-use Illuminate\Support\Facades\Log;
 
-class ListingExtractor
+/**
+ * Extracts the rentals of a rental listing page capture.
+ */
+class ListingExtractor extends AiListingExtractor
 {
-    public function __construct(private readonly GroqClient $groq) {}
-
-    private const SYSTEM_PROMPT = <<<'EOT'
-        You are a data extraction assistant for a public real-estate listings aggregator.
-        The user gives you the HTML of a public listings page from a real-estate agency in Argentina.
-        Your only job is to extract the rental listings that appear on that page into structured JSON.
-        This is public, non-personal information; always complete the extraction.
-        EOT;
-
-    private const MAX_ATTEMPTS = 2;
-
-    /**
-     * @return array|null null when the AI call fails or returns no usable rentals.
-     */
-    public function extract(Source $source, string $html): ?array
+    protected function itemsKey(): string
     {
-        $response = $this->requestRentals($source, $html);
-
-        // The model occasionally generates output that doesn't match the schema: worth one retry.
-        for ($attempt = 2; $attempt <= self::MAX_ATTEMPTS && $this->failedSchemaValidation($response); $attempt++) {
-            Log::warning("⚠️ AI output didn't match the schema, retrying ({$attempt}/".self::MAX_ATTEMPTS.'): '.$source->key);
-            $response = $this->requestRentals($source, $html);
-        }
-
-        return $this->parseRentals($response, $source);
+        return 'rentals';
     }
 
-    private function failedSchemaValidation(Response $response): bool
+    protected function systemPrompt(): string
     {
-        return $response->status() === 400 && $response->json('error.code') === 'json_validate_failed';
+        return <<<'EOT'
+            You are a data extraction assistant for a public real-estate listings aggregator.
+            The user gives you the HTML of a public listings page from a real-estate agency in Argentina.
+            Your only job is to extract the rental listings that appear on that page into structured JSON.
+            This is public, non-personal information; always complete the extraction.
+            EOT;
     }
 
-    private function requestRentals(Source $source, string $html): Response
-    {
-        return $this->groq->chat([
-            'model' => config('services.groq.model'),
-            'messages' => [
-                ['role' => 'system', 'content' => self::SYSTEM_PROMPT],
-                ['role' => 'user', 'content' => $this->buildUserPrompt($source)],
-                ['role' => 'user', 'content' => $html],
-            ],
-            'temperature' => 0.3,
-            // gpt-oss is a reasoning model: reasoning tokens also count towards max_tokens.
-            'reasoning_effort' => config('services.groq.reasoning_effort'),
-            'max_tokens' => 32768,
-            'response_format' => [
-                'type' => 'json_schema',
-                'json_schema' => ['name' => 'rentals', 'strict' => true, 'schema' => $this->responseSchema()],
-            ],
-        ]);
-    }
-
-    private function parseRentals(Response $response, Source $source): ?array
-    {
-        if (! $response->successful()) {
-            Log::error('❌ AI request failed for '.$source->key, ['status' => $response->status()]);
-            Log::info($response->body());
-
-            return null;
-        }
-
-        $wasTruncated = ($response['choices'][0]['finish_reason'] ?? null) === 'length';
-        if ($wasTruncated) {
-            Log::error('❌ AI response truncated (max_tokens reached) for '.$source->key);
-
-            return null;
-        }
-
-        $jsonRaw = trim($response['choices'][0]['message']['content'] ?? '');
-        Log::info($jsonRaw);
-
-        $decoded = json_decode($jsonRaw, true);
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            Log::error('❌ Malformed JSON for '.$source->key.': '.json_last_error_msg());
-
-            return null;
-        }
-
-        $rentals = $decoded['rentals'] ?? null;
-        if (! is_array($rentals)) {
-            Log::error('❌ AI response has no "rentals" array for '.$source->key);
-
-            return null;
-        }
-
-        // An empty list almost always means the model failed, not that the site has no rentals.
-        if (empty($rentals)) {
-            Log::error('❌ AI returned no rentals for '.$source->key);
-
-            return null;
-        }
-
-        return $rentals;
-    }
-
-    private function buildUserPrompt(Source $source): string
+    protected function userPrompt(Source $source): string
     {
         return <<<EOT
             Extraé todos los avisos de alquiler del siguiente HTML.
@@ -122,7 +42,7 @@ class ListingExtractor
             EOT;
     }
 
-    private function responseSchema(): array
+    protected function itemSchema(): array
     {
         $nullableString = ['type' => ['string', 'null']];
         $nullableInteger = ['type' => ['integer', 'null']];
@@ -130,27 +50,17 @@ class ListingExtractor
         return [
             'type' => 'object',
             'properties' => [
-                'rentals' => [
-                    'type' => 'array',
-                    'items' => [
-                        'type' => 'object',
-                        'properties' => [
-                            'Content' => ['type' => 'string'],
-                            'Link' => ['type' => 'string'],
-                            'Caracteristicas' => ['type' => 'string'],
-                            'Price' => $nullableString,
-                            'Currency' => ['type' => ['string', 'null'], 'enum' => ['ARS', 'USD', null]],
-                            'Location' => $nullableString,
-                            'Rooms' => $nullableInteger,
-                            'Bathrooms' => $nullableInteger,
-                            'Image' => $nullableString,
-                        ],
-                        'required' => ['Content', 'Link', 'Caracteristicas', 'Price', 'Currency', 'Location', 'Rooms', 'Bathrooms', 'Image'],
-                        'additionalProperties' => false,
-                    ],
-                ],
+                'Content' => ['type' => 'string'],
+                'Link' => ['type' => 'string'],
+                'Caracteristicas' => ['type' => 'string'],
+                'Price' => $nullableString,
+                'Currency' => ['type' => ['string', 'null'], 'enum' => ['ARS', 'USD', null]],
+                'Location' => $nullableString,
+                'Rooms' => $nullableInteger,
+                'Bathrooms' => $nullableInteger,
+                'Image' => $nullableString,
             ],
-            'required' => ['rentals'],
+            'required' => ['Content', 'Link', 'Caracteristicas', 'Price', 'Currency', 'Location', 'Rooms', 'Bathrooms', 'Image'],
             'additionalProperties' => false,
         ];
     }
