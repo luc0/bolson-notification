@@ -38,6 +38,8 @@ Las que usa la app además de las estándar de Laravel (`APP_*`, `DB_*`, `SESSIO
 | `GROQ_REASONING_EFFORT` | `low` (default) | |
 | `GROQ_LAND_REASONING_EFFORT` | `medium` (default) | Extracción de terrenos. Con `low` el modelo se rinde con listados largos y devuelve una lista vacía. |
 | `GROQ_VISION_MODEL` | `qwen/qwen3.6-27b` (default) | Detección de carteles "ALQUILADO" en las fotos. |
+| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_BOT_USERNAME` | (secreto) / nombre del bot sin @ | Avisos por Telegram (bot creado con @BotFather). Sin token, el canal y la sección del perfil quedan apagados. |
+| `TELEGRAM_WEBHOOK_SECRET` | (secreto, un string largo al azar) | Telegram lo manda en cada llamada al webhook; sin él, `/telegram/webhook` responde 403. Después de configurarlo (o de cambiar `APP_URL`) correr `php artisan telegram:set-webhook`. |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | (secretos) | Web push. **No cambiarlas nunca**: si cambian, todas las suscripciones existentes dejan de funcionar y cada usuario tiene que volver a activar las notificaciones. Generarlas una sola vez con `php artisan webpush:vapid`. |
 | `ANALYZE_RENTALS_DEBUG_MODE` | `false` o sin definir | Con `true` el scraper corre cada 3 minutos (gasta tokens). |
 | `SCRAPE_MOCK` | `false` o sin definir | Con `true` usa `FakeRentalScraper` (datos de prueba). |

@@ -68,6 +68,7 @@ Laravel app that scrapes rental listings (El Bolsón / Lago Puelo), processes th
   - `Subscriber` (one per member, `user_id`; legacy rows have it null) → `NewRentalsNotifier` sends web push to every subscriber with a push subscription.
   - Push subscribe/unsubscribe: `PushSubscriptionController`, web routes `push-subscriptions.store/destroy` under `auth` (needs session + CSRF). There are no API routes.
   - Deleting a member deletes its subscriber and push subscriptions (`User::deleting` listener in `AppServiceProvider`).
+  - Telegram: `Channels/TelegramChannel` (client in `app/Integrations/Telegram`). Members link their chat from the profile (`t.me/<bot>?start=<telegram_link_token>`, handled by `TelegramWebhookController` on `POST /telegram/webhook`, checked with `TELEGRAM_WEBHOOK_SECRET`) and toggle it with the "Recibir avisos por Telegram" checkbox (`subscribers.telegram_enabled`, default on). Run `telegram:set-webhook` whenever `APP_URL` changes (`switch-url.sh ngrok` does it). Without `TELEGRAM_BOT_TOKEN` the channel and the profile section are off.
   - WhatsApp (`Contracts/WhatsappSender`: `TwilioWhatsappSender`, `KapsoWhatsappSender`) exists but is currently disabled.
 
 ## Laravel conventions

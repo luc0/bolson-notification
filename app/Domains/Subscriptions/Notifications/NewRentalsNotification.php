@@ -2,6 +2,8 @@
 
 namespace App\Domains\Subscriptions\Notifications;
 
+use App\Domains\Subscriptions\Channels\TelegramChannel;
+use App\Domains\Subscriptions\Models\Subscriber;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 use NotificationChannels\WebPush\WebPushChannel;
@@ -18,9 +20,27 @@ class NewRentalsNotification extends Notification
         public string $icon
     ) {}
 
-    public function via($notifiable)
+    /**
+     * Only the channels the subscriber has.
+     */
+    public function via(Subscriber $notifiable): array
     {
-        return [WebPushChannel::class];
+        return array_keys(array_filter([
+            WebPushChannel::class => $notifiable->pushSubscriptions()->exists(),
+            TelegramChannel::class => $notifiable->receivesTelegram(),
+        ]));
+    }
+
+    /**
+     * @return array{text: string, button_text: string, button_url: string}
+     */
+    public function toTelegram(Subscriber $notifiable): array
+    {
+        return [
+            'text' => "🏠 {$this->title}\n{$this->body}\n\n{$this->url}",
+            'button_text' => 'Ver alquileres',
+            'button_url' => $this->url,
+        ];
     }
 
     public function toWebPush($notifiable, $notification)

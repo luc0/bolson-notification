@@ -44,6 +44,14 @@ return [
         'vision_model' => env('GROQ_VISION_MODEL', 'qwen/qwen3.6-27b'),
     ],
 
+    // Telegram bot (@BotFather) for new rentals alerts. Without a token the channel is off.
+    'telegram' => [
+        'bot_token' => env('TELEGRAM_BOT_TOKEN'),
+        'bot_username' => env('TELEGRAM_BOT_USERNAME'),
+        // Telegram sends it back on every webhook call (X-Telegram-Bot-Api-Secret-Token).
+        'webhook_secret' => env('TELEGRAM_WEBHOOK_SECRET'),
+    ],
+
     'twilio' => [
         'sid' => env('TWILIO_SID', ''),
         'token' => env('TWILIO_TOKEN', ''),

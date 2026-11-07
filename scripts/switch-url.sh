@@ -5,6 +5,7 @@
 #   ./scripts/switch-url.sh local   # vuelve a http://localhost y apaga ngrok
 #
 # Solo reemplaza la línea activa "APP_URL=..." del .env; las comentadas quedan como están.
+# En modo ngrok también registra el webhook del bot de Telegram (si está configurado).
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -17,9 +18,13 @@ set_app_url() {
     sed -i.bak "s|^APP_URL=.*|APP_URL=$1|" .env && rm -f .env.bak
 }
 
-clear_config() {
+artisan() {
     # Sail if it's running, local PHP otherwise.
-    ./vendor/bin/sail artisan config:clear >/dev/null 2>&1 || php artisan config:clear >/dev/null
+    ./vendor/bin/sail artisan "$@" 2>/dev/null || php artisan "$@"
+}
+
+clear_config() {
+    artisan config:clear >/dev/null
 }
 
 ngrok_url() {
@@ -51,6 +56,9 @@ use_ngrok() {
     clear_config
     echo "✅ APP_URL=$url"
     echo "   Abrí desde el celu: $url"
+
+    # The bot webhook has to follow the new URL (skipped when Telegram isn't configured).
+    artisan telegram:set-webhook || echo "⚠️ No se pudo registrar el webhook de Telegram."
 }
 
 use_local() {

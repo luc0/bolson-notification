@@ -39,14 +39,15 @@ class PushSubscriptionController extends Controller
     }
 
     /**
-     * Local only (see routes/web.php): sends a test push to every subscriber.
+     * Local only (see routes/web.php): sends a test notification to every subscriber (push and Telegram).
      */
     public function test(Request $request, NewRentalsNotifier $notifier): JsonResponse
     {
         $notification = new NewRentalsNotification(
             title: $request->input('title', 'Prueba'),
             body: $request->input('body', 'Llegó la notificación 🎉'),
-            url: $request->input('url', url('/')),
+            // APP_URL, not the request host: called with curl to localhost it would link to https://localhost.
+            url: $request->input('url', config('app.url')),
             icon: $request->input('icon', '/icons/icon-192.png'),
         );
 

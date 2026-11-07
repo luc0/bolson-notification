@@ -4,6 +4,8 @@ use App\Http\Controllers\LandController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PushSubscriptionController;
 use App\Http\Controllers\RentalController;
+use App\Http\Controllers\TelegramPreferenceController;
+use App\Http\Controllers\TelegramWebhookController;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -17,10 +19,16 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::patch('/profile/telegram', [TelegramPreferenceController::class, 'update'])->name('profile.telegram.update');
 
     Route::post('/push-subscriptions', [PushSubscriptionController::class, 'store'])->name('push-subscriptions.store');
     Route::delete('/push-subscriptions', [PushSubscriptionController::class, 'destroy'])->name('push-subscriptions.destroy');
 });
+
+// Telegram bot updates: no session, authenticated by the webhook secret header.
+Route::post('/telegram/webhook', TelegramWebhookController::class)
+    ->withoutMiddleware(ValidateCsrfToken::class)
+    ->name('telegram.webhook');
 
 // Local only: send a test push to every subscriber / list subscriptions.
 if (app()->isLocal()) {

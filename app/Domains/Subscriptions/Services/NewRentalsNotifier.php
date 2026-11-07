@@ -7,7 +7,7 @@ use App\Domains\Subscriptions\Notifications\NewRentalsNotification;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Sends web push notifications to every subscriber.
+ * Notifies every subscriber by their channels (web push and/or Telegram, see NewRentalsNotification::via()).
  */
 class NewRentalsNotifier
 {
@@ -29,7 +29,7 @@ class NewRentalsNotifier
         );
 
         $notifiedCount = $this->notifyAll($notification);
-        Log::info("📱 Push notifications sent to {$notifiedCount} subscribers about {$rentalCount} new rentals");
+        Log::info("📱 Notifications sent to {$notifiedCount} subscribers about {$rentalCount} new rentals");
 
         return $notifiedCount;
     }
@@ -40,7 +40,7 @@ class NewRentalsNotifier
     public function notifyAll(NewRentalsNotification $notification): int
     {
         $notifiedCount = 0;
-        Subscriber::whereHas('pushSubscriptions')->cursor()->each(function (Subscriber $subscriber) use ($notification, &$notifiedCount) {
+        Subscriber::notifiable()->cursor()->each(function (Subscriber $subscriber) use ($notification, &$notifiedCount) {
             $subscriber->notify($notification);
             $notifiedCount++;
         });
