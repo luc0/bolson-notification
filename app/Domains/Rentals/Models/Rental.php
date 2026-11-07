@@ -3,6 +3,7 @@
 namespace App\Domains\Rentals\Models;
 
 use App\Domains\Rentals\Enums\City;
+use App\Domains\Rentals\Enums\PriceRange;
 use App\Domains\Rentals\Enums\PropertyUse;
 use App\Domains\Rentals\Enums\Utility;
 use Illuminate\Database\Eloquent\Model;
@@ -10,6 +11,9 @@ use Illuminate\Database\Eloquent\Model;
 class Rental extends Model
 {
     public const OLD_AFTER_MONTHS = 3;
+
+    // Rooms filter: this value and above are grouped as "4+".
+    public const MANY_ROOMS = 4;
 
     protected $fillable = [
         'source',
@@ -83,6 +87,46 @@ class Rental extends Model
             $query->whereIn('property_use', $knownUses)
                 ->when($includesUnknown, fn ($query) => $query->orWhereNull('property_use'));
         });
+    }
+
+    public function scopeByPriceRange($query, PriceRange $range)
+    {
+        [$currency, $min, $max] = $range->bounds();
+
+        return $query->where('price_currency', $currency)
+            ->whereNotNull('price_amount')
+            ->when($min !== null, fn ($query) => $query->where('price_amount', '>=', $min))
+            ->when($max !== null, fn ($query) => $query->where('price_amount', '<', $max));
+    }
+
+    /**
+     * @param  int[]  $rooms  `4` means 4 or more.
+     */
+    public function scopeByRooms($query, array $rooms)
+    {
+        $exactRooms = array_values(array_filter($rooms, fn (int $count) => $count < self::MANY_ROOMS));
+        $includesMany = in_array(self::MANY_ROOMS, $rooms, true);
+
+        return $query->where(function ($query) use ($exactRooms, $includesMany) {
+            $query->whereIn('rooms', $exactRooms)
+                ->when($includesMany, fn ($query) => $query->orWhere('rooms', '>=', self::MANY_ROOMS));
+        });
+    }
+
+    public function scopeWithUtility($query, Utility $utility)
+    {
+        return $query->whereJsonContains('services', $utility->value);
+    }
+
+    /**
+     * Prices in pesos first, then dollars, then "Consultar precio"; by amount within each currency
+     * (mixing them would put U$S 550 before $250.000).
+     */
+    public function scopeOrderByPrice($query, string $direction = 'asc')
+    {
+        return $query
+            ->orderByRaw("case when price_currency = 'ARS' and price_amount is not null then 0 when price_currency = 'USD' and price_amount is not null then 1 else 2 end")
+            ->orderBy('price_amount', $direction);
     }
 
     /**

@@ -89,7 +89,7 @@ Usa `App\Integrations\Groq\GroqClient` para hablar con la IA.
 | Características | Superficie, ambientes, dormitorios, baños, cocheras, antigüedad, servicios y datos extra limpios. |
 | Identidad del aviso | Normalización del link para que el mismo aviso no se guarde dos veces. |
 | Uso | `PropertyUse`: para vivir o local / comercial, resuelto del tipo de propiedad que nombra el título (`PropertyUseResolver`). |
-| Búsqueda | `Queries/RentalSearch`: filtros del listado (ciudad, uso, fecha, incluir no disponibles) y opciones con cantidades. |
+| Búsqueda | `Queries/RentalSearch`: filtros del listado (ciudad, uso, rango de precio, ambientes, gas natural, fecha, incluir no disponibles), orden (`RentalSort`) y opciones con cantidades. |
 
 **Hoy:** `app/Domains/Rentals/`.
 
