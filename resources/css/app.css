@@ -28,6 +28,15 @@
         @apply bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow duration-300;
     }
     
+    /* Filtros de un click (chips) */
+    .filter-chip {
+        @apply inline-flex items-center rounded-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors;
+    }
+
+    .filter-chip-active {
+        @apply border-blue-600 bg-blue-600 text-white hover:bg-blue-700 dark:border-blue-500 dark:bg-blue-600 dark:hover:bg-blue-700;
+    }
+
     /* Antiguas: grises y apagadas, vuelven a color al pasar el mouse */
     .card-old {
         @apply bg-gray-100 dark:bg-gray-900 border-dashed border-gray-300 dark:border-gray-600 shadow-none grayscale opacity-60 hover:opacity-100 hover:grayscale-0 transition-all;

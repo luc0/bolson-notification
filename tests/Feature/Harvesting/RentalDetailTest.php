@@ -19,7 +19,7 @@ function detailAnswer(array $overrides = []): array
 {
     return [
         'CoveredArea' => 45, 'TotalArea' => null, 'Rooms' => 2, 'Bedrooms' => 1, 'Bathrooms' => 1,
-        'ParkingSpaces' => 1, 'AgeYears' => 6, 'City' => null, 'Neighborhood' => null,
+        'ParkingSpaces' => 1, 'AgeYears' => 6, 'City' => null, 'Neighborhood' => null, 'PropertyUse' => null,
         'Services' => ['running_water', 'sewer', 'natural_gas'],
         ...$overrides,
     ];

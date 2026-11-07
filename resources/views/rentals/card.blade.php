@@ -21,6 +21,9 @@
             @if($isOld)
                 <span class="bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 text-xs font-medium px-2.5 py-0.5 rounded" title="Detectado hace {{ \App\Domains\Rentals\Models\Rental::OLD_AFTER_MONTHS }} meses o más: probablemente ya no esté disponible">⏳ Antiguo</span>
             @endif
+            @if($rental->property_use === \App\Domains\Rentals\Enums\PropertyUse::Commercial)
+                <span class="bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 text-xs font-medium px-2.5 py-0.5 rounded">🏪 {{ $rental->property_use->label() }}</span>
+            @endif
             <span class="text-xs text-gray-500 dark:text-gray-400" title="{{ $rental->created_at->format('d/m/Y H:i') }}">Detectado {{ $rental->detectedForHumans() }}</span>
         </div>
         <div class="flex justify-between items-start mb-3">

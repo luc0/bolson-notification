@@ -14,7 +14,7 @@ class RentalImporter
 {
     public function __construct(
         private readonly PriceParser $priceParser,
-        private readonly RentalLocator $rentalLocator,
+        private readonly RentalClassifier $rentalClassifier,
         private readonly RentalImageChecker $imageChecker,
     ) {}
 
@@ -30,7 +30,7 @@ class RentalImporter
         foreach ($scrapedItems as $item) {
             try {
                 $rental = $this->storeItem($item, $siteUrl);
-                $this->rentalLocator->locate($rental, $source);
+                $this->rentalClassifier->classify($rental, $source);
                 $this->refreshRentedStatus($rental);
 
                 $isNewAndAvailable = $rental->wasRecentlyCreated && ! $rental->isRented();

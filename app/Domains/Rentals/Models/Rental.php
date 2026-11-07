@@ -3,6 +3,7 @@
 namespace App\Domains\Rentals\Models;
 
 use App\Domains\Rentals\Enums\City;
+use App\Domains\Rentals\Enums\PropertyUse;
 use App\Domains\Rentals\Enums\Utility;
 use Illuminate\Database\Eloquent\Model;
 
@@ -20,6 +21,7 @@ class Rental extends Model
         'location',
         'city',
         'neighborhood',
+        'property_use',
         'rooms',
         'bathrooms',
         'source_path',
@@ -40,6 +42,7 @@ class Rental extends Model
 
     protected $casts = [
         'city' => City::class,
+        'property_use' => PropertyUse::class,
         'price_amount' => 'decimal:2',
         'active' => 'boolean',
         'rented_at' => 'datetime',
@@ -65,6 +68,20 @@ class Rental extends Model
         return $query->where(function ($query) use ($knownCities, $includesUnknown) {
             $query->whereIn('city', $knownCities)
                 ->when($includesUnknown, fn ($query) => $query->orWhereNull('city'));
+        });
+    }
+
+    /**
+     * @param  array<int, PropertyUse|null>  $uses  null = rentals whose use couldn't be resolved.
+     */
+    public function scopeByPropertyUse($query, array $uses)
+    {
+        $knownUses = array_values(array_filter($uses));
+        $includesUnknown = in_array(null, $uses, true);
+
+        return $query->where(function ($query) use ($knownUses, $includesUnknown) {
+            $query->whereIn('property_use', $knownUses)
+                ->when($includesUnknown, fn ($query) => $query->orWhereNull('property_use'));
         });
     }
 

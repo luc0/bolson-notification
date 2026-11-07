@@ -3,6 +3,7 @@
 namespace App\Domains\Harvesting\Services;
 
 use App\Domains\Rentals\Enums\City;
+use App\Domains\Rentals\Enums\PropertyUse;
 use App\Domains\Rentals\Enums\Utility;
 use App\Domains\Rentals\Models\Rental;
 use Illuminate\Support\Facades\Log;
@@ -71,6 +72,8 @@ class RentalDetailService
             'rooms' => $this->positiveOrNull($detail['Rooms']) ?? $rental->rooms,
             'bathrooms' => $this->positiveOrNull($detail['Bathrooms']) ?? $rental->bathrooms,
             ...$this->locationFromDetail($rental, $detail),
+            // Fallback only: the title (RentalClassifier) is more reliable.
+            'property_use' => $rental->property_use ?? PropertyUse::tryFrom((string) ($detail['PropertyUse'] ?? '')),
             'details_fetched_at' => now(),
         ]);
 

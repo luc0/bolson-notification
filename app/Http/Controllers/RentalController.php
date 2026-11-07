@@ -2,90 +2,78 @@
 
 namespace App\Http\Controllers;
 
-use App\Domains\Rentals\Enums\City;
-use App\Domains\Rentals\Models\Rental;
-use Carbon\Carbon;
-use Illuminate\Database\Eloquent\Builder;
+use App\Domains\Rentals\Queries\RentalSearch;
 use Illuminate\Http\Request;
-use Throwable;
+use Illuminate\View\View;
 
 class RentalController extends Controller
 {
-    // Filter value for rentals whose city couldn't be resolved.
-    private const UNKNOWN_CITY = 'unknown';
-
-    public function index(Request $request)
+    public function index(Request $request): View
     {
-        $includeInactive = $request->boolean('include_inactive');
-        $selectedCities = array_values(array_filter((array) $request->input('cities', [])));
+        $search = new RentalSearch(
+            cities: $this->selectedValues($request, 'cities'),
+            propertyUses: $this->selectedValues($request, 'uses'),
+            includeInactive: $request->boolean('include_inactive'),
+            date: $request->input('date'),
+        );
 
-        $rentals = Rental::query()
-            ->when(! $includeInactive, fn (Builder $query) => $query->available())
-            ->when(! empty($selectedCities), fn (Builder $query) => $query->byCity($this->citiesToFilter($selectedCities)))
-            ->tap(fn (Builder $query) => $this->applyDateFilter($query, $request->input('date')))
-            ->orderByDesc('active')
-            ->orderByDesc('created_at')
-            ->get();
-
-        $cityOptions = $this->cityOptions();
-
-        return view('rentals.index', compact('rentals', 'cityOptions', 'selectedCities', 'includeInactive'));
+        return view('rentals.index', [
+            'rentals' => $search->rentals(),
+            'filterChips' => $this->filterChips($search),
+        ]);
     }
 
     /**
-     * @param  string[]  $selectedCities
-     * @return array<int, City|null>
+     * @return string[]
      */
-    private function citiesToFilter(array $selectedCities): array
+    private function selectedValues(Request $request, string $parameter): array
     {
-        $cities = array_values(array_filter(array_map(fn (string $value) => City::tryFrom($value), $selectedCities)));
-        $includesUnknown = in_array(self::UNKNOWN_CITY, $selectedCities, true);
-        if ($includesUnknown) {
-            $cities[] = null;
-        }
-
-        return $cities;
+        return array_values(array_filter((array) $request->input($parameter, []), 'is_string'));
     }
 
     /**
-     * Cities with available rentals, in the enum order, e.g. ['el_bolson' => 'El Bolsón (45)'].
+     * One-click filters: each chip is a link to the listing with that filter toggled.
+     *
+     * @return array{cities: array, uses: array, inactive: array{label: string, url: string, active: bool}}
      */
-    private function cityOptions(): array
+    private function filterChips(RentalSearch $search): array
     {
-        $countsByCity = Rental::available()
-            ->selectRaw('city, count(*) as total')
-            ->groupBy('city')
-            ->pluck('total', 'city');
+        $url = fn (array $overrides) => route('rentals.index', array_filter([
+            'cities' => array_values($overrides['cities'] ?? $search->cities),
+            'uses' => array_values($overrides['uses'] ?? $search->propertyUses),
+            'include_inactive' => ($overrides['include_inactive'] ?? $search->includeInactive) ? 1 : null,
+            'date' => $search->date,
+        ]), absolute: false);
 
-        $options = collect(City::cases())
-            ->filter(fn (City $city) => $countsByCity->has($city->value))
-            ->mapWithKeys(fn (City $city) => [$city->value => "{$city->label()} ({$countsByCity[$city->value]})"]);
-
-        // pluck() turns the null city into an empty string key.
-        $unknownCount = $countsByCity->get('', 0);
-        if ($unknownCount > 0) {
-            $options->put(self::UNKNOWN_CITY, "Sin especificar ({$unknownCount})");
-        }
-
-        return $options->all();
+        return [
+            'cities' => $this->toggleChips('cities', 'Todas', RentalSearch::cityOptions(), $search->cities, $url),
+            'uses' => $this->toggleChips('uses', 'Todos', RentalSearch::propertyUseOptions(), $search->propertyUses, $url),
+            'inactive' => [
+                'label' => 'No disponibles',
+                'url' => $url(['include_inactive' => ! $search->includeInactive]),
+                'active' => $search->includeInactive,
+            ],
+        ];
     }
 
-    private function applyDateFilter(Builder $query, ?string $date): void
+    /**
+     * "All" chip + one chip per option that adds or removes it from the selection.
+     *
+     * @param  array<string, string>  $options  value => label
+     * @param  string[]  $selected
+     * @return array<int, array{label: string, url: string, active: bool}>
+     */
+    private function toggleChips(string $parameter, string $allLabel, array $options, array $selected, callable $url): array
     {
-        if ($date === null) {
-            return;
-        }
+        $allChip = ['label' => $allLabel, 'url' => $url([$parameter => []]), 'active' => empty($selected)];
 
-        if ($date === 'today') {
-            $query->whereDate('created_at', today());
+        $optionChips = collect($options)->map(function (string $label, string $value) use ($parameter, $selected, $url) {
+            $isSelected = in_array($value, $selected, true);
+            $toggled = $isSelected ? array_diff($selected, [$value]) : [...$selected, $value];
 
-            return;
-        }
+            return ['label' => $label, 'url' => $url([$parameter => $toggled]), 'active' => $isSelected];
+        })->values()->all();
 
-        try {
-            $query->whereDate('created_at', Carbon::parse($date)->format('Y-m-d'));
-        } catch (Throwable) {
-            // Invalid date: ignore the filter.
-        }
+        return [$allChip, ...$optionChips];
     }
 }

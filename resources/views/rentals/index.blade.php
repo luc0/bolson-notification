@@ -5,71 +5,11 @@
     </x-slot>
 
     <div class="min-h-screen">
-        {{-- Panel flotante de filtros --}}
-        <div id="floatingFilter" class="fixed top-4 left-4 right-4 z-50 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 transform transition-all duration-300 ease-in-out -translate-y-full opacity-0">
-            <div class="p-4">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Filtros</h3>
-                    <button id="closeFilter" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                    </button>
-                </div>
-                
-                <form method="GET" action="{{ route('rentals.index') }}" id="filterForm">
-                    <div class="space-y-4">
-                        <div>
-                            <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Ciudad</h4>
-                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                                @foreach($cityOptions as $value => $label)
-                                    <label class="flex items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
-                                        <input type="checkbox"
-                                               name="cities[]"
-                                               value="{{ $value }}"
-                                               @checked(in_array($value, $selectedCities, true))
-                                               class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                                        <span class="ml-2 text-sm text-gray-900 dark:text-gray-100">{{ $label }}</span>
-                                    </label>
-                                @endforeach
-                            </div>
-                        </div>
-                        <label class="flex items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
-                            <input type="checkbox"
-                                   name="include_inactive"
-                                   value="1"
-                                   @checked($includeInactive)
-                                   class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                            <span class="ml-2 text-sm text-gray-900 dark:text-gray-100">Mostrar no disponibles</span>
-                        </label>
-                    </div>
-                    
-                    <div class="flex space-x-3 mt-4">
-                        <button type="submit" 
-                                class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200">
-                            Aplicar Filtros
-                        </button>
-                        <a href="{{ route('rentals.index') }}" 
-                           class="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-6 rounded-lg transition-colors duration-200 text-center inline-flex items-center justify-center">
-                            Limpiar
-                        </a>
-                    </div>
-                </form>
-            </div>
-        </div>
-
         {{-- Contenido principal --}}
         <div class="px-4 sm:px-6 lg:px-8 py-6">
-            {{-- Botón para abrir filtros --}}
-            <div class="flex items-center justify-between mb-4">
-                <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">Alquileres en la Comarca Andina</h1>
-                <button id="toggleFilter" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 flex items-center space-x-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
-                    </svg>
-                    <span>Filtros</span>
-                </button>
-            </div>
+            <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-3">Alquileres en la Comarca Andina</h1>
+
+
                 <button id="enablePush" class="btn-primary mb-4">Activar notificaciones!</button>
 
                 <button id="installBtn" hidden class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 mb-2">Instalar app</button>
@@ -92,6 +32,17 @@
                     </ol>
                 </div>
 
+                {{-- One-click filters: each chip is a link --}}
+                <nav class="flex flex-wrap items-center gap-2 mt-6 -mb-2" aria-label="Filtros">
+                    @foreach([$filterChips['cities'], $filterChips['uses']] as $chips)
+                        @foreach($chips as $chip)
+                            <a href="{{ $chip['url'] }}" @class(['filter-chip', 'filter-chip-active' => $chip['active']]) @if($chip['active']) aria-current="true" @endif>{{ $chip['label'] }}</a>
+                        @endforeach
+                        <span class="mx-1 h-5 w-px bg-gray-300 dark:bg-gray-600" aria-hidden="true"></span>
+                    @endforeach
+                    <a href="{{ $filterChips['inactive']['url'] }}" @class(['filter-chip', 'filter-chip-active' => $filterChips['inactive']['active']]) @if($filterChips['inactive']['active']) aria-current="true" @endif>{{ $filterChips['inactive']['active'] ? '✓ ' : '' }}{{ $filterChips['inactive']['label'] }}</a>
+                </nav>
+
                 {{-- Incluir la vista de listado de alquileres --}}
                 @include('rentals.list')
             </div>
@@ -99,58 +50,6 @@
     </div>
 
     @push('scripts')
-        <script>
-            // Funcionalidad de búsqueda y panel flotante de filtros
-            document.addEventListener('DOMContentLoaded', function() {
-                const floatingFilter = document.getElementById('floatingFilter');
-                const toggleFilterBtn = document.getElementById('toggleFilter');
-                const closeFilterBtn = document.getElementById('closeFilter');
-                
-                // Funcionalidad de toggle del panel flotante
-                function openFilter() {
-                    floatingFilter.classList.remove('-translate-y-full', 'opacity-0');
-                    floatingFilter.classList.add('translate-y-0', 'opacity-100');
-                }
-                
-                function closeFilter() {
-                    floatingFilter.classList.add('-translate-y-full', 'opacity-0');
-                    floatingFilter.classList.remove('translate-y-0', 'opacity-100');
-                }
-                
-                // Event listeners
-                if (toggleFilterBtn) {
-                    toggleFilterBtn.addEventListener('click', openFilter);
-                }
-                
-                if (closeFilterBtn) {
-                    closeFilterBtn.addEventListener('click', closeFilter);
-                }
-                
-                // Cerrar panel con tecla Escape
-                document.addEventListener('keydown', function(e) {
-                    if (e.key === 'Escape' && !floatingFilter.classList.contains('-translate-y-full')) {
-                        closeFilter();
-                    }
-                });
-                
-                // Cerrar panel al hacer submit del formulario
-                const filterForm = document.getElementById('filterForm');
-                if (filterForm) {
-                    filterForm.addEventListener('submit', function() {
-                        setTimeout(closeFilter, 100); // Pequeño delay para que se vea el submit
-                    });
-                }
-                
-                // Cerrar panel al hacer click fuera de él
-                document.addEventListener('click', function(e) {
-                    if (!floatingFilter.contains(e.target) && !toggleFilterBtn.contains(e.target)) {
-                        if (!floatingFilter.classList.contains('-translate-y-full')) {
-                            closeFilter();
-                        }
-                    }
-                });
-            });
-        </script>
         
         <script>
             console.log('test');

@@ -2,6 +2,7 @@
 
 use App\Domains\Members\Models\User;
 use App\Domains\Rentals\Enums\City;
+use App\Domains\Rentals\Enums\PropertyUse;
 use App\Domains\Rentals\Models\Rental;
 
 function createRental(string $link, bool $active = true, ?string $createdAt = null): Rental
@@ -133,4 +134,40 @@ it('filters by city and offers only cities with rentals', function () {
         ->assertSee('📍 Mallín Ahogado, El Bolsón')
         ->assertSee('Rental https://example.com/unknown')
         ->assertDontSee('Rental https://example.com/puelo');
+});
+
+it('shows one-click city chips that toggle the filter', function () {
+    createRental('https://example.com/bolson')->update(['city' => City::ElBolson]);
+    createRental('https://example.com/puelo')->update(['city' => City::LagoPuelo]);
+
+    $page = $this->get('/?cities[]=el_bolson')->assertOk();
+
+    // Active chip removes the city, inactive chip adds it, "Todas" clears the filter.
+    $page->assertSee('href="'.e(route('rentals.index', absolute: false)).'"', false)
+        ->assertSee('href="'.e(route('rentals.index', ['cities' => ['el_bolson', 'lago_puelo']], false)).'"', false)
+        ->assertSee('href="'.e(route('rentals.index', ['cities' => ['el_bolson'], 'include_inactive' => 1], false)).'"', false);
+
+    expect($page->getContent())->toMatch('/aria-current="true"\s*>El Bolsón \(1\)/');
+});
+
+it('filters by property use and combines it with the city', function () {
+    createRental('https://example.com/house')->update(['city' => City::ElBolson, 'property_use' => PropertyUse::Residential]);
+    createRental('https://example.com/store')->update(['city' => City::ElBolson, 'property_use' => PropertyUse::Commercial]);
+    createRental('https://example.com/puelo-store')->update(['city' => City::LagoPuelo, 'property_use' => PropertyUse::Commercial]);
+
+    $this->get('/')
+        ->assertSeeInOrder(['Para vivir (1)', 'Local / comercial (2)'])
+        ->assertSee('🏪 Local / comercial');
+
+    $this->get('/?uses[]=residential')
+        ->assertSee('Rental https://example.com/house')
+        ->assertDontSee('Rental https://example.com/store');
+
+    $page = $this->get('/?cities[]=el_bolson&uses[]=commercial')
+        ->assertSee('Rental https://example.com/store')
+        ->assertDontSee('Rental https://example.com/house')
+        ->assertDontSee('Rental https://example.com/puelo-store');
+
+    // Toggling the use keeps the selected city.
+    $page->assertSee('href="'.e(route('rentals.index', ['cities' => ['el_bolson'], 'uses' => ['commercial', 'residential']], false)).'"', false);
 });
