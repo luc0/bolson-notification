@@ -40,12 +40,12 @@ Laravel app that scrapes rental listings (El Bolsón / Lago Puelo), processes th
   - Detail page data: `covered_area`, `total_area`, `bedrooms`, `parking_spaces`, `age_years`, `services` (json of `App\Domains\Rentals\Enums\Utility` values).
 - Location: `location` is the raw text from the agency; `city` (`App\Domains\Rentals\Enums\City`) and `neighborhood` are resolved from it by `CityResolver` (aliases + known neighborhoods per city, evidence-based). Fallbacks: city from the detail page (AI, only if on the page), then the source `default_city`.
 - Property use: `property_use` (`PropertyUse`: residential / commercial) resolved from the property type in the title by `PropertyUseResolver`; fallback: detail page (AI, only if the type is on the page).
-- Both are set by `Harvesting\Rentals\Services\RentalClassifier` on import. Filters (one-click chips, `<x-filter-chip>`): city, and under "Más filtros" (`<details>`, opens when one is not default) property use (default: residential; `uses=all` for every use), price range (`PriceRange`: pesos ranges + dollars), rooms (4+ grouped), natural gas; include unavailable; sort (`RentalSort`: newest by default with no chip, price chips sort pesos, then dollars, then no price). Query in `Rentals\Queries\RentalSearch`.
+- Both are set by `Harvesting\Services\RentalClassifier` on import. Filters (one-click chips, `<x-filter-chip>`): city, and under "Más filtros" (`<details>`, opens when one is not default) property use (default: residential; `uses=all` for every use), price range (`PriceRange`: pesos ranges + dollars), rooms (4+ grouped), natural gas; include unavailable; sort (`RentalSort`: newest by default with no chip, price chips sort pesos, then dollars, then no price). Query in `Rentals\Queries\RentalSearch`.
 - To recognize a new city/neighborhood/property type: add it to `City::aliases()` / `City::neighborhoods()` / `PropertyUse::keywords()` and run `rentals:classify` (no AI cost).
 
 ## Lands
 - `Land` (`app/Domains/Lands`): lands for sale, separate from rentals (own table, `/terrenos` tab, `LandController`). Same `source` / `site_path` / `content` / price columns as `Rental`, plus `area` (m²). No notifications yet.
-- Flow: `lands:analyze` → `Harvesting\Lands\Services\BrowserLandScraper` (capture in `storage/app/captures/lands`) → `LandListingExtractor` → `LandImporter`. Scheduled weekly in prod (Mondays 18:00), every 3 minutes in debug mode like rentals.
+- Flow: `lands:analyze` → `Harvesting\Services\BrowserLandScraper` (capture in `storage/app/captures/lands`) → `LandListingExtractor` → `LandImporter`. Scheduled weekly in prod (Mondays 18:00), every 3 minutes in debug mode like rentals.
 - The AI uses `services.groq.land_reasoning_effort` (default `medium`): with `low` it gives up on long land listings and returns an empty list.
 
 ## Sources
@@ -56,7 +56,7 @@ Laravel app that scrapes rental listings (El Bolsón / Lago Puelo), processes th
 
 ## Architecture
 - `app/Console/Commands/AnalyzeRentals.php` (`rentals:analyze`) → main flow: capture → AI extraction → store → detail enrichment → notify. Scheduled in `routes/console.php`.
-- Harvesting (`app/Domains/Harvesting`): each catalog in its own folder (`Rentals/`, `Lands/`); shared pieces at the root (`Services/SourceCapturer`, `Services/AiListingExtractor`, `Support/CaptureStore`, `Data/Capture`, `Data/ImportResult`). Rental classes below live in `Harvesting/Rentals/`.
+- Harvesting (`app/Domains/Harvesting`): rentals and lands share the same folders; classes are named symmetrically (`BrowserRentalScraper` / `BrowserLandScraper`, `RentalListingExtractor` / `LandListingExtractor`, `RentalImporter` / `LandImporter`). Shared: `Services/SourceCapturer`, `Services/AiListingExtractor`, `Support/CaptureStore`, `Data/Capture`, `Data/ImportResult`.
   - `Contracts/RentalScraper` → `BrowserRentalScraper` (Puppeteer) and `FakeRentalScraper` (`SCRAPE_MOCK=true`).
   - `Support/CaptureStore` + `Data/Capture` → captures and snapshots (change detection).
   - `RentalListingExtractor` → extracts rentals from a listing page capture.

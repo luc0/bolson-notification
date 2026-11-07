@@ -1,6 +1,6 @@
 <?php
 
-use App\Domains\Harvesting\Rentals\Services\RentalListingExtractor;
+use App\Domains\Harvesting\Services\RentalListingExtractor;
 use App\Domains\Sources\Data\Source;
 use App\Domains\Sources\Enums\SourceType;
 use Illuminate\Support\Facades\Http;

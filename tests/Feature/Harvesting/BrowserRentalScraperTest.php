@@ -1,6 +1,6 @@
 <?php
 
-use App\Domains\Harvesting\Rentals\Services\BrowserRentalScraper;
+use App\Domains\Harvesting\Services\BrowserRentalScraper;
 use App\Domains\Rentals\Models\Rental;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
@@ -30,7 +30,7 @@ beforeEach(function () {
         ]]])],
         'finish_reason' => 'stop',
     ]]])]);
-    app()->instance(\App\Domains\Harvesting\Rentals\Services\RentalImageChecker::class, Mockery::mock(\App\Domains\Harvesting\Rentals\Services\RentalImageChecker::class, ['isRented' => false]));
+    app()->instance(\App\Domains\Harvesting\Services\RentalImageChecker::class, Mockery::mock(\App\Domains\Harvesting\Services\RentalImageChecker::class, ['isRented' => false]));
 });
 
 afterEach(fn () => File::deleteDirectory($this->tempPath));

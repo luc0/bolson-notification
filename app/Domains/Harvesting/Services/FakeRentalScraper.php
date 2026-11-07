@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Domains\Harvesting\Rentals\Services;
+namespace App\Domains\Harvesting\Services;
 
-use App\Domains\Harvesting\Rentals\Contracts\RentalScraper;
+use App\Domains\Harvesting\Contracts\RentalScraper;
 use Illuminate\Support\Facades\Log;
 
 class FakeRentalScraper implements RentalScraper

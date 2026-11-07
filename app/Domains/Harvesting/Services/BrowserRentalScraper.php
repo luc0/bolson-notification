@@ -1,9 +1,8 @@
 <?php
 
-namespace App\Domains\Harvesting\Rentals\Services;
+namespace App\Domains\Harvesting\Services;
 
-use App\Domains\Harvesting\Rentals\Contracts\RentalScraper;
-use App\Domains\Harvesting\Services\SourceCapturer;
+use App\Domains\Harvesting\Contracts\RentalScraper;
 use App\Domains\Harvesting\Support\CaptureStore;
 use App\Domains\Sources\Data\Source;
 use Illuminate\Support\Facades\Log;

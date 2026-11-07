@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Domains\Harvesting\Rentals\Services\RentalClassifier;
+use App\Domains\Harvesting\Services\RentalClassifier;
 use App\Domains\Rentals\Models\Rental;
 use App\Domains\Sources\Data\Source;
 use Illuminate\Console\Command;

@@ -65,7 +65,7 @@ Dónde se guardan las capturas y snapshots no es parte de Sources sino de Harves
 | Detección de alquilados | Revisar la foto del aviso para detectar carteles de "ALQUILADO" o "RESERVADO". |
 | Deduplicación | (Futuro, con portales) Reconocer el mismo aviso publicado en varias fuentes. |
 
-**Hoy:** `config/harvesting.php`, `app/Domains/Harvesting/`. Lo de cada catálogo va en su carpeta (`Rentals/`, `Lands/`) y lo compartido queda en la raíz:
+**Hoy:** `config/harvesting.php`, `app/Domains/Harvesting/`. Alquileres y terrenos usan las mismas carpetas; las clases de cada uno llevan el nombre del catálogo (`Rental…` / `Land…`). Compartido:
 
 | Clase | Subdominio |
 |---|---|
@@ -74,7 +74,7 @@ Dónde se guardan las capturas y snapshots no es parte de Sources sino de Harves
 | `Services/AiListingExtractor` | Base de la extracción con IA (pedido con schema estricto, reintento y validación) |
 | `Data/ImportResult` | Resultado de una importación |
 
-**Alquileres** (`Harvesting/Rentals/`):
+**Alquileres:**
 
 | Clase | Subdominio |
 |---|---|
@@ -85,7 +85,7 @@ Dónde se guardan las capturas y snapshots no es parte de Sources sino de Harves
 | `Services/RentalImageChecker` | Detección de alquilados |
 | `Services/RentalClassifier` | Ciudad, barrio y uso (para vivir / comercial) al importar: texto del aviso → valor ya conocido (detalle) → `default_city` de la fuente |
 
-**Terrenos** (`Harvesting/Lands/`):
+**Terrenos:**
 
 | Clase | Subdominio |
 |---|---|

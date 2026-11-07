@@ -1,6 +1,6 @@
 <?php
 
-use App\Domains\Harvesting\Lands\Services\BrowserLandScraper;
+use App\Domains\Harvesting\Services\BrowserLandScraper;
 use App\Domains\Lands\Models\Land;
 use App\Domains\Rentals\Models\Rental;
 use Illuminate\Support\Facades\File;

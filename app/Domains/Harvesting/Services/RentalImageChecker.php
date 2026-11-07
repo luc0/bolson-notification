@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Domains\Harvesting\Rentals\Services;
+namespace App\Domains\Harvesting\Services;
 
 use App\Integrations\Groq\GroqClient;
 use Illuminate\Support\Facades\Log;

@@ -2,9 +2,9 @@
 
 namespace App\Providers;
 
-use App\Domains\Harvesting\Rentals\Contracts\RentalScraper;
-use App\Domains\Harvesting\Rentals\Services\BrowserRentalScraper;
-use App\Domains\Harvesting\Rentals\Services\FakeRentalScraper;
+use App\Domains\Harvesting\Contracts\RentalScraper;
+use App\Domains\Harvesting\Services\BrowserRentalScraper;
+use App\Domains\Harvesting\Services\FakeRentalScraper;
 use App\Domains\Members\Models\User;
 use App\Domains\Subscriptions\Models\Subscriber;
 use Illuminate\Database\Eloquent\Relations\Relation;

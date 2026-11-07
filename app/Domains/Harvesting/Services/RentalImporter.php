@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Domains\Harvesting\Rentals\Services;
+namespace App\Domains\Harvesting\Services;
 
 use App\Domains\Harvesting\Data\ImportResult;
 use App\Domains\Rentals\Models\Rental;

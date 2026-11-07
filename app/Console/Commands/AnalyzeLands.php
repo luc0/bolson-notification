@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Domains\Harvesting\Lands\Services\BrowserLandScraper;
+use App\Domains\Harvesting\Services\BrowserLandScraper;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
