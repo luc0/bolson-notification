@@ -6,6 +6,7 @@ use App\Domains\Harvesting\Data\ImportResult;
 use App\Domains\Rentals\Models\Rental;
 use App\Domains\Rentals\Support\PriceParser;
 use App\Domains\Rentals\Support\RentalLink;
+use App\Domains\Sources\Data\Source;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -13,20 +14,23 @@ class RentalImporter
 {
     public function __construct(
         private readonly PriceParser $priceParser,
+        private readonly RentalLocator $rentalLocator,
         private readonly RentalImageChecker $imageChecker,
     ) {}
 
     /**
      * Each item is stored independently: one bad item doesn't drop the rest of the site.
      */
-    public function import(array $scrapedItems, string $siteUrl): ImportResult
+    public function import(array $scrapedItems, Source $source): ImportResult
     {
+        $siteUrl = $source->listingUrl;
         $newItems = [];
         $failedCount = 0;
 
         foreach ($scrapedItems as $item) {
             try {
                 $rental = $this->storeItem($item, $siteUrl);
+                $this->rentalLocator->locate($rental, $source);
                 $this->refreshRentedStatus($rental);
 
                 $isNewAndAvailable = $rental->wasRecentlyCreated && ! $rental->isRented();

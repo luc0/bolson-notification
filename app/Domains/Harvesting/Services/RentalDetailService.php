@@ -2,6 +2,7 @@
 
 namespace App\Domains\Harvesting\Services;
 
+use App\Domains\Rentals\Enums\City;
 use App\Domains\Rentals\Enums\Utility;
 use App\Domains\Rentals\Models\Rental;
 use Illuminate\Support\Facades\Log;
@@ -69,10 +70,26 @@ class RentalDetailService
             // The detail page is more reliable than the listing card: keep the card value only if the page has none.
             'rooms' => $this->positiveOrNull($detail['Rooms']) ?? $rental->rooms,
             'bathrooms' => $this->positiveOrNull($detail['Bathrooms']) ?? $rental->bathrooms,
+            ...$this->locationFromDetail($rental, $detail),
             'details_fetched_at' => now(),
         ]);
 
         return true;
+    }
+
+    /**
+     * Fallback only: the city resolved from the listing texts (RentalImporter) is more reliable.
+     */
+    private function locationFromDetail(Rental $rental, array $detail): array
+    {
+        $detailCity = City::tryFrom((string) ($detail['City'] ?? ''));
+        $city = $rental->city ?? $detailCity;
+
+        // A neighborhood the AI found next to another city doesn't belong to this rental.
+        $isNeighborhoodOfThisCity = $detailCity === null || $detailCity === $city;
+        $neighborhood = $isNeighborhoodOfThisCity ? $detail['Neighborhood'] ?? null : null;
+
+        return ['city' => $city, 'neighborhood' => $rental->neighborhood ?? $neighborhood];
     }
 
     private function positiveOrNull(int|float|null $value): int|float|null

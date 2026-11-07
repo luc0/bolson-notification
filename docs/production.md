@@ -107,8 +107,10 @@ Esta rama trae varias migraciones con cambios de datos. Pasos:
    - `fix_currency_of_legacy_rental_prices`: recalcula monto y moneda de los precios viejos a partir de la descripción.
    - `add_detail_columns`: superficie, dormitorios, cocheras, antigüedad, servicios.
    - `use_morph_alias_for_push_subscriptions` y `link_subscribers_to_users`: `anon_subscribers` pasa a `subscribers` con `user_id`; las suscripciones push existentes siguen funcionando.
-4. Completar el detalle de los avisos existentes (tarda unos minutos):
+   - `add_city_and_neighborhood`: columnas `city` y `neighborhood` (vacías hasta el paso 4).
+4. Completar la ciudad y el barrio de los avisos existentes (sin IA, instantáneo) y después el detalle (tarda unos minutos):
    ```bash
+   php artisan rentals:resolve-cities
    php artisan rentals:fetch-details
    ```
 5. Correr una vez el análisis completo y revisar el log:

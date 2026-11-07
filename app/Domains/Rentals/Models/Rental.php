@@ -2,6 +2,7 @@
 
 namespace App\Domains\Rentals\Models;
 
+use App\Domains\Rentals\Enums\City;
 use App\Domains\Rentals\Enums\Utility;
 use Illuminate\Database\Eloquent\Model;
 
@@ -17,6 +18,8 @@ class Rental extends Model
         'price_amount',
         'price_currency',
         'location',
+        'city',
+        'neighborhood',
         'rooms',
         'bathrooms',
         'source_path',
@@ -36,6 +39,7 @@ class Rental extends Model
     ];
 
     protected $casts = [
+        'city' => City::class,
         'price_amount' => 'decimal:2',
         'active' => 'boolean',
         'rented_at' => 'datetime',
@@ -50,9 +54,30 @@ class Rental extends Model
         'details_fetched_at' => 'datetime',
     ];
 
-    public function scopeByLocation($query, array $locations)
+    /**
+     * @param  array<int, City|null>  $cities  null = rentals without a known city.
+     */
+    public function scopeByCity($query, array $cities)
     {
-        return $query->whereIn('location', $locations);
+        $knownCities = array_values(array_filter($cities));
+        $includesUnknown = in_array(null, $cities, true);
+
+        return $query->where(function ($query) use ($knownCities, $includesUnknown) {
+            $query->whereIn('city', $knownCities)
+                ->when($includesUnknown, fn ($query) => $query->orWhereNull('city'));
+        });
+    }
+
+    /**
+     * "Mallín Ahogado, El Bolsón"; the raw location when the city is unknown.
+     */
+    public function locationLabel(): ?string
+    {
+        if ($this->city === null) {
+            return $this->location;
+        }
+
+        return collect([$this->neighborhood, $this->city->label()])->filter()->implode(', ');
     }
 
     public function isRented(): bool

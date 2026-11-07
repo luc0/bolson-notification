@@ -73,6 +73,7 @@ Dónde se guardan las capturas y snapshots no es parte de Sources sino de Harves
 | `Services/RentalImporter`, `Data/ImportResult` | Importación de los avisos en Rentals (alta, reactivación y desactivación) |
 | `Services/RentalDetailService`, `RentalDetailFetcher`, `RentalDetailExtractor` | Enriquecimiento |
 | `Services/RentalImageChecker` | Detección de alquilados |
+| `Services/RentalLocator` | Ciudad y barrio al importar: texto del aviso → ciudad ya conocida (detalle) → `default_city` de la fuente |
 
 Usa `App\Integrations\Groq\GroqClient` para hablar con la IA.
 
@@ -84,7 +85,7 @@ Usa `App\Integrations\Groq\GroqClient` para hablar con la IA.
 |---|---|
 | Disponibilidad | Ciclo de vida del aviso: activo, inactivo (ya no está en el sitio), alquilado (cartel en la foto) y antiguo (3+ meses). |
 | Precio | Precio tal como lo publica la inmobiliaria más el monto y la moneda normalizados; detecta precios de relleno ("$1"). |
-| Ubicación | Localidad o barrio del aviso y las opciones del filtro (El Bolsón, Lago Puelo...). |
+| Ubicación | Ciudad (`City`: El Bolsón, Lago Puelo, El Hoyo, Epuyén, Cholila) y barrio del aviso, resueltos del texto por `CityResolver` (alias + barrios conocidos). Son las opciones del filtro. |
 | Características | Superficie, ambientes, dormitorios, baños, cocheras, antigüedad, servicios y datos extra limpios. |
 | Identidad del aviso | Normalización del link para que el mismo aviso no se guarde dos veces. |
 | Búsqueda | (Hoy en `RentalController`) Filtros del listado: ubicación, fecha, incluir no disponibles. |

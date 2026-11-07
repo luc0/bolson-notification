@@ -13,6 +13,8 @@
 | - listing_url: page with the rental listings that gets scraped.
 | - link_base_url: base to complete relative listing links returned by the AI.
 | - wait_for: CSS selector to wait for on sites that render listings with JS.
+| - default_city: City enum value, only for sources whose listing_url is filtered by city.
+|   Used when a rental's texts don't name its city.
 |
 */
 
@@ -26,6 +28,7 @@ return [
             'listing_url' => 'https://anezcapropiedades.com.ar/properties?property_type_id=&operation_id=2&location_id=1396&currency_id=&price_min=&price_max=&bathrooms=&bedrooms=&order=',
             'link_base_url' => 'https://anezcapropiedades.com.ar/propiedades',
             'wait_for' => null,
+            'default_city' => 'el_bolson', // listing filtered by location_id=1396
         ],
 
         'puntopatagonia' => [
@@ -35,6 +38,7 @@ return [
             // e.g. https://www.inmobiliariapuntopatagonia.com.ar/p/6858071-Departamento-en-Alquiler-en-El-Bolson-...
             'link_base_url' => 'https://www.inmobiliariapuntopatagonia.com.ar/p/',
             'wait_for' => '.prop-desc',
+            'default_city' => null, // listing mixes cities
         ],
 
         'puntosurpropiedades' => [
@@ -44,6 +48,7 @@ return [
             // e.g. https://puntosurpropiedades.ar/web/propiedad.php?id_propiedad=655
             'link_base_url' => 'https://puntosurpropiedades.ar/web/',
             'wait_for' => null,
+            'default_city' => 'el_bolson', // listing filtered by search_locality
         ],
 
         'rioazulpropiedades' => [
@@ -53,6 +58,7 @@ return [
             // e.g. https://www.rioazulpropiedades.com/p/6667459-Departamento-en-Alquiler-en-Centro-rivadavia
             'link_base_url' => 'https://www.rioazulpropiedades.com/',
             'wait_for' => null,
+            'default_city' => 'el_bolson', // listing filtered by locations=40933
         ],
 
         'inmobiliariadelagua' => [
@@ -62,6 +68,7 @@ return [
             // e.g. https://inmobiliariadelagua.com.ar/departamento-alquiler-casco-centrico-el-bolson/8587691
             'link_base_url' => 'https://inmobiliariadelagua.com.ar',
             'wait_for' => '.item',
+            'default_city' => null, // listing mixes cities
         ],
 
     ],

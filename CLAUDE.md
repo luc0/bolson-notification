@@ -36,7 +36,8 @@ Laravel app that scrapes rental listings (El Bolsón / Lago Puelo), processes th
   - Availability: `active` (still listed on the site) + `rented_at` (photo stamped "ALQUILADO"). Use `Rental::available()`.
   - Old = detected 3+ months ago (`Rental::OLD_AFTER_MONTHS`).
   - Detail page data: `covered_area`, `total_area`, `bedrooms`, `parking_spaces`, `age_years`, `services` (json of `App\Domains\Rentals\Enums\Utility` values).
-- `location`: free string. Filter options = `App\Domains\Rentals\Enums\Location` values + distinct locations in DB.
+- Location: `location` is the raw text from the agency; `city` (`App\Domains\Rentals\Enums\City`) and `neighborhood` are resolved from it by `CityResolver` (aliases + known neighborhoods per city, evidence-based) in `RentalLocator`. Fallbacks: city from the detail page (AI, only if on the page), then the source `default_city`. The filter is by city only.
+- To recognize a new city/neighborhood: add it to `City::aliases()` / `City::neighborhoods()` and run `rentals:resolve-cities` (no AI cost).
 
 ## Sources
 - `config/sources.php` is the single source of truth for scraped sites (key, type, listing URL, link base URL, `wait_for`). To add a site, add it there only.

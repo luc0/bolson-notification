@@ -95,7 +95,7 @@ class BrowserRentalScraper implements RentalScraper
             return [];
         }
 
-        $importResult = $this->rentalImporter->import($this->withImageUrls($extractedRentals, $capture), $source->listingUrl);
+        $importResult = $this->rentalImporter->import($this->withImageUrls($extractedRentals, $capture), $source);
 
         if ($importResult->hasFailures()) {
             Log::warning("⚠️ Some rentals failed for {$source->key}, snapshot not saved so it's retried next run.");

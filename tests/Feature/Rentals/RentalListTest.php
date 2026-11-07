@@ -1,7 +1,8 @@
 <?php
 
-use App\Domains\Rentals\Models\Rental;
 use App\Domains\Members\Models\User;
+use App\Domains\Rentals\Enums\City;
+use App\Domains\Rentals\Models\Rental;
 
 function createRental(string $link, bool $active = true, ?string $createdAt = null): Rental
 {
@@ -111,4 +112,25 @@ it('shows specs and services from the detail page', function () {
         ->assertSeeText('🚗 1 cochera')
         ->assertSeeText('🏗️ 6 años de antigüedad')
         ->assertSeeTextInOrder(['Servicios', '✓ Gas natural', '✓ Luz', '✓ Agua corriente', '✓ Cloacas']);
+});
+
+it('filters by city and offers only cities with rentals', function () {
+    createRental('https://example.com/bolson')->update(['city' => City::ElBolson]);
+    createRental('https://example.com/bolson-2')->update(['city' => City::ElBolson, 'neighborhood' => 'Mallín Ahogado']);
+    createRental('https://example.com/puelo')->update(['city' => City::LagoPuelo]);
+    createRental('https://example.com/unknown');
+
+    $this->get('/')
+        ->assertSeeInOrder(['El Bolsón (2)', 'Lago Puelo (1)', 'Sin especificar (1)'])
+        ->assertDontSee('Cholila (');
+
+    $this->get('/?cities[]=lago_puelo')
+        ->assertSee('Rental https://example.com/puelo')
+        ->assertDontSee('Rental https://example.com/bolson');
+
+    $this->get('/?cities[]=el_bolson&cities[]=unknown')
+        ->assertSee('Rental https://example.com/bolson-2')
+        ->assertSee('📍 Mallín Ahogado, El Bolsón')
+        ->assertSee('Rental https://example.com/unknown')
+        ->assertDontSee('Rental https://example.com/puelo');
 });

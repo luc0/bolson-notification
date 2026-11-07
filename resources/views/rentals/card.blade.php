@@ -75,8 +75,8 @@
 
         <div class="flex items-center justify-between">
             <div class="flex flex-col">
-                @if($rental->location)
-                    <span class="card-location text-sm">{{ $rental->location }}</span>
+                @if($rental->locationLabel())
+                    <span class="card-location text-sm" title="{{ $rental->location }}">📍 {{ $rental->locationLabel() }}</span>
                 @endif
                 @if($rental->source_path)
                     <span class="card-source">Fuente: {{ $rental->source_path }}</span>

@@ -2,9 +2,11 @@
 
 namespace App\Domains\Harvesting\Services;
 
+use App\Domains\Rentals\Enums\City;
 use App\Domains\Rentals\Enums\Utility;
 use App\Integrations\Groq\GroqClient;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * Extracts structured data from the text of a listing's detail page.
@@ -26,6 +28,8 @@ class RentalDetailExtractor
         - "Bedrooms": cantidad de dormitorios. null si no figura. Un monoambiente tiene 0 dormitorios solo si lo dice.
         - "Bathrooms": cantidad de baños. null si no figura o es 0.
         - "ParkingSpaces": cantidad de cocheras/garajes de la propiedad. "Entrada de auto" o "lugar para estacionar" sin cochera no cuenta. null si no figura.
+        - "City": ciudad donde está la propiedad: el_bolson, lago_puelo, el_hoyo, epuyen o cholila. Solo si figura en los datos de la propiedad (no en menús ni buscadores). null si no figura o es otra.
+        - "Neighborhood": barrio o paraje de la propiedad si figura (ej: "Mallín Ahogado", "Villa Turismo"). No es la calle ni la dirección. null si no figura.
         - "AgeYears": antigüedad de la construcción en años, solo si dice "antigüedad" o "a estrenar" (0 si dice "a estrenar"). NO es la duración del contrato ("alquiler por 2 años"). null si no figura.
         - "Services": servicios de la propiedad, de la sección de servicios o de la descripción. Solo los mencionados explícitamente:
           electricity (luz/electricidad), running_water (agua corriente/agua de red), natural_gas (gas natural),
@@ -95,6 +99,16 @@ class RentalDetailExtractor
             }
         }
 
+        $normalizedPage = Str::of($pageText)->ascii()->lower()->squish()->toString();
+
+        $city = City::tryFrom((string) ($detail['City'] ?? ''));
+        $isCityOnPage = $city !== null && collect($city->aliases())->contains(fn (string $alias) => str_contains($normalizedPage, $alias));
+        $detail['City'] = $isCityOnPage ? $city->value : null;
+
+        $neighborhood = trim((string) ($detail['Neighborhood'] ?? ''));
+        $isNeighborhoodOnPage = $neighborhood !== '' && str_contains($normalizedPage, Str::of($neighborhood)->ascii()->lower()->squish()->toString());
+        $detail['Neighborhood'] = $isNeighborhoodOnPage ? $neighborhood : null;
+
         return $detail;
     }
 
@@ -113,9 +127,11 @@ class RentalDetailExtractor
                 'Bathrooms' => $nullableInteger,
                 'ParkingSpaces' => $nullableInteger,
                 'AgeYears' => $nullableInteger,
+                'City' => ['type' => ['string', 'null'], 'enum' => [...City::values(), null]],
+                'Neighborhood' => ['type' => ['string', 'null']],
                 'Services' => ['type' => 'array', 'items' => ['type' => 'string', 'enum' => Utility::values()]],
             ],
-            'required' => ['CoveredArea', 'TotalArea', 'Rooms', 'Bedrooms', 'Bathrooms', 'ParkingSpaces', 'AgeYears', 'Services'],
+            'required' => ['CoveredArea', 'TotalArea', 'Rooms', 'Bedrooms', 'Bathrooms', 'ParkingSpaces', 'AgeYears', 'City', 'Neighborhood', 'Services'],
             'additionalProperties' => false,
         ];
     }

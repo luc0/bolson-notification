@@ -17,6 +17,7 @@ final readonly class Source
         public string $listingUrl,
         public string $linkBaseUrl,
         public ?string $waitFor = null,
+        public ?string $defaultCity = null,
     ) {}
 
     /**
@@ -40,6 +41,11 @@ final readonly class Source
         return self::fromConfig($key, $site);
     }
 
+    public static function findByListingUrl(string $listingUrl): ?self
+    {
+        return collect(self::all())->first(fn (self $source) => $source->listingUrl === $listingUrl);
+    }
+
     private static function fromConfig(string $key, array $site): self
     {
         return new self(
@@ -49,6 +55,7 @@ final readonly class Source
             listingUrl: $site['listing_url'],
             linkBaseUrl: $site['link_base_url'],
             waitFor: $site['wait_for'] ?? null,
+            defaultCity: $site['default_city'] ?? null,
         );
     }
 }

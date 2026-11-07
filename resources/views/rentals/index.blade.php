@@ -20,30 +20,16 @@
                 <form method="GET" action="{{ route('rentals.index') }}" id="filterForm">
                     <div class="space-y-4">
                         <div>
-                            <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Ubicación</h4>
-                            
-                            {{-- Campo de búsqueda --}}
-                            <div class="relative mb-3">
-                                <input type="text" 
-                                       id="locationSearch"
-                                       placeholder="Buscar ubicación..." 
-                                       class="w-full px-3 py-2 pl-10 text-sm border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-gray-100">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                                    </svg>
-                                </div>
-                            </div>
-                            
-                            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 max-h-48 overflow-y-auto" id="locationList">
-                                @foreach($locationOptions as $value => $label)
-                                    <label class="flex items-center location-option p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer" data-search="{{ strtolower($label) }}">
-                                        <input type="checkbox" 
-                                               name="locations[]" 
+                            <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Ciudad</h4>
+                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                @foreach($cityOptions as $value => $label)
+                                    <label class="flex items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
+                                        <input type="checkbox"
+                                               name="cities[]"
                                                value="{{ $value }}"
-                                               {{ in_array($value, request('locations', [])) ? 'checked' : '' }}
+                                               @checked(in_array($value, $selectedCities, true))
                                                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                                        <span class="ml-2 text-sm text-gray-900 dark:text-gray-100 truncate">{{ $label }}</span>
+                                        <span class="ml-2 text-sm text-gray-900 dark:text-gray-100">{{ $label }}</span>
                                     </label>
                                 @endforeach
                             </div>
@@ -76,7 +62,7 @@
         <div class="px-4 sm:px-6 lg:px-8 py-6">
             {{-- Botón para abrir filtros --}}
             <div class="flex items-center justify-between mb-4">
-                <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">Alquileres en el Bolsón</h1>
+                <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">Alquileres en la Comarca Andina</h1>
                 <button id="toggleFilter" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 flex items-center space-x-2">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
@@ -116,28 +102,9 @@
         <script>
             // Funcionalidad de búsqueda y panel flotante de filtros
             document.addEventListener('DOMContentLoaded', function() {
-                const searchInput = document.getElementById('locationSearch');
-                const locationOptions = document.querySelectorAll('.location-option');
                 const floatingFilter = document.getElementById('floatingFilter');
                 const toggleFilterBtn = document.getElementById('toggleFilter');
                 const closeFilterBtn = document.getElementById('closeFilter');
-                
-                // Funcionalidad de búsqueda
-                if (searchInput && locationOptions.length > 0) {
-                    searchInput.addEventListener('input', function() {
-                        const searchTerm = this.value.toLowerCase().trim();
-                        
-                        locationOptions.forEach(function(option) {
-                            const searchText = option.getAttribute('data-search');
-                            
-                            if (searchText.includes(searchTerm)) {
-                                option.style.display = 'flex';
-                            } else {
-                                option.style.display = 'none';
-                            }
-                        });
-                    });
-                }
                 
                 // Funcionalidad de toggle del panel flotante
                 function openFilter() {

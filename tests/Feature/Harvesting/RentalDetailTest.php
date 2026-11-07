@@ -19,7 +19,8 @@ function detailAnswer(array $overrides = []): array
 {
     return [
         'CoveredArea' => 45, 'TotalArea' => null, 'Rooms' => 2, 'Bedrooms' => 1, 'Bathrooms' => 1,
-        'ParkingSpaces' => 1, 'AgeYears' => 6, 'Services' => ['running_water', 'sewer', 'natural_gas'],
+        'ParkingSpaces' => 1, 'AgeYears' => 6, 'City' => null, 'Neighborhood' => null,
+        'Services' => ['running_water', 'sewer', 'natural_gas'],
         ...$overrides,
     ];
 }
@@ -115,3 +116,28 @@ it('omits specs without data', function () {
 
     expect($rental->specs())->toBe([])->and($rental->serviceLabels())->toBe([]);
 });
+
+it('accepts city and neighborhood only when they are on the page', function () {
+    fakeDetailAnswer(detailAnswer(['City' => 'lago_puelo', 'Neighborhood' => 'Las Golondrinas']));
+    $detail = app(RentalDetailExtractor::class)->extract("Ubicación: Lago Puelo\nBarrio: Las Golondrinas", 'https://example.com/p/1');
+    expect($detail['City'])->toBe('lago_puelo')->and($detail['Neighborhood'])->toBe('Las Golondrinas');
+
+    fakeDetailAnswer(detailAnswer(['City' => 'cholila', 'Neighborhood' => 'Villa Turismo']));
+    $detail = app(RentalDetailExtractor::class)->extract('Ubicación: El Bolsón', 'https://example.com/p/1');
+    expect($detail['City'])->toBeNull()->and($detail['Neighborhood'])->toBeNull();
+});
+
+it('uses the detail city only when the rental has none', function (?string $currentCity, string $expectedCity) {
+    fakeDetailAnswer(detailAnswer(['City' => 'lago_puelo']));
+    $fetcher = Mockery::mock(RentalDetailFetcher::class);
+    $fetcher->shouldReceive('fetchText')->andReturn(DETAIL_PAGE_TEXT."\nUbicación: Lago Puelo");
+    app()->instance(RentalDetailFetcher::class, $fetcher);
+    $rental = rentalForDetail(['city' => $currentCity]);
+
+    app(RentalDetailService::class)->enrich($rental);
+
+    expect($rental->refresh()->city->value)->toBe($expectedCity);
+})->with([
+    'without city' => [null, 'lago_puelo'],
+    'with city from the listing' => ['el_bolson', 'el_bolson'],
+]);
