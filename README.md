@@ -7,6 +7,9 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
+# Producción
+Pasos de deploy, variables de entorno y consideraciones: [`docs/production.md`](docs/production.md).
+
 # Dominios
 La organización por dominios (qué resuelve cada uno y sus subdominios) está en [`docs/domains.md`](docs/domains.md).
 

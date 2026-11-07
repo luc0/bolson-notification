@@ -73,4 +73,5 @@ Laravel app that scrapes rental listings (El Bolsón / Lago Puelo), processes th
 ## Roadmap
 - See `todo.md` (in Spanish) for milestones, pending tasks and known data-extraction bugs. Read it before proposing features or fixing AI parsing issues.
 - Milestones: v0.9 private MVP → v0.95 fixes → v1.0 public beta (free) → v1.1 paid beta (Mercado Pago) → WhatsApp version.
-- Prod: Hetzner VPS managed with Laravel Forge, PostgreSQL, scheduler via `schedule:run` cron.
+- Prod: Hetzner VPS managed with Laravel Forge, PostgreSQL, scheduler via `schedule:run` cron. Deploy steps, env vars and risks: `docs/production.md` (keep it updated when adding env vars, migrations with data changes or server requirements).
+- Local dev uses MySQL but prod is PostgreSQL: check migrations that change column types or use raw SQL against Postgres too.

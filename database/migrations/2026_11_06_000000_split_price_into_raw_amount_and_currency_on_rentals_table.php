@@ -31,9 +31,25 @@ return new class extends Migration
     {
         DB::table('rentals')->update(['price' => DB::raw('price_amount')]);
 
+        $this->changePriceBackToDecimal();
+
+        Schema::table('rentals', function (Blueprint $table) {
+            $table->dropColumn(['price_amount', 'price_currency']);
+        });
+    }
+
+    private function changePriceBackToDecimal(): void
+    {
+        // PostgreSQL can't cast text to numeric without USING, which change() doesn't generate.
+        $isPostgres = DB::getDriverName() === 'pgsql';
+        if ($isPostgres) {
+            DB::statement('ALTER TABLE rentals ALTER COLUMN price TYPE numeric(10, 2) USING price::numeric');
+
+            return;
+        }
+
         Schema::table('rentals', function (Blueprint $table) {
             $table->decimal('price', 10, 2)->nullable()->change();
-            $table->dropColumn(['price_amount', 'price_currency']);
         });
     }
 };

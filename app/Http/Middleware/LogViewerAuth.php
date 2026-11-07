@@ -6,18 +6,21 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
+/**
+ * HTTP basic auth (phone + password) for /logs, only for the phones in config('app.log_viewer_phones').
+ */
 class LogViewerAuth
 {
-    /**
-     * Handle an incoming request.
-     *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
-     */
-    public function handle($request, Closure $next)
+    public function handle(Request $request, Closure $next): Response
     {
-        \Log::info('Auth headers', [
-            'Authorization' => request()->header('Authorization')
-        ]);
-        return auth()->onceBasic('phone') ?: $next($request);
+        $failedAuthentication = auth()->onceBasic('phone');
+        if ($failedAuthentication) {
+            return $failedAuthentication;
+        }
+
+        $isAllowed = in_array($request->user()->phone, config('app.log_viewer_phones'), true);
+        abort_unless($isAllowed, Response::HTTP_FORBIDDEN);
+
+        return $next($request);
     }
 }

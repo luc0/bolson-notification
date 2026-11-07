@@ -123,6 +123,9 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
-    'analyze_rentals_debug_mode' => env('ANALYZE_RENTALS_DEBUG_MODE', false)
+    'analyze_rentals_debug_mode' => env('ANALYZE_RENTALS_DEBUG_MODE', false),
+
+    // Phones allowed to see /logs (comma separated). Empty: nobody.
+    'log_viewer_phones' => array_values(array_filter(array_map('trim', explode(',', (string) env('LOG_VIEWER_PHONES', ''))))),
 
 ];
