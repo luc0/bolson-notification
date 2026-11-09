@@ -1,15 +1,15 @@
 # Producción
 
-Guía para desplegar y operar la app en producción. Infra actual: VPS en **Hetzner** administrado con **Laravel Forge**, base **PostgreSQL**, scheduler por cron.
+Guía para desplegar y operar la app en producción. Infra actual: instancia de **AWS Lightsail** conectada a **Laravel Forge** como Custom VPS (alta paso a paso en `docs/lightsail.md`), base **MySQL 8.4**, scheduler por cron.
 
-> En local se desarrolla con MySQL (Sail) y en producción se usa PostgreSQL. Las migraciones y los tests se verificaron contra PostgreSQL 16 (ver [Verificaciones hechas](#verificaciones-hechas)). Si agregás migraciones con SQL a mano o `change()` de tipos, probalas también en Postgres.
+> Local (Sail) y producción usan MySQL 8. Hasta noviembre de 2026 producción usaba PostgreSQL; las migraciones siguen siendo compatibles con ambos (ver [Verificaciones hechas](#verificaciones-hechas)).
 
 ## 1. Requisitos del servidor
 
 | Requisito | Detalle |
 |---|---|
-| PHP | **8.2 o superior** (Laravel 12). Extensiones: `pdo_pgsql`, `curl`, `mbstring`, `openssl`, `json` (web push), `bcmath` o `gmp` (recomendado para el cifrado de web push). |
-| PostgreSQL | Versión 14+ (verificado con 16). |
+| PHP | **8.2 o superior** (Laravel 12). Extensiones: `pdo_mysql`, `curl`, `mbstring`, `openssl`, `json` (web push), `bcmath` o `gmp` (recomendado para el cifrado de web push). |
+| MySQL | 8.0+ (local 8.0, producción 8.4 LTS). |
 | Node.js + npm | Node 18+ (se usa Node 22 en local). Lo necesitan el build de assets **y el scraper** (`scripts/scrape.cjs` corre en cada `rentals:analyze`). |
 | Chrome para Puppeteer | Puppeteer 24 descarga su propio Chrome con `npm ci`, en `~/.cache/puppeteer` del usuario que lo ejecuta (en Forge, `forge`). Necesita librerías del sistema: ver la lista en `docker/8.4/Dockerfile` (`libnss3`, `libgbm1`, `libgtk-3-0`, `libasound2t64`, `fonts-liberation`, etc.). Solo hay builds para **amd64**: el VPS tiene que ser x86_64. |
 | HTTPS | **Obligatorio**: sin HTTPS no funcionan las notificaciones push ni la instalación como PWA. En Forge: pestaña SSL → Let's Encrypt. |
@@ -32,7 +32,7 @@ Las que usa la app además de las estándar de Laravel (`APP_*`, `DB_*`, `SESSIO
 | `APP_DEBUG` | `false` | |
 | `APP_URL` | `https://<dominio>` | Se usa en el link de las notificaciones push. |
 | `APP_TIMEZONE` | `America/Argentina/Buenos_Aires` | **Importante**: el scraper corre "días hábiles a las 17:00" en esta zona. Sin esto son las 17:00 UTC (14:00 en Argentina). |
-| `DB_CONNECTION` | `pgsql` | |
+| `DB_CONNECTION` | `mysql` | `DB_HOST=127.0.0.1`, `DB_PORT=3306`, base y usuario creados en Forge → Database. |
 | `GROQ_API_KEY` | (secreto) | IA para extraer avisos, el detalle y las fotos. |
 | `GROQ_MODEL` | `openai/gpt-oss-20b` (default) | Si Groq da de baja el modelo, el log muestra `model_not_found`: cambiarlo acá. |
 | `GROQ_REASONING_EFFORT` | `low` (default) | |
@@ -102,7 +102,7 @@ Todo dentro de `storage/` (tiene que ser escribible por el usuario de PHP y del 
 
 Esta rama trae varias migraciones con cambios de datos. Pasos:
 
-1. **Backup de la base** antes de deployar (Forge → Database → Backups, o `pg_dump`).
+1. **Backup de la base** antes de deployar (Forge → Database → Backups, o `mysqldump`).
 2. Configurar en el `.env` de producción: `APP_NAME=Techito`, `APP_TIMEZONE`, `LOG_VIEWER_PHONES`, y revisar que `ANALYZE_RENTALS_DEBUG_MODE` y `SCRAPE_MOCK` no estén en `true`.
 3. Deployar (el script corre `migrate --force`). Migraciones que se aplican:
    - `split_price_into_raw_amount_and_currency`: `price` pasa a texto; agrega `price_amount` y `price_currency`.
@@ -156,7 +156,7 @@ Esta rama trae varias migraciones con cambios de datos. Pasos:
 
 ## Verificaciones hechas
 
-Contra PostgreSQL 16 (contenedor temporal):
+Contra PostgreSQL 16 (contenedor temporal), cuando producción usaba Postgres:
 - `migrate:fresh` completo y la suite de tests (110 tests) pasan.
 - Rollback de todas las migraciones nuevas y vuelta a migrar.
 - Upgrade con datos en el formato viejo de producción: avisos con precio numérico, links codificados duplicados y una suscripción push con `App\Models\AnonSubscriber`. Resultado: duplicados unidos, precios con su moneda, suscripción funcionando con el alias nuevo.
