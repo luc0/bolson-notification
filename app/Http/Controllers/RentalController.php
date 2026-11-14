@@ -25,6 +25,7 @@ class RentalController extends Controller
 
     public function index(Request $request): View
     {
+        $isSubscribed = Subscriber::forUser($request->user())->isActive();
         $search = new RentalSearch(
             cities: $this->selectedValues($request, 'cities'),
             propertyUses: $this->selectedUses($request),
@@ -34,11 +35,13 @@ class RentalController extends Controller
             includeInactive: $request->boolean('include_inactive'),
             date: $request->input('date'),
             sort: $request->string('sort')->toString() ?: RentalSort::Newest->value,
-            addedBefore: $this->freePlanCutoff($request->user()),
+            addedBefore: $this->freePlanCutoff($request->user(), $isSubscribed),
         );
 
         return view('rentals.index', [
             'rentals' => $search->rentals(),
+            // Alerts only reach active subscribers: nobody else is offered to enable them.
+            'canEnableNotifications' => $isSubscribed,
             'freePlanDelayDays' => $search->addedBefore === null ? null : (int) config('subscriptions.free_delay_days'),
             'hiddenRecentCount' => $search->hiddenRecentCount(),
             'filterChips' => $this->filterChips($search),
@@ -50,9 +53,9 @@ class RentalController extends Controller
      * Without an active subscription only rentals added free_delay_days ago or more are shown.
      * Admins always see everything. null: no delay.
      */
-    private function freePlanCutoff(User $user): ?CarbonInterface
+    private function freePlanCutoff(User $user, bool $isSubscribed): ?CarbonInterface
     {
-        $seesLatest = $user->isAdmin() || Subscriber::forUser($user)->isActive();
+        $seesLatest = $isSubscribed || $user->isAdmin();
         if ($seesLatest) {
             return null;
         }

@@ -3,7 +3,7 @@
 Decisiones de producto y negocio (no técnicas). Se va completando a medida que se definen cosas.
 Última actualización: 2026-11-14.
 
-**Implementado (2026-11-14):** planes gratis/suscripto con retraso de 3 días, alta automática al registrarse por la web, vencimiento a 1 mes, renovación manual (`subscriptions:extend`), aviso de vencimiento solo a quien usa la app, y registro de la última vez que cada usuario abrió la app. Falta: el alta desde el bot de Telegram (ver `todo.md`).
+**Implementado (2026-11-14):** planes gratis/suscripto con retraso de 3 días, alta automática al registrarse por la web, vencimiento a 1 mes, renovación manual (`subscriptions:extend`), aviso de vencimiento solo a quien usa la app, y registro de la última vez que cada usuario abrió la app. Alta desde el bot de Telegram: `/registrar <celular>` desde el chat vinculado de un admin (clave inicial 12345).
 
 ## Propuesta de valor
 

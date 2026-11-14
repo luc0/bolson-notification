@@ -16,7 +16,9 @@
                 @endif
 
 
-                <button id="enablePush" class="btn-primary mb-4">Activar notificaciones!</button>
+                @if($canEnableNotifications)
+                    <button id="enablePush" class="btn-primary mb-4">Activar notificaciones!</button>
+                @endif
 
                 <button id="installBtn" hidden class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 mb-2">Instalar app</button>
                 <button id="iosHelpBtn" hidden class="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 mb-2">Instalar en iPhone</button>

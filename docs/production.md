@@ -48,6 +48,7 @@ Las que usa la app además de las estándar de Laravel (`APP_*`, `DB_*`, `SESSIO
 | `FREE_PLAN_DELAY_DAYS` | `3` o sin definir | Sin suscripción activa solo se ven los alquileres agregados hace esta cantidad de días o más. |
 | `EXPIRY_REMINDER_DAYS_BEFORE` | `3` o sin definir | Cuántos días antes de vencer se avisa (Telegram / push). |
 | `EXPIRY_REMINDER_ACTIVE_WITHIN_DAYS` | `5` o sin definir | Solo se avisa a quien abrió la app en los últimos N días. |
+| `MEMBER_INITIAL_PASSWORD` | `12345` o sin definir | Clave de los usuarios que registra un admin desde el bot de Telegram (`/registrar <celular>`). |
 | `LOG_VIEWER_PHONES` | tu teléfono, ej. `+5492944xxxxxx` | Teléfonos (separados por coma) que pueden entrar a `/logs`. Vacío: nadie. |
 | `LOG_CHANNEL` / `LOG_STACK` | `stack` / `daily` | Recomendado: un archivo por día, para que el log no crezca sin límite. |
 

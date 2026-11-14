@@ -3,6 +3,7 @@
 use App\Domains\Members\Models\User;
 use App\Domains\Subscriptions\Models\Subscriber;
 use App\Domains\Subscriptions\Services\NewRentalsNotifier;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
@@ -192,4 +193,52 @@ it('fails the test message when the member has not linked Telegram', function ()
     $this->artisan('telegram:send-test 1111111111')->assertFailed();
 
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/sendMessage'));
+});
+
+function adminWithTelegram(int $chatId = 999): User
+{
+    config(['app.admin_phones' => ['2944999999']]);
+    $admin = User::factory()->create(['phone' => '2944999999']);
+    Subscriber::forUser($admin)->linkTelegramChat((string) $chatId);
+
+    return $admin;
+}
+
+it('registers and subscribes a member when an admin sends /registrar', function () {
+    config(['members.initial_password' => '12345', 'subscriptions.duration_days' => 30]);
+    adminWithTelegram();
+
+    postTelegramWebhook(telegramUpdate('/registrar 2944123456', chatId: 999))->assertOk();
+
+    $user = User::where('phone', '2944123456')->sole();
+    expect(Hash::check('12345', $user->password))->toBeTrue()
+        ->and(Subscriber::forUser($user)->isActive())->toBeTrue();
+    Http::assertSent(fn ($request) => $request['chat_id'] === '999'
+        && str_contains($request['text'], 'Usuario 2944123456 creado y suscripto hasta el '.now()->addDays(30)->format('d/m/Y')));
+});
+
+it('ignores /registrar from chats that are not an admin', function () {
+    adminWithTelegram();
+    Subscriber::forUser(User::factory()->create())->linkTelegramChat('111');
+
+    postTelegramWebhook(telegramUpdate('/registrar 2944123456', chatId: 111))->assertOk();
+    postTelegramWebhook(telegramUpdate('/registrar 2944123456', chatId: 222))->assertOk();
+
+    expect(User::where('phone', '2944123456')->exists())->toBeFalse();
+    Http::assertNothingSent();
+});
+
+it('answers when the number is missing, already registered or invalid', function () {
+    adminWithTelegram();
+    User::factory()->create(['phone' => '2944123456']);
+
+    postTelegramWebhook(telegramUpdate('/registrar', chatId: 999));
+    postTelegramWebhook(telegramUpdate('/registrar 2944123456', chatId: 999));
+    postTelegramWebhook(telegramUpdate('/registrar '.str_repeat('1', 21), chatId: 999));
+
+    $texts = Http::recorded()->map(fn ($pair) => $pair[0]['text'])->all();
+    expect($texts[0])->toContain('/registrar 2944123456')
+        ->and($texts[1])->toContain('ya está registrado')
+        ->and($texts[2])->toContain('no es válido')
+        ->and(User::count())->toBe(2);
 });

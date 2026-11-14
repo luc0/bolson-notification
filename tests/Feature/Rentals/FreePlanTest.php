@@ -57,3 +57,8 @@ it('shows every rental to admins even without a subscription', function () {
         ->assertOk()
         ->assertSee('Rental https://example.com/yesterday');
 });
+
+it('offers to enable notifications only to active subscribers', function () {
+    $this->actingAs(subscribedMember())->get('/')->assertSee('Activar notificaciones!');
+    $this->actingAs(memberWithoutSubscription())->get('/')->assertDontSee('Activar notificaciones!');
+});

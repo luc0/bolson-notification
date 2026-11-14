@@ -2,13 +2,11 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Domains\Members\Actions\RegisterMember;
 use App\Http\Controllers\Controller;
-use App\Domains\Members\Models\User;
-use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
 use Illuminate\View\View;
 
@@ -27,19 +25,14 @@ class RegisteredUserController extends Controller
      *
      * @throws \Illuminate\Validation\ValidationException
      */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, RegisterMember $registerMember): RedirectResponse
     {
         $request->validate([
-            'phone' => ['required', 'string', 'max:20', 'unique:'.User::class],
+            'phone' => RegisterMember::phoneRules(),
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
-        $user = User::create([
-            'phone' => $request->phone,
-            'password' => Hash::make($request->password),
-        ]);
-
-        event(new Registered($user));
+        $user = $registerMember->handle($request->phone, $request->password);
 
         Auth::login($user);
 
