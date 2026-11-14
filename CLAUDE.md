@@ -17,6 +17,7 @@ Laravel app that scrapes rental listings (El Bolsón / Lago Puelo), processes th
 - Complete detail page data: `DB_HOST=127.0.0.1 DB_PORT=3307 php artisan rentals:fetch-details`
 - Check DB connection: `php artisan db:test`
 - Send a test Telegram message to a member (chat linked from the profile): `php artisan telegram:send-test <phone> "<message>"`
+- Send a test web push to every browser of a member ("Activar notificaciones" tapped in the app): `php artisan push:send-test <phone> "<message>"` (reports each browser; expired ones are removed)
 - If permission errors after using Sail:
   `rm -f bootstrap/cache/*.php && mkdir -p storage/logs && chmod -R 777 storage bootstrap/cache`
 
