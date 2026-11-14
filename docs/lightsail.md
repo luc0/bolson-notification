@@ -2,9 +2,9 @@
 
 Forge no tiene integración con Lightsail: se conecta la instancia como **Custom VPS** y Forge la aprovisiona (nginx, PHP, MySQL, Composer, Node, firewall, usuario `forge`). Requisitos de la app, variables y script de deploy: ver `docs/production.md`. Configuración de Forge y el porqué de cada opción: `docs/forge.md`.
 
-## Estado de la migración (2026-11-09)
+## Estado de la migración (2026-11-13)
 
-Quedamos en: **paso 5** (sitio `techito.on-forge.com` creado y repo clonado en `/home/forge/techito.on-forge.com`; falta cargar el Environment, el deploy script y el primer deploy). Pasos 2 y 3 hechos el 2026-11-09: PHP 8.4.27, MySQL 8.4.13, Node 22, Chrome 157, swap 2 GB (1 GB de Forge en `/swapfile` + `/swapfile2`). Revisar que el servidor viejo de Hetzner esté borrado.
+Quedamos en: **paso 7** (verificar Scheduler y `telegram:set-webhook`). Pasos 2 y 3 hechos el 2026-11-09: PHP 8.4.27, MySQL 8.4.13, Node 22, Chrome 157, swap 2 GB (1 GB de Forge en `/swapfile` + `/swapfile2`). Pasos 4 a 6 hechos al 2026-11-13: sitio `techito.on-forge.com` deployado y andando, HTTPS con Let's Encrypt (http redirige a https). Servidor viejo de Hetzner borrado.
 
 Decisiones tomadas:
 - El servidor viejo de Forge (Hetzner, `157.180.34.53`) se borra, **en Forge y en Hetzner** (revisar que no queden Primary IPs, Volumes ni Snapshots sueltos).
@@ -92,11 +92,11 @@ No borrar locks de `dpkg` a mano ni purgar `snapd` (en AWS el `amazon-ssm-agent`
 
 Lista completa de librerías en `docker/8.4/Dockerfile`. Verificar por SSH como `forge`: `free -h` muestra swap.
 
-## Paso 4 — Base de datos
+## Paso 4 — Base de datos ✅
 
 Forge → servidor → **Database**: crear la base `techito` (usuario `forge`, o uno nuevo `techito` con contraseña propia).
 
-## Paso 5 — Sitio
+## Paso 5 — Sitio ✅ (deploy hecho)
 
 1. Forge → servidor → **New Site**: dominio `<ip-con-guiones>.sslip.io`, PHP 8.4, web directory `/public`.
 2. Conectar el repo de GitHub (`luc0/<repo>`), rama `main`. Forge agrega la deploy key.
@@ -104,7 +104,7 @@ Forge → servidor → **Database**: crear la base `techito` (usuario `forge`, o
 4. **Deploy script**: el de `docs/production.md` sección 3.
 5. **Deploy Now**. Si `APP_KEY` está vacío: `php artisan key:generate` por SSH y volver a deployar.
 
-## Paso 6 — HTTPS
+## Paso 6 — HTTPS ✅
 
 Sitio → **SSL** → Let's Encrypt para el dominio. Sin HTTPS no andan las push ni la PWA.
 
