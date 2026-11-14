@@ -61,6 +61,14 @@ class TelegramClient
         ]));
     }
 
+    /**
+     * URL the bot currently sends its updates to ('' when no webhook is set).
+     */
+    public function webhookUrl(): string
+    {
+        return (string) Http::timeout(15)->get(self::API_URL.config('services.telegram.bot_token').'/getWebhookInfo')->json('result.url', '');
+    }
+
     private function call(string $method, array $payload): Response
     {
         return Http::timeout(15)->post(self::API_URL.config('services.telegram.bot_token')."/{$method}", $payload);

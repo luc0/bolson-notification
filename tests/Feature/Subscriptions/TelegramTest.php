@@ -143,3 +143,51 @@ it('registers the webhook with the secret', function () {
         && $request['url'] === 'https://techito.example.com/telegram/webhook'
         && $request['secret_token'] === 'webhook-secret');
 });
+
+it('does not take over the webhook of a deployed app from local', function () {
+    \Illuminate\Support\Facades\URL::forceRootUrl('https://abc.ngrok-free.app');
+    $this->telegramResponse = fn () => Http::response(['ok' => true, 'result' => ['url' => 'https://techito.on-forge.com/telegram/webhook']]);
+
+    $this->artisan('telegram:set-webhook')->assertFailed();
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/setWebhook'));
+});
+
+it('replaces a webhook that points to an old tunnel', function () {
+    \Illuminate\Support\Facades\URL::forceRootUrl('https://new.ngrok-free.app');
+    $this->telegramResponse = fn () => Http::response(['ok' => true, 'result' => ['url' => 'https://old.ngrok-free.app/telegram/webhook']]);
+
+    $this->artisan('telegram:set-webhook')->assertSuccessful();
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/setWebhook')
+        && $request['url'] === 'https://new.ngrok-free.app/telegram/webhook');
+});
+
+it('replaces the webhook of a deployed app with --force', function () {
+    \Illuminate\Support\Facades\URL::forceRootUrl('https://abc.ngrok-free.app');
+    $this->telegramResponse = fn () => Http::response(['ok' => true, 'result' => ['url' => 'https://techito.on-forge.com/telegram/webhook']]);
+
+    $this->artisan('telegram:set-webhook --force')->assertSuccessful();
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/setWebhook'));
+});
+
+it('sends a test message to the member with that phone', function () {
+    $user = User::factory()->create(['phone' => '2944123456']);
+    Subscriber::forUser($user)->linkTelegramChat('777');
+
+    $this->artisan('telegram:send-test 2944123456 hola')->assertSuccessful();
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/sendMessage')
+        && $request['chat_id'] === '777'
+        && $request['text'] === 'hola');
+});
+
+it('fails the test message when the member has not linked Telegram', function () {
+    User::factory()->create(['phone' => '2944123456']);
+
+    $this->artisan('telegram:send-test 2944123456')->assertFailed();
+    $this->artisan('telegram:send-test 1111111111')->assertFailed();
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/sendMessage'));
+});

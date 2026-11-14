@@ -16,6 +16,7 @@ Laravel app that scrapes rental listings (El Bolsón / Lago Puelo), processes th
 - Run scraper from local (no Sail, DB in container): `DB_HOST=127.0.0.1 DB_PORT=3307 php artisan rentals:analyze` (lands: `lands:analyze`)
 - Complete detail page data: `DB_HOST=127.0.0.1 DB_PORT=3307 php artisan rentals:fetch-details`
 - Check DB connection: `php artisan db:test`
+- Send a test Telegram message to a member (chat linked from the profile): `php artisan telegram:send-test <phone> "<message>"`
 - If permission errors after using Sail:
   `rm -f bootstrap/cache/*.php && mkdir -p storage/logs && chmod -R 777 storage bootstrap/cache`
 
@@ -68,7 +69,7 @@ Laravel app that scrapes rental listings (El Bolsón / Lago Puelo), processes th
   - `Subscriber` (one per member, `user_id`; legacy rows have it null) → `NewRentalsNotifier` sends web push to every subscriber with a push subscription.
   - Push subscribe/unsubscribe: `PushSubscriptionController`, web routes `push-subscriptions.store/destroy` under `auth` (needs session + CSRF). There are no API routes.
   - Deleting a member deletes its subscriber and push subscriptions (`User::deleting` listener in `AppServiceProvider`).
-  - Telegram: `Channels/TelegramChannel` (client in `app/Integrations/Telegram`). Members link their chat from the profile (`t.me/<bot>?start=<telegram_link_token>`, handled by `TelegramWebhookController` on `POST /telegram/webhook`, checked with `TELEGRAM_WEBHOOK_SECRET`) and toggle it with the "Recibir avisos por Telegram" checkbox (`subscribers.telegram_enabled`, default on). Run `telegram:set-webhook` whenever `APP_URL` changes (`switch-url.sh ngrok` does it). Without `TELEGRAM_BOT_TOKEN` the channel and the profile section are off.
+  - Telegram: `Channels/TelegramChannel` (client in `app/Integrations/Telegram`). Members link their chat from the profile (`t.me/<bot>?start=<telegram_link_token>`, handled by `TelegramWebhookController` on `POST /telegram/webhook`, checked with `TELEGRAM_WEBHOOK_SECRET`) and toggle it with the "Recibir avisos por Telegram" checkbox (`subscribers.telegram_enabled`, default on). Run `telegram:set-webhook` whenever `APP_URL` changes (`switch-url.sh ngrok` does it). Local uses its own dev bot, never the prod one (`TechitoBot`): a bot has a single webhook, so outside production the command refuses to replace a non-ngrok webhook (`--force` to override). Without `TELEGRAM_BOT_TOKEN` the channel and the profile section are off.
   - WhatsApp (`Contracts/WhatsappSender`: `TwilioWhatsappSender`, `KapsoWhatsappSender`) exists but is currently disabled.
 
 ## Laravel conventions
