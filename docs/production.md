@@ -43,6 +43,7 @@ Las que usa la app además de las estándar de Laravel (`APP_*`, `DB_*`, `SESSIO
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | (secretos) | Web push. **No cambiarlas nunca**: si cambian, todas las suscripciones existentes dejan de funcionar y cada usuario tiene que volver a activar las notificaciones. Generarlas una sola vez con `php artisan webpush:vapid`. |
 | `ANALYZE_RENTALS_DEBUG_MODE` | `false` o sin definir | Con `true` el scraper corre cada 3 minutos (gasta tokens). |
 | `SCRAPE_MOCK` | `false` o sin definir | Con `true` usa `FakeRentalScraper` (datos de prueba). |
+| `ADMIN_PHONES` | tu teléfono, tal cual se registró | Teléfonos (separados por coma) de los admins: ven todo, por ejemplo el tab Terrenos. Vacío: nadie. |
 | `LOG_VIEWER_PHONES` | tu teléfono, ej. `+5492944xxxxxx` | Teléfonos (separados por coma) que pueden entrar a `/logs`. Vacío: nadie. |
 | `LOG_CHANNEL` / `LOG_STACK` | `stack` / `daily` | Recomendado: un archivo por día, para que el log no crezca sin límite. |
 
@@ -103,7 +104,7 @@ Todo dentro de `storage/` (tiene que ser escribible por el usuario de PHP y del 
 Esta rama trae varias migraciones con cambios de datos. Pasos:
 
 1. **Backup de la base** antes de deployar (Forge → Database → Backups, o `mysqldump`).
-2. Configurar en el `.env` de producción: `APP_NAME=Techito`, `APP_TIMEZONE`, `LOG_VIEWER_PHONES`, y revisar que `ANALYZE_RENTALS_DEBUG_MODE` y `SCRAPE_MOCK` no estén en `true`.
+2. Configurar en el `.env` de producción: `APP_NAME=Techito`, `APP_TIMEZONE`, `ADMIN_PHONES`, `LOG_VIEWER_PHONES`, y revisar que `ANALYZE_RENTALS_DEBUG_MODE` y `SCRAPE_MOCK` no estén en `true`.
 3. Deployar (el script corre `migrate --force`). Migraciones que se aplican:
    - `split_price_into_raw_amount_and_currency`: `price` pasa a texto; agrega `price_amount` y `price_currency`.
    - `add_image_and_rented_columns`: foto del aviso y `rented_at`.

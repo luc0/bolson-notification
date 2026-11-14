@@ -15,9 +15,11 @@
                     <x-nav-link :href="route('rentals.index')" :active="request()->routeIs('rentals.*')">
                         {{ __('Alquileres') }}
                     </x-nav-link>
-                    <x-nav-link :href="route('lands.index')" :active="request()->routeIs('lands.*')">
-                        {{ __('Terrenos') }}
-                    </x-nav-link>
+                    @can('admin')
+                        <x-nav-link :href="route('lands.index')" :active="request()->routeIs('lands.*')">
+                            {{ __('Terrenos') }}
+                        </x-nav-link>
+                    @endcan
                 </div>
             </div>
 
@@ -85,9 +87,11 @@
             <x-responsive-nav-link :href="route('rentals.index')" :active="request()->routeIs('rentals.*')">
                 {{ __('Alquileres') }}
             </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('lands.index')" :active="request()->routeIs('lands.*')">
-                {{ __('Terrenos') }}
-            </x-responsive-nav-link>
+            @can('admin')
+                <x-responsive-nav-link :href="route('lands.index')" :active="request()->routeIs('lands.*')">
+                    {{ __('Terrenos') }}
+                </x-responsive-nav-link>
+            @endcan
         </div>
 
         <!-- Responsive Settings Options -->

@@ -8,6 +8,7 @@ use App\Domains\Harvesting\Services\FakeRentalScraper;
 use App\Domains\Members\Models\User;
 use App\Domains\Subscriptions\Models\Subscriber;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
@@ -40,6 +41,9 @@ class AppServiceProvider extends ServiceProvider
             'subscriber' => Subscriber::class,
             'user' => User::class,
         ]);
+
+        // Admins (ADMIN_PHONES) see everything: @can('admin') in views, can:admin on routes.
+        Gate::define('admin', fn (User $user) => $user->isAdmin());
 
         // Members don't know about Subscriptions: Subscriptions reacts to a member leaving.
         User::deleting(fn (User $user) => Subscriber::where('user_id', $user->id)->first()?->delete());

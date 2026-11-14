@@ -125,6 +125,9 @@ return [
 
     'analyze_rentals_debug_mode' => env('ANALYZE_RENTALS_DEBUG_MODE', false),
 
+    // Phones of the admins (comma separated): they see everything, e.g. the lands tab. Empty: nobody.
+    'admin_phones' => array_values(array_filter(array_map('trim', explode(',', (string) env('ADMIN_PHONES', ''))))),
+
     // Phones allowed to see /logs (comma separated). Empty: nobody.
     'log_viewer_phones' => array_values(array_filter(array_map('trim', explode(',', (string) env('LOG_VIEWER_PHONES', ''))))),
 

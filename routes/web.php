@@ -13,7 +13,7 @@ use Rap2hpoutre\LaravelLogViewer\LogViewerController;
 
 Route::middleware('auth')->group(function () {
     Route::get('/', [RentalController::class, 'index'])->name('rentals.index');
-    Route::get('/terrenos', [LandController::class, 'index'])->name('lands.index');
+    Route::get('/terrenos', [LandController::class, 'index'])->middleware('can:admin')->name('lands.index');
     Route::view('/dashboard', 'dashboard')->name('dashboard');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

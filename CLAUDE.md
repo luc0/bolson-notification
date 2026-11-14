@@ -46,7 +46,7 @@ Laravel app that scrapes rental listings (El Bolsón / Lago Puelo), processes th
 - To recognize a new city/neighborhood/property type: add it to `City::aliases()` / `City::neighborhoods()` / `PropertyUse::keywords()` and run `rentals:classify` / `lands:classify` (no AI cost).
 
 ## Lands
-- `Land` (`app/Domains/Lands`): lands for sale, separate from rentals (own table, `/terrenos` tab, `LandController`). Same `source` / `site_path` / `content` / price columns as `Rental`, plus `area` (m²) and `city` / `neighborhood` (set by `Harvesting\Services\LandClassifier` on import, backfill with `lands:classify`). Filters: city chips, include unavailable, sort (`LandSort`). Query in `Lands\Queries\LandSearch`. No notifications yet.
+- `Land` (`app/Domains/Lands`): lands for sale, separate from rentals (own table, `/terrenos` tab, `LandController`). Admins only for now: `ADMIN_PHONES` (`config('app.admin_phones')`, `User::isAdmin()`) backs the `admin` Gate; the tab uses `@can('admin')` and the route `can:admin` (403 for other members). Same `source` / `site_path` / `content` / price columns as `Rental`, plus `area` (m²) and `city` / `neighborhood` (set by `Harvesting\Services\LandClassifier` on import, backfill with `lands:classify`). Filters: city chips, include unavailable, sort (`LandSort`). Query in `Lands\Queries\LandSearch`. No notifications yet.
 - Flow: `lands:analyze` → `Harvesting\Services\BrowserLandScraper` (capture in `storage/app/captures/lands`) → `LandListingExtractor` → `LandImporter`. Scheduled weekly in prod (Mondays 18:00), every 3 minutes in debug mode like rentals.
 - The AI uses `services.groq.land_reasoning_effort` (default `medium`): with `low` it gives up on long land listings and returns an empty list.
 

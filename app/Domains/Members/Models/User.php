@@ -35,6 +35,11 @@ class User extends Authenticatable
         'remember_token',
     ];
 
+    public function isAdmin(): bool
+    {
+        return in_array($this->phone, config('app.admin_phones'), true);
+    }
+
     /**
      * Get the attributes that should be cast.
      *

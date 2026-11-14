@@ -13,7 +13,19 @@ function createLand(string $link, array $attributes = []): Land
 }
 
 beforeEach(function () {
+    config(['app.admin_phones' => ['2944000000']]);
     $this->actingAs(User::create(['phone' => '2944000000', 'password' => 'secret']));
+});
+
+it('is only for admins: other members get 403 and no tab', function () {
+    $this->actingAs(User::create(['phone' => '2944111111', 'password' => 'secret']));
+
+    $this->get('/terrenos')->assertForbidden();
+    $this->get('/')->assertOk()->assertDontSee('Terrenos');
+});
+
+it('shows the lands tab to admins', function () {
+    $this->get('/')->assertOk()->assertSee('Terrenos');
 });
 
 it('requires login', function () {
