@@ -4,7 +4,7 @@ Forge no tiene integración con Lightsail: se conecta la instancia como **Custom
 
 ## Estado de la migración (2026-11-13)
 
-Quedamos en: **paso 7** (verificar Scheduler y `telegram:set-webhook`). Pasos 2 y 3 hechos el 2026-11-09: PHP 8.4.27, MySQL 8.4.13, Node 22, Chrome 157, swap 2 GB (1 GB de Forge en `/swapfile` + `/swapfile2`). Pasos 4 a 6 hechos al 2026-11-13: sitio `techito.on-forge.com` deployado y andando, HTTPS con Let's Encrypt (http redirige a https). Servidor viejo de Hetzner borrado.
+**Terminada.** Sitio `techito.on-forge.com` deployado con HTTPS, scheduler andando y webhook de Telegram registrado (prod usa `TechitoBot`; local usa su propio bot). Servidor viejo de Hetzner borrado. Pendiente: dominio definitivo y backups (ver "Pendiente" al final).
 
 Decisiones tomadas:
 - El servidor viejo de Forge (Hetzner, `157.180.34.53`) se borra, **en Forge y en Hetzner** (revisar que no queden Primary IPs, Volumes ni Snapshots sueltos).
@@ -108,7 +108,7 @@ Forge → servidor → **Database**: crear la base `techito` (usuario `forge`, o
 
 Sitio → **SSL** → Let's Encrypt para el dominio. Sin HTTPS no andan las push ni la PWA.
 
-## Paso 7 — Scheduler, Telegram y verificación
+## Paso 7 — Scheduler, Telegram y verificación ✅
 
 - Forge → servidor → **Scheduler**: `php /home/forge/<sitio>/artisan schedule:run`, cada minuto, usuario `forge`.
 - Por SSH (`ssh forge@<ip>`, con la clave cargada en Forge → SSH Keys):
