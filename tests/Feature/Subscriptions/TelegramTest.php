@@ -97,9 +97,10 @@ it('saves the "Recibir avisos por Telegram" checkbox', function () {
 it('sends new rentals by Telegram only to linked members with it enabled', function () {
     $enabled = Subscriber::forUser(User::factory()->create());
     $enabled->linkTelegramChat('111');
+    $enabled->extend();
     $disabled = Subscriber::forUser(User::factory()->create());
     $disabled->linkTelegramChat('222');
-    $disabled->update(['telegram_enabled' => false]);
+    $disabled->update(['telegram_enabled' => false, 'expires_at' => now()->addMonth()]);
     Subscriber::forUser(User::factory()->create()); // not linked
 
     $notified = app(NewRentalsNotifier::class)->notifyNewRentals(3);
@@ -127,6 +128,7 @@ it('unlinks the chat when the member blocked the bot', function () {
     $this->telegramResponse = fn () => Http::response(['ok' => false, 'description' => 'Forbidden: bot was blocked by the user'], 403);
     $subscriber = Subscriber::forUser(User::factory()->create());
     $subscriber->linkTelegramChat('111');
+    $subscriber->extend();
 
     app(NewRentalsNotifier::class)->notifyNewRentals(2);
 

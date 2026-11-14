@@ -3,7 +3,6 @@
 use App\Domains\Harvesting\Services\RentalDetailExtractor;
 use App\Domains\Harvesting\Services\RentalDetailFetcher;
 use App\Domains\Harvesting\Services\RentalDetailService;
-use App\Domains\Members\Models\User;
 use App\Domains\Rentals\Models\Rental;
 use Illuminate\Support\Facades\Http;
 
@@ -173,7 +172,7 @@ it('backfills only rentals without an ai title', function () {
 it('shows the ai title on the card and keeps the agency title as tooltip', function () {
     rentalForDetail(['property_use' => 'residential', 'content' => 'Departamento en Alquiler en El Bolson, Rio Negro', 'title' => 'Departamento de 1 dormitorio con cochera']);
 
-    $this->actingAs(User::factory()->create())->get(route('rentals.index'))
+    $this->actingAs(subscribedMember())->get(route('rentals.index'))
         ->assertSee('Departamento de 1 dormitorio con cochera')
         ->assertSee('title="Departamento en Alquiler en El Bolson, Rio Negro"', false);
 });

@@ -7,7 +7,9 @@ use App\Domains\Harvesting\Services\BrowserRentalScraper;
 use App\Domains\Harvesting\Services\FakeRentalScraper;
 use App\Domains\Members\Models\User;
 use App\Domains\Subscriptions\Models\Subscriber;
+use Illuminate\Auth\Events\Registered;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
@@ -44,6 +46,9 @@ class AppServiceProvider extends ServiceProvider
 
         // Admins (ADMIN_PHONES) see everything: @can('admin') in views, can:admin on routes.
         Gate::define('admin', fn (User $user) => $user->isAdmin());
+
+        // Beta: registering subscribes the member for one period (docs/business/strategy.md).
+        Event::listen(fn (Registered $event) => Subscriber::forUser($event->user)->extend());
 
         // Members don't know about Subscriptions: Subscriptions reacts to a member leaving.
         User::deleting(fn (User $user) => Subscriber::where('user_id', $user->id)->first()?->delete());

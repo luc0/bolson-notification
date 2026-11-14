@@ -7,5 +7,12 @@ return [
         'url' => '/',
         'icon' => '/icons/icon-192.png',
     ],
-];
 
+    // {date}: expiry date (dd/mm).
+    'expiry_reminder' => [
+        'title' => 'Tu suscripción vence pronto',
+        'body_template' => 'Tu suscripción a Techito vence el {date}. Pedinos renovarla para seguir recibiendo los avisos de alquileres nuevos.',
+        'url' => '/profile',
+        'icon' => '/icons/icon-192.png',
+    ],
+];

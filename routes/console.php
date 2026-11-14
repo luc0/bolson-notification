@@ -2,7 +2,11 @@
 
 use App\Console\Commands\AnalyzeLands;
 use App\Console\Commands\AnalyzeRentals;
+use App\Console\Commands\SendExpiryReminders;
 use Illuminate\Support\Facades\Schedule;
+
+// Once a day, at a reasonable hour to get a message.
+Schedule::command(SendExpiryReminders::class)->dailyAt('10:00');
 
 $analyzeRentals = Schedule::command(AnalyzeRentals::class);
 $analyzeLands = Schedule::command(AnalyzeLands::class);

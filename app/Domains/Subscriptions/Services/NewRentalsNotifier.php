@@ -7,7 +7,7 @@ use App\Domains\Subscriptions\Notifications\NewRentalsNotification;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Notifies every subscriber by their channels (web push and/or Telegram, see NewRentalsNotification::via()).
+ * Notifies every active subscriber by their channels (web push and/or Telegram, see NewRentalsNotification::via()).
  */
 class NewRentalsNotifier
 {
@@ -40,7 +40,7 @@ class NewRentalsNotifier
     public function notifyAll(NewRentalsNotification $notification): int
     {
         $notifiedCount = 0;
-        Subscriber::notifiable()->cursor()->each(function (Subscriber $subscriber) use ($notification, &$notifiedCount) {
+        Subscriber::active()->notifiable()->cursor()->each(function (Subscriber $subscriber) use ($notification, &$notifiedCount) {
             $subscriber->notify($notification);
             $notifiedCount++;
         });

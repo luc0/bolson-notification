@@ -5,6 +5,16 @@
         <div class="px-4 sm:px-6 lg:px-8 py-6">
             <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-3">Alquileres en la Comarca Andina</h1>
 
+                @if($freePlanDelayDays !== null)
+                    <div class="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
+                        <p>Sin suscripción activa ves los alquileres publicados hace {{ $freePlanDelayDays }} días o más.</p>
+                        @if($hiddenRecentCount > 0)
+                            <p class="mt-1 font-medium">Hay {{ $hiddenRecentCount }} {{ $hiddenRecentCount === 1 ? 'alquiler nuevo' : 'alquileres nuevos' }} de los últimos {{ $freePlanDelayDays }} días que no estás viendo.</p>
+                        @endif
+                        <p class="mt-1">Pedinos renovar tu suscripción para verlos al instante y recibir los avisos.</p>
+                    </div>
+                @endif
+
 
                 <button id="enablePush" class="btn-primary mb-4">Activar notificaciones!</button>
 

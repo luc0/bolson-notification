@@ -150,6 +150,7 @@ Pendiente: notificaciones.
 | Subdominio | Descripción |
 |---|---|
 | Suscriptores | Quién recibe alertas: un `Subscriber` por Member (`user_id`), con una o varias suscripciones push (una por navegador). Las suscripciones viejas, anteriores a esto, no tienen Member. |
+| Vencimiento | Cada `Subscriber` tiene `expires_at`: solo los activos reciben alertas y ven los últimos alquileres. Registrarse suscribe por un período; se renueva a mano (`subscriptions:extend`) y se avisa antes de vencer a quien sigue usando la app. Reglas en `docs/business/strategy.md`. |
 | Preferencias y matching | (Futuro) Qué le interesa a cada uno (zona, precio, gas natural...) y qué avisos nuevos le corresponden. |
 | Canales | Cómo se envía: web push y Telegram (hoy), WhatsApp (Twilio/Kapso, apagado). |
 | Envíos | Armado y envío de la notificación ("N alquileres nuevos"). |

@@ -2,11 +2,9 @@
 
 namespace App\Domains\Subscriptions\Notifications;
 
-use App\Domains\Subscriptions\Channels\TelegramChannel;
 use App\Domains\Subscriptions\Models\Subscriber;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
-use NotificationChannels\WebPush\WebPushChannel;
 use NotificationChannels\WebPush\WebPushMessage;
 
 class NewRentalsNotification extends Notification
@@ -25,10 +23,7 @@ class NewRentalsNotification extends Notification
      */
     public function via(Subscriber $notifiable): array
     {
-        return array_keys(array_filter([
-            WebPushChannel::class => $notifiable->pushSubscriptions()->exists(),
-            TelegramChannel::class => $notifiable->receivesTelegram(),
-        ]));
+        return $notifiable->notificationChannels();
     }
 
     /**

@@ -44,6 +44,10 @@ Las que usa la app además de las estándar de Laravel (`APP_*`, `DB_*`, `SESSIO
 | `ANALYZE_RENTALS_DEBUG_MODE` | `false` o sin definir | Con `true` el scraper corre cada 3 minutos (gasta tokens). |
 | `SCRAPE_MOCK` | `false` o sin definir | Con `true` usa `FakeRentalScraper` (datos de prueba). |
 | `ADMIN_PHONES` | tu teléfono, tal cual se registró | Teléfonos (separados por coma) de los admins: ven todo, por ejemplo el tab Terrenos. Vacío: nadie. |
+| `SUBSCRIPTION_DURATION_DAYS` | `30` o sin definir | Días que dura una suscripción (al registrarse y en cada renovación). |
+| `FREE_PLAN_DELAY_DAYS` | `3` o sin definir | Sin suscripción activa solo se ven los alquileres agregados hace esta cantidad de días o más. |
+| `EXPIRY_REMINDER_DAYS_BEFORE` | `3` o sin definir | Cuántos días antes de vencer se avisa (Telegram / push). |
+| `EXPIRY_REMINDER_ACTIVE_WITHIN_DAYS` | `5` o sin definir | Solo se avisa a quien abrió la app en los últimos N días. |
 | `LOG_VIEWER_PHONES` | tu teléfono, ej. `+5492944xxxxxx` | Teléfonos (separados por coma) que pueden entrar a `/logs`. Vacío: nadie. |
 | `LOG_CHANNEL` / `LOG_STACK` | `stack` / `daily` | Recomendado: un archivo por día, para que el log no crezca sin límite. |
 
@@ -80,7 +84,7 @@ En Forge → Scheduler, un cron cada minuto:
 php /home/forge/<sitio>/artisan schedule:run
 ```
 
-Corre `rentals:analyze` los días hábiles a las 17:00 y `lands:analyze` (terrenos, sin notificaciones) una vez por semana, los lunes a las 18:00 (`routes/console.php`). Para ver qué está programado:
+Corre `rentals:analyze` los días hábiles a las 17:00, `lands:analyze` (terrenos, sin notificaciones) una vez por semana, los lunes a las 18:00, y `subscriptions:remind-expiring` (aviso de vencimiento de la suscripción) todos los días a las 10:00 (`routes/console.php`). Para ver qué está programado:
 
 ```bash
 php artisan schedule:list
@@ -136,6 +140,14 @@ Esta rama trae varias migraciones con cambios de datos. Pasos:
 - Volver al commit anterior y restaurar el backup de la base es lo más seguro: algunas migraciones transforman datos (links, precios) y su `down()` no recupera el formato original exacto.
 - Todas las migraciones tienen `down()` y se probaron en PostgreSQL, pero un `migrate:rollback` en producción es el último recurso.
 
+## 6b. Deploy del vencimiento de suscripciones
+
+Migraciones con cambios de datos (`2026_11_14_*`):
+- `add_last_seen_at_to_users_table`: guarda la última vez que cada usuario abrió la app.
+- `add_expires_at_to_subscribers_table`: crea el suscriptor de los usuarios que no tenían y les pone a **todos** (incluidos los viejos sin cuenta) `expires_at = ahora + SUBSCRIPTION_DURATION_DAYS`, para que nadie pierda los avisos el día del deploy. El rollback no borra los suscriptores creados (no molestan).
+
+Después del deploy: `php artisan schedule:list` tiene que mostrar `subscriptions:remind-expiring`.
+
 ## 7. Verificación después de cada deploy
 
 - [ ] La home carga con HTTPS y se puede loguear.
@@ -154,6 +166,7 @@ Esta rama trae varias migraciones con cambios de datos. Pasos:
 | Avisos que aparecen y desaparecen | La IA a veces saltea algunos avisos de un listado largo: quedan inactivos hasta la corrida siguiente. | Pendiente en `todo.md`: desactivar recién tras N corridas. |
 | Fallas por sitio | Si la IA o la importación falla, no se guarda el snapshot y el sitio se reintenta en la próxima corrida. | Nada; revisar el log si se repite. |
 | VAPID | Cambiar las claves invalida todas las suscripciones. | No regenerarlas. |
+| Suscripciones | Vencen (`subscribers.expires_at`): sin suscripción activa no hay avisos y el listado se ve con retraso. La renovación es manual. | Renovar: `php artisan subscriptions:extend <teléfono>` (suma `SUBSCRIPTION_DURATION_DAYS`, o `--days=N`). |
 
 ## Verificaciones hechas
 

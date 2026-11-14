@@ -49,6 +49,7 @@ class User extends Authenticatable
     {
         return [
             'password' => 'hashed',
+            'last_seen_at' => 'datetime',
         ];
     }
 }

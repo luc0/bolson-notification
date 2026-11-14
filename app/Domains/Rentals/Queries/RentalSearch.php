@@ -10,13 +10,15 @@ use App\Domains\Rentals\Enums\Utility;
 use App\Domains\Rentals\Models\Rental;
 use BackedEnum;
 use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Throwable;
 
 /**
  * Rentals listing filters. Filter values are the enum values, plus UNKNOWN for rentals
- * whose city / property use couldn't be resolved.
+ * whose city / property use couldn't be resolved. With addedBefore only rentals added up to
+ * that moment are listed and counted (free plan delay).
  */
 final readonly class RentalSearch
 {
@@ -36,6 +38,7 @@ final readonly class RentalSearch
         public bool $includeInactive = false,
         public ?string $date = null,
         public string $sort = 'newest',
+        public ?CarbonInterface $addedBefore = null,
     ) {}
 
     public function sort(): RentalSort
@@ -49,6 +52,7 @@ final readonly class RentalSearch
         $rooms = array_values(array_filter(array_map('intval', $this->rooms), fn (int $count) => $count > 0));
 
         return Rental::query()
+            ->tap(fn (Builder $query) => $this->applyAddedBefore($query))
             ->when(! $this->includeInactive, fn (Builder $query) => $query->available())
             ->when(! empty($this->cities), fn (Builder $query) => $query->byCity(self::toEnums($this->cities, City::class)))
             ->when(! empty($this->propertyUses), fn (Builder $query) => $query->byPropertyUse(self::toEnums($this->propertyUses, PropertyUse::class)))
@@ -64,10 +68,10 @@ final readonly class RentalSearch
     /**
      * e.g. ['up_to_400k' => 'Hasta $400k (12)', ..., 'usd' => 'En dólares (9)'], only ranges with rentals.
      */
-    public static function priceRangeOptions(): array
+    public function priceRangeOptions(): array
     {
         return collect(PriceRange::cases())
-            ->mapWithKeys(fn (PriceRange $range) => [$range->value => Rental::available()->byPriceRange($range)->count()])
+            ->mapWithKeys(fn (PriceRange $range) => [$range->value => $this->availableRentals()->byPriceRange($range)->count()])
             ->filter()
             ->map(fn (int $count, string $value) => PriceRange::from($value)->label()." ({$count})")
             ->all();
@@ -76,9 +80,9 @@ final readonly class RentalSearch
     /**
      * e.g. ['1' => '1 amb. (10)', '2' => '2 amb. (18)', '4' => '4+ amb. (3)'], only counts with rentals.
      */
-    public static function roomOptions(): array
+    public function roomOptions(): array
     {
-        $countsByRooms = Rental::available()
+        $countsByRooms = $this->availableRentals()
             ->where('rooms', '>', 0)
             ->selectRaw('rooms, count(*) as total')
             ->groupBy('rooms')
@@ -92,33 +96,33 @@ final readonly class RentalSearch
             ->all();
     }
 
-    public static function naturalGasCount(): int
+    public function naturalGasCount(): int
     {
-        return Rental::available()->withUtility(Utility::NaturalGas)->count();
+        return $this->availableRentals()->withUtility(Utility::NaturalGas)->count();
     }
 
     /**
      * Cities with available rentals, in the enum order, e.g. ['el_bolson' => 'El Bolsón (45)'].
      */
-    public static function cityOptions(): array
+    public function cityOptions(): array
     {
-        return self::optionsFor('city', City::cases());
+        return $this->optionsFor('city', City::cases());
     }
 
     /**
      * e.g. ['residential' => 'Para vivir (52)', 'commercial' => 'Local / comercial (3)'].
      */
-    public static function propertyUseOptions(): array
+    public function propertyUseOptions(): array
     {
-        return self::optionsFor('property_use', PropertyUse::cases());
+        return $this->optionsFor('property_use', PropertyUse::cases());
     }
 
     /**
      * @param  array<int, City|PropertyUse>  $cases
      */
-    private static function optionsFor(string $column, array $cases): array
+    private function optionsFor(string $column, array $cases): array
     {
-        $counts = Rental::available()
+        $counts = $this->availableRentals()
             ->selectRaw("{$column}, count(*) as total")
             ->groupBy($column)
             ->pluck('total', $column);
@@ -150,6 +154,32 @@ final readonly class RentalSearch
         }
 
         return $enums;
+    }
+
+    /**
+     * Available rentals added after addedBefore: the ones the free plan doesn't show yet.
+     */
+    public function hiddenRecentCount(): int
+    {
+        if ($this->addedBefore === null) {
+            return 0;
+        }
+
+        return Rental::available()->where('created_at', '>', $this->addedBefore)->count();
+    }
+
+    private function availableRentals(): Builder
+    {
+        return Rental::available()->tap(fn (Builder $query) => $this->applyAddedBefore($query));
+    }
+
+    private function applyAddedBefore(Builder $query): void
+    {
+        if ($this->addedBefore === null) {
+            return;
+        }
+
+        $query->where('created_at', '<=', $this->addedBefore);
     }
 
     private function applySort(Builder $query): void

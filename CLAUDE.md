@@ -66,7 +66,9 @@ Laravel app that scrapes rental listings (El Bolsón / Lago Puelo), processes th
   - `RentalDetailService` → detail page data (`RentalDetailFetcher` + `RentalDetailExtractor`). Backfill: `rentals:fetch-details`.
 - `app/Integrations/Groq/GroqClient.php` → shared Groq API client (models in `config/services.php`).
 - Subscriptions (`app/Domains/Subscriptions`):
-  - `Subscriber` (one per member, `user_id`; legacy rows have it null) → `NewRentalsNotifier` sends web push to every subscriber with a push subscription.
+  - `Subscriber` (one per member, `user_id`; legacy rows have it null) → `NewRentalsNotifier` sends web push / Telegram to every **active** subscriber (`Subscriber::active()`, `expires_at` in the future).
+  - Expiry (rules in `docs/business/strategy.md`, numbers in `config/subscriptions.php`): registering subscribes for one period (`Registered` listener in `AppServiceProvider`); `Subscriber::extend()` renews from the current expiry (or now if expired); manual renewal with `subscriptions:extend <phone> [--days=]`. Without an active subscription (admins excepted) the rentals listing only shows rentals added `free_delay_days` ago or more (`RentalSearch::$addedBefore`, decided in `RentalController`).
+  - `subscriptions:remind-expiring` (daily) → `ExpiryReminder`: once per period, only to members seen in the last `active_within_days` (`users.last_seen_at`, set by the `TrackLastSeen` web middleware at most once per hour).
   - Push subscribe/unsubscribe: `PushSubscriptionController`, web routes `push-subscriptions.store/destroy` under `auth` (needs session + CSRF). There are no API routes.
   - Deleting a member deletes its subscriber and push subscriptions (`User::deleting` listener in `AppServiceProvider`).
   - Telegram: `Channels/TelegramChannel` (client in `app/Integrations/Telegram`). Members link their chat from the profile (`t.me/<bot>?start=<telegram_link_token>`, handled by `TelegramWebhookController` on `POST /telegram/webhook`, checked with `TELEGRAM_WEBHOOK_SECRET`) and toggle it with the "Recibir avisos por Telegram" checkbox (`subscribers.telegram_enabled`, default on). Run `telegram:set-webhook` whenever `APP_URL` changes (`switch-url.sh ngrok` does it). Local uses its own dev bot, never the prod one (`TechitoBot`): a bot has a single webhook, so outside production the command refuses to replace a non-ngrok webhook (`--force` to override). Without `TELEGRAM_BOT_TOKEN` the channel and the profile section are off.
@@ -85,6 +87,7 @@ Laravel app that scrapes rental listings (El Bolsón / Lago Puelo), processes th
 
 ## Roadmap
 - See `todo.md` (in Spanish) for milestones, pending tasks and known data-extraction bugs. Read it before proposing features or fixing AI parsing issues.
+- Business and product decisions (plans, pricing, free vs subscribed, launch stages) live in `docs/business/` (in Spanish), starting with `docs/business/strategy.md`. Read it before touching subscriptions or access rules, and record new decisions there.
 - Milestones: v0.9 private MVP → v0.95 fixes → v1.0 public beta (free) → v1.1 paid beta (Mercado Pago) → WhatsApp version.
 - Prod: AWS Lightsail instance managed with Laravel Forge (Custom VPS, setup in `docs/lightsail.md`, Forge settings and why in `docs/forge.md`, domain change in `docs/domain-change.md`), MySQL 8.4, scheduler via `schedule:run` cron. Deploy steps, env vars and risks: `docs/production.md` (keep it updated when adding env vars, migrations with data changes or server requirements).
 - Local (Sail, MySQL 8.0) and prod (MySQL 8.4) use the same engine; prod was PostgreSQL until 2026-11, so keep migrations portable.

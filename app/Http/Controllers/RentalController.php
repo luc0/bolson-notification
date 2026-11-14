@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Domains\Members\Models\User;
 use App\Domains\Rentals\Enums\PropertyUse;
 use App\Domains\Rentals\Enums\RentalSort;
 use App\Domains\Rentals\Queries\RentalSearch;
+use App\Domains\Subscriptions\Models\Subscriber;
 use App\Http\Controllers\Concerns\BuildsFilterChips;
+use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -31,13 +34,30 @@ class RentalController extends Controller
             includeInactive: $request->boolean('include_inactive'),
             date: $request->input('date'),
             sort: $request->string('sort')->toString() ?: RentalSort::Newest->value,
+            addedBefore: $this->freePlanCutoff($request->user()),
         );
 
         return view('rentals.index', [
             'rentals' => $search->rentals(),
+            'freePlanDelayDays' => $search->addedBefore === null ? null : (int) config('subscriptions.free_delay_days'),
+            'hiddenRecentCount' => $search->hiddenRecentCount(),
             'filterChips' => $this->filterChips($search),
             'moreFiltersCount' => $this->moreFiltersCount($search),
         ]);
+    }
+
+    /**
+     * Without an active subscription only rentals added free_delay_days ago or more are shown.
+     * Admins always see everything. null: no delay.
+     */
+    private function freePlanCutoff(User $user): ?CarbonInterface
+    {
+        $seesLatest = $user->isAdmin() || Subscriber::forUser($user)->isActive();
+        if ($seesLatest) {
+            return null;
+        }
+
+        return now()->subDays((int) config('subscriptions.free_delay_days'));
     }
 
     /**
@@ -95,11 +115,11 @@ class RentalController extends Controller
         $url = fn (array $changes) => $this->listingUrl([...$current, ...$changes]);
 
         return [
-            'cities' => $this->toggleChips('cities', 'Todas', RentalSearch::cityOptions(), $search->cities, $url),
-            'uses' => $this->toggleChips('uses', 'Todos', RentalSearch::propertyUseOptions(), $search->propertyUses, $url),
-            'price' => $this->singleChoiceChips('price', RentalSearch::priceRangeOptions(), $search->priceRange, $url),
-            'rooms' => $this->toggleChips('rooms', null, RentalSearch::roomOptions(), $search->rooms, $url),
-            'gas' => [$this->switchChip('gas', '🔥 Con gas natural ('.RentalSearch::naturalGasCount().')', $search->withNaturalGas, $url)],
+            'cities' => $this->toggleChips('cities', 'Todas', $search->cityOptions(), $search->cities, $url),
+            'uses' => $this->toggleChips('uses', 'Todos', $search->propertyUseOptions(), $search->propertyUses, $url),
+            'price' => $this->singleChoiceChips('price', $search->priceRangeOptions(), $search->priceRange, $url),
+            'rooms' => $this->toggleChips('rooms', null, $search->roomOptions(), $search->rooms, $url),
+            'gas' => [$this->switchChip('gas', '🔥 Con gas natural ('.$search->naturalGasCount().')', $search->withNaturalGas, $url)],
             'include_inactive' => [$this->switchChip('include_inactive', 'No disponibles', $search->includeInactive, $url)],
             // Newest is the default: no chip for it, clicking the active price sort goes back to it.
             'sort' => collect([RentalSort::PriceAsc, RentalSort::PriceDesc])->map(fn (RentalSort $sort) => [

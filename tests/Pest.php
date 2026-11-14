@@ -41,7 +41,13 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+/**
+ * A member with an active subscription (sees the latest rentals and gets alerts).
+ */
+function subscribedMember(array $attributes = []): App\Domains\Members\Models\User
 {
-    // ..
+    $user = App\Domains\Members\Models\User::factory()->create($attributes);
+    App\Domains\Subscriptions\Models\Subscriber::forUser($user)->extend();
+
+    return $user;
 }

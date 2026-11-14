@@ -1,6 +1,5 @@
 <?php
 
-use App\Domains\Members\Models\User;
 use App\Domains\Locations\Enums\City;
 use App\Domains\Rentals\Enums\PropertyUse;
 use App\Domains\Rentals\Models\Rental;
@@ -14,7 +13,7 @@ function createRental(string $link, bool $active = true, ?string $createdAt = nu
 }
 
 beforeEach(function () {
-    $this->actingAs(User::create(['phone' => '2944000000', 'password' => 'secret']));
+    $this->actingAs(subscribedMember(['phone' => '2944000000']));
 });
 
 it('hides inactive rentals by default', function () {

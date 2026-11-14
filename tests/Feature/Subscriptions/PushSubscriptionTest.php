@@ -14,7 +14,7 @@ function pushSubscriptionPayload(string $endpoint = 'https://push.example.com/ab
 
 function subscriberWithPush(string $endpoint, ?User $user = null): Subscriber
 {
-    $subscriber = Subscriber::create(['user_id' => $user?->id]);
+    $subscriber = Subscriber::create(['user_id' => $user?->id, 'expires_at' => now()->addMonth()]);
     $subscriber->updatePushSubscription($endpoint, 'p256dh-key', 'auth-key');
 
     return $subscriber;

@@ -1,6 +1,5 @@
 <?php
 
-use App\Domains\Members\Models\User;
 use App\Domains\Rentals\Models\Rental;
 
 function listedRental(string $name, array $attributes = []): Rental
@@ -14,7 +13,7 @@ function pesos(int $amount): array
 }
 
 beforeEach(function () {
-    $this->actingAs(User::factory()->create());
+    $this->actingAs(subscribedMember());
 });
 
 it('filters by price range in pesos and by dollars', function () {
