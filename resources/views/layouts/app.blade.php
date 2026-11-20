@@ -21,14 +21,41 @@
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
         <script>
-            if ('serviceWorker' in navigator) {
-                // navigator.serviceWorker.register('/service-worker.js');
-                window.addEventListener('load', () => {
-                    navigator.serviceWorker.register('/service-worker.js')
-                        .then(r => console.log('SW scope:', r.scope))
-                        .catch(console.error);
+            (() => {
+                const APP_VERSION = @json(\App\Support\AppVersion::current());
+                let registration = null;
+
+                if ('serviceWorker' in navigator) {
+                    window.addEventListener('load', () => {
+                        // updateViaCache 'none': the browser always checks the server for a new service worker.
+                        navigator.serviceWorker.register('/service-worker.js', { updateViaCache: 'none' })
+                            .then(r => { registration = r; })
+                            .catch(console.error);
+                    });
+                }
+
+                // The installed app resumes the page it had open (even days later) instead of loading it again:
+                // when it comes back to the foreground, reload if a new version was deployed meanwhile.
+                async function reloadIfOutdated() {
+                    registration?.update().catch(() => {});
+                    try {
+                        const response = await fetch(@json(route('app.version', absolute: false)), { cache: 'no-store', headers: { Accept: 'application/json' } });
+                        if (!response.ok) return;
+                        const { version } = await response.json();
+                        const isOutdated = version && version !== APP_VERSION;
+                        if (isOutdated) location.reload();
+                    } catch (error) {
+                        // Offline or session expired: keep the current page.
+                    }
+                }
+
+                document.addEventListener('visibilitychange', () => {
+                    if (document.visibilityState === 'visible') reloadIfOutdated();
                 });
-            }
+                window.addEventListener('pageshow', (event) => {
+                    if (event.persisted) reloadIfOutdated();
+                });
+            })();
         </script>
     </head>
     <body class="font-sans antialiased">
@@ -60,6 +87,7 @@
                 {{ $slot }}
             </main>
         </div>
+        <x-app-version />
         @stack('scripts')
         
         <script>

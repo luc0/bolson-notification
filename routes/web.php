@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AppVersionController;
 use App\Http\Controllers\LandController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PushSubscriptionController;
@@ -24,6 +25,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/push-subscriptions', [PushSubscriptionController::class, 'store'])->name('push-subscriptions.store');
     Route::delete('/push-subscriptions', [PushSubscriptionController::class, 'destroy'])->name('push-subscriptions.destroy');
 });
+
+// Version of the deployed code: the installed app reloads itself when it changes.
+Route::get('/version', AppVersionController::class)->name('app.version');
 
 // Telegram bot updates: no session, authenticated by the webhook secret header.
 Route::post('/telegram/webhook', TelegramWebhookController::class)

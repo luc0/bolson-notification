@@ -28,5 +28,6 @@
                 {{ $slot }}
             </div>
         </div>
+        <x-app-version />
     </body>
 </html>

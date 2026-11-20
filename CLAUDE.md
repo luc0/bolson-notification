@@ -75,6 +75,9 @@ Laravel app that scrapes rental listings (El Bolsón / Lago Puelo), processes th
   - Telegram: `Channels/TelegramChannel` (client in `app/Integrations/Telegram`). Members link their chat from the profile (`t.me/<bot>?start=<telegram_link_token>`, handled by `TelegramWebhookController` on `POST /telegram/webhook`, checked with `TELEGRAM_WEBHOOK_SECRET`) and toggle it with the "Recibir avisos por Telegram" checkbox (`subscribers.telegram_enabled`, default on). Admins register members from their linked chat with `/registrar <phone>` (other chats are ignored): `Members\Actions\RegisterMember` (shared with the web registration, fires `Registered` so it subscribes) with `members.initial_password`. Run `telegram:set-webhook` whenever `APP_URL` changes (`switch-url.sh ngrok` does it). Local uses its own dev bot, never the prod one (`TechitoBot`): a bot has a single webhook, so outside production the command refuses to replace a non-ngrok webhook (`--force` to override). Without `TELEGRAM_BOT_TOKEN` the channel and the profile section are off.
   - WhatsApp (`Contracts/WhatsappSender`: `TwilioWhatsappSender`, `KapsoWhatsappSender`) exists but is currently disabled.
 
+## PWA updates
+- The version (`App\Support\AppVersion`: `APP_VERSION` or the short hash of the deployed git commit) shows tiny in the bottom-right corner (`<x-app-version />`). When the installed app comes back to the foreground it polls `GET /version` and reloads if it changed (script in `layouts/app.blade.php`), so a deploy reaches it without reinstalling. Only manifest changes (name, icon) need a reinstall.
+
 ## Laravel conventions
 - Follow Laravel defaults before inventing structure; check how the framework itself names things.
 - Naming: interfaces without `I` prefix (`RentalScraper`, like `Illuminate\Contracts\...`); no repeated suffixes (`BrowserRentalScraper`, not `ScraperServiceService`); test doubles prefixed `Fake` (like `Http::fake()`).

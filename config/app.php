@@ -16,6 +16,13 @@ return [
     'name' => env('APP_NAME', 'Techito'),
 
     /*
+    | Version shown in the UI and used by the installed app to reload itself
+    | after a deploy. Empty: the short hash of the deployed git commit.
+    */
+
+    'version' => env('APP_VERSION'),
+
+    /*
     |--------------------------------------------------------------------------
     | Application Environment
     |--------------------------------------------------------------------------
