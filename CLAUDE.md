@@ -5,6 +5,7 @@ Laravel app that scrapes rental listings (El Bolsón / Lago Puelo), processes th
 ## Rules
 - Run commands through Sail (`./vendor/bin/sail ...`), except `rentals:analyze` from local (see below).
 - Everything in English (code, params, names, comments) except user-facing text, which is in Spanish.
+  - The locale is `es`: Breeze strings written in English (`__('Profile')`) are translated in `lang/es.json`, framework messages (validation, auth, passwords) in `lang/es/*.php`. New user-facing text is written directly in Spanish.
 - Clean code:
   - Don't nest ifs or use `else` when avoidable; prefer early returns.
   - For non-trivial if conditions, extract a descriptively named boolean variable and use it in the if.

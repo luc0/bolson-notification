@@ -32,6 +32,7 @@ Las que usa la app además de las estándar de Laravel (`APP_*`, `DB_*`, `SESSIO
 | `APP_DEBUG` | `false` | |
 | `APP_URL` | `https://<dominio>` | Se usa en el link de las notificaciones push. |
 | `APP_VERSION` | sin definir | Versión que se ve abajo a la derecha ("v…"). Sin definir es el hash corto del commit deployado (se lee de `.git`), así que cambia sola en cada deploy y la app instalada se recarga sola al volver a abrirla (`GET /version`). |
+| `APP_LOCALE` | `es` o sin definir | Idioma de los textos del framework y de Breeze (`lang/es.json`, `lang/es/*.php`). Si el `.env` de Forge quedó con `APP_LOCALE=en` (viene así del `.env.example` de Laravel), esos textos se ven en inglés. |
 | `APP_TIMEZONE` | `America/Argentina/Buenos_Aires` | **Importante**: el scraper corre "días hábiles a las 17:00" en esta zona. Sin esto son las 17:00 UTC (14:00 en Argentina). |
 | `DB_CONNECTION` | `mysql` | `DB_HOST=127.0.0.1`, `DB_PORT=3306`, base y usuario creados en Forge → Database. |
 | `GROQ_API_KEY` | (secreto) | IA para extraer avisos, el detalle y las fotos. |
