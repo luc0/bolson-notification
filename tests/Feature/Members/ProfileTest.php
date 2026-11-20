@@ -9,7 +9,10 @@ test('profile page is displayed', function () {
         ->actingAs($user)
         ->get('/profile');
 
-    $response->assertOk();
+    $response->assertOk()
+        // Hidden until resources/js/push.js finds this browser subscribed.
+        ->assertSee('<section id="pushDevice" hidden', false)
+        ->assertSee('Desactivar en este dispositivo');
 });
 
 test('profile information can be updated', function () {

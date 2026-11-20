@@ -17,7 +17,8 @@
 
 
                 @if($canEnableNotifications)
-                    <button id="enablePush" class="btn-primary mb-4">Activar notificaciones!</button>
+                    {{-- resources/js/push.js shows it only when this browser is not subscribed yet. --}}
+                    <button id="enablePush" hidden class="btn-primary mb-4">Activar notificaciones!</button>
                 @endif
 
                 <button id="installBtn" hidden class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 mb-2">Instalar app</button>
@@ -75,90 +76,6 @@
 
     @push('scripts')
         
-        <script>
-            const VAPID_PUBLIC = @json(config('webpush.vapid.public_key'));
-
-            function urlBase64ToUint8Array(b64) {
-                const padding = '='.repeat((4 - b64.length % 4) % 4);
-                const raw = atob((b64 + padding).replace(/-/g, '+').replace(/_/g, '/'));
-                return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
-            }
-
-            function sameKey(buffer, key) {
-                const current = new Uint8Array(buffer ?? []);
-                return current.length === key.length && current.every((byte, i) => byte === key[i]);
-            }
-
-            // Registers the service worker here instead of waiting on serviceWorker.ready,
-            // which hangs forever (silently) when the registration on page load failed.
-            async function activeServiceWorker() {
-                const registration = await navigator.serviceWorker.register('/service-worker.js');
-                const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('el service worker no se activó')), 10000));
-                await Promise.race([navigator.serviceWorker.ready, timeout]);
-                return registration;
-            }
-
-            // A subscription made with other VAPID keys makes subscribe() fail: drop it and subscribe again.
-            async function pushSubscription(registration, key) {
-                const existing = await registration.pushManager.getSubscription();
-                const isReusable = existing && sameKey(existing.options?.applicationServerKey, key);
-                if (isReusable) return existing;
-                if (existing) await existing.unsubscribe();
-                return registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
-            }
-
-            async function enablePush() {
-                const isSupported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
-                if (!isSupported) {
-                    alert('Este navegador no permite notificaciones. En iPhone, primero instalá la app en la pantalla de inicio y abrila desde ahí.');
-                    return;
-                }
-                if (!VAPID_PUBLIC) {
-                    alert('Las notificaciones no están configuradas en el servidor.');
-                    return;
-                }
-
-                const permission = await Notification.requestPermission();
-                if (permission !== 'granted') {
-                    alert('No diste permiso para las notificaciones. Habilitalo en la configuración del navegador para este sitio.');
-                    return;
-                }
-
-                const registration = await activeServiceWorker();
-                const subscription = await pushSubscription(registration, urlBase64ToUint8Array(VAPID_PUBLIC));
-
-                // Relative URL: an absolute one built from APP_URL breaks if the page was opened from another origin.
-                const response = await fetch(@json(route('push-subscriptions.store', absolute: false)), {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': @json(csrf_token()) },
-                    body: JSON.stringify(subscription),
-                });
-                if (response.status === 419 || response.status === 401) {
-                    alert('Tu sesión venció. Recargá la página y probá de nuevo.');
-                    return;
-                }
-                if (!response.ok) {
-                    alert(`No se pudieron activar las notificaciones (error ${response.status}). Probá de nuevo.`);
-                    return;
-                }
-
-                alert('Notificaciones activadas ✅');
-            }
-
-            document.getElementById('enablePush')?.addEventListener('click', async (event) => {
-                const button = event.currentTarget;
-                button.disabled = true;
-                try {
-                    await enablePush();
-                } catch (error) {
-                    console.error(error);
-                    alert(`No se pudieron activar las notificaciones: ${error.message || error}`);
-                } finally {
-                    button.disabled = false;
-                }
-            });
-        </script>
         <script>
             let deferredPrompt = null;
 
