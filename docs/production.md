@@ -163,7 +163,7 @@ Después del deploy, una sola vez, para calcular toda la historia (descarga el d
 php artisan market:snapshot --backfill
 ```
 
-Si ya se había corrido antes de los rangos de superficie (o se cambian los cortes en `config/market.php` `size_ranges`), volver a correr `--backfill`: reemplaza todos los meses.
+Si ya se había corrido antes de los rangos de superficie o del precio por m² cubierto de las casas (o se cambian los cortes en `config/market.php` `size_ranges`), volver a correr `--backfill`: reemplaza todos los meses.
 
 Después, `php artisan schedule:list` tiene que mostrar `market:snapshot` los martes a las 04:00.
 

@@ -113,9 +113,11 @@ it('stores a row per city besides the whole Comarca', function () {
         ->and(marketStat('residential_rentals', 'ARS', 'lago_puelo')->median)->toBe(700000.0);
 });
 
-it('stores houses in dollars only and lands per m²', function () {
-    $house = House::create(['source' => 'https://example.com/h', 'content' => 'Casa', 'site_path' => 'x', 'price_amount' => 120000, 'price_currency' => 'USD']);
+it('stores houses per built m² in dollars only and lands per m²', function () {
+    $house = House::create(['source' => 'https://example.com/h', 'content' => 'Casa', 'site_path' => 'x', 'price_amount' => 120000, 'price_currency' => 'USD', 'covered_area' => 100]);
     $house->forceFill(['created_at' => '2026-10-10'])->save();
+    $houseWithoutArea = House::create(['source' => 'https://example.com/h2', 'content' => 'Casa', 'site_path' => 'x', 'price_amount' => 90000, 'price_currency' => 'USD']);
+    $houseWithoutArea->forceFill(['created_at' => '2026-10-10'])->save();
     $land = Land::create(['source' => 'https://example.com/l', 'content' => 'Lote', 'site_path' => 'x', 'price_amount' => 30000, 'price_currency' => 'USD', 'area' => 1000]);
     $land->forceFill(['created_at' => '2026-10-10'])->save();
     $landWithoutArea = Land::create(['source' => 'https://example.com/l2', 'content' => 'Lote', 'site_path' => 'x', 'price_amount' => 50000, 'price_currency' => 'USD']);
@@ -123,7 +125,7 @@ it('stores houses in dollars only and lands per m²', function () {
 
     $this->artisan('market:snapshot')->assertSuccessful();
 
-    expect(marketStat('houses_for_sale', 'USD')->median)->toBe(120000.0)
+    expect(marketStat('houses_for_sale', 'USD'))->median->toBe(1200.0)->listings_count->toBe(1)->unit->toBe(PriceUnit::PricePerCoveredSquareMeter)
         ->and(marketStat('houses_for_sale', 'ARS'))->toBeNull()
         ->and(marketStat('lands_for_sale', 'USD'))->median->toBe(30.0)->listings_count->toBe(1)->unit->toBe(PriceUnit::PricePerSquareMeter);
 });
@@ -256,7 +258,7 @@ it('stores lands and houses per size range too, leaving out of the ranges the on
         ->and($lands['5000+']->median)->toBe(3.0)
         ->and(PriceStat::where('series', 'lands_for_sale')->where('city', 'lago_puelo')->whereNotNull('size_range')->count())->toBe(3);
 
-    expect(PriceStat::where('series', 'houses_for_sale')->pluck('size_range')->all())->toBe([null]);
+    expect(PriceStat::where('series', 'houses_for_sale')->count())->toBe(0);
 });
 
 it('labels the size ranges built from the config bounds', function () {

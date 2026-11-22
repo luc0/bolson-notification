@@ -11,7 +11,8 @@ use App\Domains\Market\Enums\PriceUnit;
 use Carbon\CarbonImmutable;
 
 /**
- * Sale price of houses, in dollars.
+ * Price per built m² of houses for sale, in dollars, so small and big houses compare.
+ * Houses without a known built area are left out.
  */
 class HousesForSale implements PriceSeries
 {
@@ -27,7 +28,7 @@ class HousesForSale implements PriceSeries
 
     public function unit(): PriceUnit
     {
-        return PriceUnit::Price;
+        return PriceUnit::PricePerCoveredSquareMeter;
     }
 
     public function currencies(): array
@@ -44,7 +45,7 @@ class HousesForSale implements PriceSeries
     }
 
     /**
-     * By built m² (houses without it only count in every size).
+     * Bigger houses are cheaper per m², so places are compared by built area.
      */
     public function sizeRanges(): ?SizeRanges
     {
@@ -55,10 +56,11 @@ class HousesForSale implements PriceSeries
     {
         return House::query()
             ->whereNotNull('price_amount')
+            ->where('covered_area', '>', 0)
             ->whereBetween('created_at', [$month->startOfMonth(), $month->endOfMonth()])
             ->lazy()
             ->map(fn (House $house) => new PricedListing(
-                amount: (float) $house->price_amount,
+                amount: (float) $house->price_amount / $house->covered_area,
                 currency: Currency::from($house->price_currency),
                 city: $house->city,
                 bedrooms: $house->bedrooms,
