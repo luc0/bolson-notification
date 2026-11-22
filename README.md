@@ -1,77 +1,92 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Techito — Alquileres en la Comarca Andina
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Techito junta en un solo lugar los alquileres que publican las inmobiliarias de El Bolsón, Lago Puelo y alrededores, y avisa por notificación cuando aparece uno nuevo. En la Comarca los alquileres duran poco y cada inmobiliaria publica en su propia web: la idea es enterarse antes, sin tener que revisar diez sitios todos los días.
 
-# Producción
-Pasos de deploy, variables de entorno y consideraciones: [`docs/production.md`](docs/production.md).
+Es un proyecto personal, en uso con un grupo chico de personas (beta privada).
 
-# Dominios
-La organización por dominios (qué resuelve cada uno y sus subdominios) está en [`docs/domains.md`](docs/domains.md).
+## Qué hace
 
-Dockerfile: 8.4 -> Customized image: Added puppeteer to Sail Dockerfile.
-- Google Chrome se instala solo en amd64 (no existe build linux/arm64). En Mac M1+ la imagen se buildea sin Chrome, por eso el scraper (`rentals:analyze`) se corre por fuera de sail.
+- **Recolecta avisos** de varias inmobiliarias: abre cada listado con un navegador headless y extrae los avisos con un LLM, porque cada sitio tiene un HTML distinto y no hay APIs.
+- **Completa y limpia los datos**: precio y moneda normalizados, superficie, dormitorios, servicios, ciudad y barrio. Detecta los avisos que ya se alquilaron aunque la inmobiliaria no los despublique (un modelo de visión busca el cartel "ALQUILADO" en la foto).
+- **Avisa** por web push (PWA instalable en el celular) y por un bot de Telegram.
+- **Suscripciones** con vencimiento: con la suscripción activa los avisos llegan al momento; sin ella, el listado se ve con unos días de retraso.
+- **Análisis de precios** (para admins): mediana mensual de alquileres, casas y terrenos por ciudad y por rango de superficie, convertida con el dólar del mes.
 
-# LLM reglas
-Ver `CLAUDE.md`.
+## Stack
 
-# Instalar PWA desde celu
-para que aparezca el boton:
-- usar ngrok, cambiarlo de todos lados (back y vite)
-- desde el celu abrirlo desde chrome!
+Laravel 12 (PHP 8.4) · MySQL 8 · Blade + Alpine.js + Tailwind · Chart.js · Puppeteer (Node) · Groq (LLM y visión) · Web Push (VAPID) + service worker · Telegram Bot API · Pest · Docker (Laravel Sail) · AWS Lightsail + Laravel Forge.
 
-# Que env DB usar para cada caso
-- activar notifications -> sail db
-- usar app -> sail
-- ejecutar comando -> sin sail `DB_HOST=127.0.0.1 DB_PORT=3307 php artisan rentals:analyze`
+## Arquitectura
 
-# Ejecutar comando rentals:analyze desde local
-- levantar sail (por la db) pero correr cosas por fuera
-- si falla, en env, usar la conexion sin container SIN SAIL.
-- probar si la conexion a la db esta ok: `php artisan db:test`
-- probablemente si use sail tengo que limpiar permisos y carpetas:
+- **Monolito modular por dominios** (`app/Domains/`): Sources, Harvesting, Locations, Rentals, Lands, Houses, Market, Subscriptions y Members. Cada uno sigue las convenciones de carpetas de Laravel, con una regla de dependencias explícita: los catálogos (alquileres, terrenos, casas) no se conocen entre sí, Harvesting escribe en ellos y Market solo los lee. Los clientes externos (Groq, Telegram, cotización del dólar) viven aparte, en `app/Integrations/`.
+- **Pipeline de scraping con IA** (`rentals:analyze`): captura → detección de cambios → extracción → importación → enriquecimiento del detalle → notificación.
+  - Se compara cada captura con la anterior para no gastar llamadas a la IA en sitios que no cambiaron.
+  - La extracción usa un schema JSON estricto, con reintento y validación. Un dato del detalle solo se guarda si la página tiene la palabra que lo respalda, para que la IA no invente.
+  - Las fotos se reemplazan por ids cortos antes de mandarle el HTML al modelo, lo que ahorra tokens y evita URLs mal copiadas.
+- **Clasificación sin IA**: ciudad, barrio y tipo de propiedad salen de alias y barrios conocidos (basado en evidencia, nunca adivina), así se puede reclasificar toda la base sin costo.
+- **Series de precios extensibles**: cada gráfico es una clase que implementa una interfaz (`PriceSeries`). Las estadísticas se calculan por mes de publicación, así la historia se puede reconstruir en cualquier momento.
+- **Testeado con Pest** (~270 tests). Las llamadas externas (HTTP, procesos, IA) se reemplazan con fakes.
+- **Producción** en una instancia de AWS Lightsail administrada con Laravel Forge: deploy desde `main` y scheduler por cron. La PWA instalada se actualiza sola después de cada deploy.
+
+Más detalle en [`docs/`](docs): [`architecture.md`](docs/architecture.md) (dominios y flujos), [`production.md`](docs/production.md) (servidor y deploy) e [`history.md`](docs/history.md) (lo ya hecho en producción).
+
+## Setup local
+
+Requisitos: Docker, PHP 8.2+, Composer y Node 18+ (el scraper corre en la máquina local, ver abajo).
+
+```bash
+composer install
+cp .env.example .env
+./vendor/bin/sail up -d
+./vendor/bin/sail artisan key:generate
+./vendor/bin/sail artisan webpush:vapid      # claves para las notificaciones push
+./vendor/bin/sail artisan migrate
+npm install
+npm run dev
 ```
-rm -f bootstrap/cache/*.php
-mkdir -p storage/logs
-chmod -R 777 storage bootstrap/cache
-... correr comando
+
+La app queda en http://localhost. Para entrar, crear una cuenta en `/register`. Para ver Terrenos, Casas y Análisis, poner el teléfono en `ADMIN_PHONES` del `.env`.
+
+Variables útiles del `.env`:
+- `GROQ_API_KEY`: hace falta para extraer avisos con IA.
+- `SCRAPE_MOCK=true`: usa datos de prueba en lugar de scrapear.
+- `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME` y `TELEGRAM_WEBHOOK_SECRET`: bot de Telegram. Usar un bot propio de desarrollo, nunca el de producción.
+
+### Scraper (fuera de Sail)
+
+La imagen de Sail no trae Chrome en Mac con Apple Silicon (Chrome no tiene build para linux/arm64), así que el scraper corre en la máquina local contra la base del contenedor (puerto 3307):
+
+```bash
+DB_HOST=127.0.0.1 DB_PORT=3307 php artisan rentals:analyze   # alquileres
+DB_HOST=127.0.0.1 DB_PORT=3307 php artisan lands:analyze     # terrenos
+DB_HOST=127.0.0.1 DB_PORT=3307 php artisan houses:analyze    # casas en venta
 ```
-- correr `php artisan rentals:analyze`
 
-# Rentals model
-source -> es el sitio del rental en especifico (item)
-site_path -> es donde scrapea (listado)
-source_path -> no se usa habria que borrar
+`./scripts/local-up.sh` levanta Sail y corre alquileres y terrenos. Para comprobar la conexión a la base: `php artisan db:test`.
 
-# Rentals filter
-- por ahora hice que en el filtro se pueda filtrar por las location que aparecen en el enum + las de la db.
+Si después de usar Sail aparecen errores de permisos:
 
-# Fuentes (sitios que se scrapean)
-- Se definen solo en `config/sources.php`. Para agregar una inmobiliaria se agrega ahí y listo.
-- `BrowserRentalScraper` le pasa los sitios a `scripts/scrape.cjs` (Puppeteer) por stdin.
-- Capturas en `storage/app/captures`, snapshots (detección de cambios) en `storage/app/snapshots` (rutas en `config/harvesting.php`).
-- Para forzar que se re-analice un sitio: borrar su snapshot.
+```bash
+rm -f bootstrap/cache/*.php && mkdir -p storage/logs && chmod -R 777 storage bootstrap/cache
+```
 
-# Detección de alquilados por foto
-Algunas inmobiliarias (ej: Punto Patagonia) no despublican lo alquilado: le ponen un cartel "ALQUILADO"/"RESERVADO" a la foto.
-- `scripts/scrape.cjs` reemplaza cada `<img src>` por un id corto (`#img-3`) y guarda las URLs reales en `storage/app/captures/<sitio>.images.json`. Descarta íconos (< 80px).
-- El LLM devuelve el id de la foto principal en `Image`, y `BrowserRentalScraper` lo traduce a la URL.
-- `RentalImageChecker` le pregunta a un modelo de visión (`GROQ_VISION_MODEL`, default `qwen/qwen3.6-27b`) si la foto tiene el cartel. Cada URL se revisa una sola vez (`image_checked_url`).
-- Si da alquilado se setea `rented_at`: no se notifica y se muestra en "No disponibles". Si la revisión falla, el aviso queda disponible y se reintenta.
+### Probar desde el celular (PWA y push)
 
-# Detalle de cada aviso (superficie, dormitorios, servicios...)
-El listado no trae estos datos: están en la página de detalle de cada aviso.
-- `RentalDetailService` (corre en `rentals:analyze`) baja el detalle por HTTP (`RentalDetailFetcher`, con reintentos: Tokko da 500 intermitentes) y lo extrae con el LLM (`RentalDetailExtractor`).
-- Solo datos explícitos: cada valor se descarta si la página no tiene la palabra que lo respalda (ej: antigüedad sin "antigüedad"/"estrenar").
-- Una vez por aviso disponible, hasta 3 intentos. Backfill manual: `php artisan rentals:fetch-details`.
+Las notificaciones push y la instalación como PWA necesitan HTTPS:
 
-# Modelos (Groq)
-- `GROQ_MODEL` (default `openai/gpt-oss-20b`) y `GROQ_REASONING_EFFORT` (default `low`) para extraer avisos del HTML.
-- Si Groq da de baja un modelo, el log muestra `model_not_found`: cambiar el env.
+```bash
+./scripts/switch-url.sh ngrok   # APP_URL pasa a la URL https de ngrok (y registra el webhook de Telegram)
+./scripts/switch-url.sh local   # vuelve a http://localhost
+```
 
-# TODO
-- Desactivar un aviso recién cuando falta en N corridas seguidas (ver TODO en `RentalImporter::deactivateMissingRentals`). Hoy el LLM a veces saltea algunos avisos y quedan inactivos hasta la próxima corrida.
+Abrir esa URL desde Chrome en el celular para que aparezca el botón de instalar.
+
+### Tests
+
+```bash
+./vendor/bin/sail test
+# o sin Sail:
+DB_CONNECTION=sqlite DB_DATABASE=:memory: php vendor/bin/pest
+```
+
+Reglas de código y convenciones del proyecto: [`CLAUDE.md`](CLAUDE.md).

@@ -1,96 +1,69 @@
 # CLAUDE.md
 
-Laravel app that scrapes rental listings (El Bolsón / Lago Puelo), processes them with AI, stores them, and sends push notifications (PWA) to subscribers.
+Laravel app that scrapes rental listings (El Bolsón / Lago Puelo), processes them with AI, stores them, and sends push notifications (PWA) to subscribers. Admins also get lands and houses for sale and monthly price charts.
 
 ## Rules
 - Run commands through Sail (`./vendor/bin/sail ...`), except `rentals:analyze` from local (see below).
-- Everything in English (code, params, names, comments) except user-facing text, which is in Spanish.
+- Everything in English (code, params, names, comments) except user-facing text, which is in Spanish. Docs in `docs/` are in Spanish.
   - The locale is `es`: Breeze strings written in English (`__('Profile')`) are translated in `lang/es.json`, framework messages (validation, auth, passwords) in `lang/es/*.php`. New user-facing text is written directly in Spanish.
 - Clean code:
   - Don't nest ifs or use `else` when avoidable; prefer early returns.
   - For non-trivial if conditions, extract a descriptively named boolean variable and use it in the if.
+  - Follow SOLID: one responsibility per class (e.g. scraper, extractor, importer and classifier are separate), extend through interfaces instead of editing existing code (e.g. a new chart is a new `PriceSeries`, a new channel a new notification channel), depend on contracts injected by the container (e.g. `RentalScraper`), keep interfaces small. Don't add abstractions with a single implementation and no real need for one.
+- Architecture (concepts from *Software Architecture: The Hard Parts*):
+  - Trade-off analysis: there are no best practices, only trade-offs. For a non-obvious design decision (new domain, splitting or merging one, where data lives, sync vs async, a new external dependency), weigh the options and record it as an ADR (Architecture Decision Record) in the "Decisiones de arquitectura (ADR)" section of `docs/architecture.md`: context, decision, alternatives considered and consequences (what we gain and what we give up).
+  - Data ownership: every table belongs to exactly one domain, and only that domain's models write to it. Other domains read through the owner's models or queries; Harvesting writes into Rentals, Lands and Houses only through its importers using their models. Analytics (Market) never writes the catalogs and keeps its own tables (`price_stats`, `exchange_rates`).
+  - Fitness functions: the dependency rule is enforced by Pest arch tests in `tests/Arch/DependencyRuleTest.php`. Never weaken a test to make a change pass: fix the dependency, or record an ADR that changes the rule and update the test, `docs/architecture.md` and this file together. A new domain gets its rules there too.
+- Keep the docs up to date in the same change as the code. When adding or changing a feature, update this file (only if a rule, command or gotcha changes) and the matching doc:
+  - `docs/architecture.md` if a domain, class, flow, filter or command changes.
+  - `docs/production.md` if env vars, server requirements, the deploy script or the schedule change. One-off deploy steps (data migrations, backfills) go to its "Próximo deploy" section.
+  - `docs/history.md` once something is done in production (move the "Próximo deploy" steps there, with the date).
+  - `docs/todo.md`: mark what's done and add what's left.
+  - `docs/business/` for product or pricing decisions.
+
+## Documentation (`docs/`)
+- `docs/architecture.md` → domains (what each one solves, subdomains, classes, flows, filters, commands), dependency rule, cross-cutting pieces (PWA updates, locale) and the architecture decisions (ADRs). Read it before adding features.
+- `docs/production.md` → how prod is built and operated: current state, server requirements, env vars, deploy script, scheduler, "Próximo deploy" (pending one-off steps), post-deploy checklist, known risks, Forge settings and why, rebuilding the server (Lightsail + Forge runbook), domain change, PHP upgrade.
+- `docs/history.md` → what was already done in prod, with dates: server migration (Hetzner → Lightsail), one-off deploys, verifications.
+- `docs/todo.md` → pending tasks by category (data quality, testing, security, features, sources, infra, code), each tagged with its milestone. Gitignored. Read it before proposing features or fixing AI parsing issues.
+- `docs/business/strategy.md` → business and product decisions (plans, pricing, free vs subscribed, launch stages). Read it before touching subscriptions or access rules, and record new decisions there.
+- `README.md` → short intro (what the app does, stack, architecture highlights) and local setup.
 
 ## Commands
 - Start Sail and update rentals (`rentals:analyze` from local): `./scripts/local-up.sh`
 - Switch `APP_URL` between localhost and an ngrok tunnel (to test from a phone): `./scripts/switch-url.sh ngrok` / `./scripts/switch-url.sh local`
 - Tests (Pest): `./vendor/bin/sail test` (or locally: `DB_CONNECTION=sqlite DB_DATABASE=:memory: php vendor/bin/pest`)
-- Run scraper from local (no Sail, DB in container): `DB_HOST=127.0.0.1 DB_PORT=3307 php artisan rentals:analyze` (lands: `lands:analyze`)
-- Complete detail page data: `DB_HOST=127.0.0.1 DB_PORT=3307 php artisan rentals:fetch-details`
+- Run scraper from local (no Sail, DB in container): `DB_HOST=127.0.0.1 DB_PORT=3307 php artisan rentals:analyze` (lands: `lands:analyze`, houses: `houses:analyze`)
+- Complete detail page data: `DB_HOST=127.0.0.1 DB_PORT=3307 php artisan rentals:fetch-details` (`--missing-titles` for AI titles)
+- Reclassify city / neighborhood / property use without AI: `rentals:classify`, `lands:classify`, `houses:classify`
+- Recalculate the price charts: `market:snapshot --backfill`
 - Check DB connection: `php artisan db:test`
 - Send a test Telegram message to a member (chat linked from the profile): `php artisan telegram:send-test <phone> "<message>"`
 - Send a test web push to every browser of a member ("Activar notificaciones" tapped in the app): `php artisan push:send-test <phone> "<message>"` (reports each browser; expired ones are removed)
+- Renew a subscription by hand: `subscriptions:extend <phone> [--days=]`
 - If permission errors after using Sail:
   `rm -f bootstrap/cache/*.php && mkdir -p storage/logs && chmod -R 777 storage bootstrap/cache`
 
 ## Structure (modular monolith)
-- Domains and their subdomains are documented in `docs/domains.md` (read it before adding features): Sources, Harvesting, Locations, Rentals, Lands, Houses, Market, Subscriptions, Members, Payments.
+- Domains (details in `docs/architecture.md`): Sources, Harvesting, Locations, Rentals, Lands, Houses, Market, Subscriptions, Members, Payments (not created yet, comes with the checkout in v1.1).
 - Each domain lives in `app/Domains/<Domain>/` using Laravel's folder names inside (`Models`, `Enums`, `Data`, `Support`, `Services`...).
 - Framework entry points stay where Laravel expects them: `app/Http`, `app/Console`, `resources/views`, `database/migrations`.
 - Shared external clients (Groq, Telegram, ArgentinaDatos, Puppeteer, HTTP fetch) go to `app/Integrations/`.
-- Dependency rule: Locations (shared kernel: `City`, `CityResolver`) depends on nothing; Rentals, Lands and Houses depend only on Locations (never on each other); Harvesting writes into Rentals, Lands and Houses; Subscriptions reads from Rentals; Market reads from Rentals, Lands and Houses.
-- Migrated: Locations, Rentals, Lands, Houses, Market, Sources, Harvesting (+ `app/Integrations/Groq`), Subscriptions, Members. Payments will be created with the checkout (v1.1).
+- Dependency rule: Locations (shared kernel: `City`, `CityResolver`) depends on nothing; Rentals, Lands and Houses depend only on Locations (never on each other); Harvesting writes into Rentals, Lands and Houses; Subscriptions reads from Rentals; Market reads from Rentals, Lands and Houses. Enforced by `tests/Arch/DependencyRuleTest.php`.
+- Harvesting classes are named symmetrically per catalog: `BrowserRentalScraper` / `BrowserLandScraper` / `BrowserHouseScraper`, `…ListingExtractor`, `…Importer`, `…Classifier`.
 - Models outside `App\Models` need `#[UseFactory(...)]` (and `$model` in the factory) because Laravel can't guess the factory name.
 - Polymorphic models must be registered in `Relation::morphMap()` (`AppServiceProvider::boot()`) so stored types don't depend on class names.
 
-## Domain
-- `Rental`:
-  - `source` → URL of the specific listing (item), stored decoded (`app/Domains/Rentals/Support/RentalLink.php`).
-  - `site_path` → `listing_url` of the source it was scraped from.
-  - `content` → the agency's title; `title` → short descriptive title written by the AI from the detail page (`RentalDetailExtractor`, shown on the card, falls back to `content`). Backfill: `rentals:fetch-details --missing-titles`.
-  - `source_path` → unused, pending removal.
-  - `price` (raw text) + `price_amount` / `price_currency` (parsed via `app/Domains/Rentals/Support/PriceParser.php`).
-  - Availability: `active` (still listed on the site) + `rented_at` (photo stamped "ALQUILADO"). Use `Rental::available()`.
-  - Old = detected 3+ months ago (`Rental::OLD_AFTER_MONTHS`).
-  - Detail page data: `covered_area`, `total_area`, `bedrooms`, `parking_spaces`, `age_years`, `services` (json of `App\Domains\Rentals\Enums\Utility` values).
-- Location: `location` is the raw text from the agency; `city` (`App\Domains\Locations\Enums\City`) and `neighborhood` are resolved from it by `CityResolver` (aliases + known neighborhoods per city, evidence-based). Fallbacks: city from the detail page (AI, only if on the page), then the source `default_city`.
-- Property use: `property_use` (`PropertyUse`: residential / commercial) resolved from the property type in the title by `PropertyUseResolver`; fallback: detail page (AI, only if the type is on the page).
-- Both are set by `Harvesting\Services\RentalClassifier` on import. Filters (one-click chips, `<x-filter-chip>`): city, and under "Más filtros" (`<details>`, opens when one is not default) property use (default: residential; `uses=all` for every use), price range (`PriceRange`: pesos ranges + dollars), rooms (4+ grouped), natural gas; include unavailable; sort (`RentalSort`: newest by default with no chip, price chips sort pesos, then dollars, then no price). Query in `Rentals\Queries\RentalSearch`.
-- To recognize a new city/neighborhood/property type: add it to `City::aliases()` / `City::neighborhoods()` / `PropertyUse::keywords()` and run `rentals:classify` / `lands:classify` (no AI cost).
-
-## Lands
-- `Land` (`app/Domains/Lands`): lands for sale, separate from rentals (own table, `/terrenos` tab, `LandController`). Admins only for now: `ADMIN_PHONES` (`config('app.admin_phones')`, `User::isAdmin()`) backs the `admin` Gate; the tab uses `@can('admin')` and the route `can:admin` (403 for other members). Same `source` / `site_path` / `content` / price columns as `Rental`, plus `area` (m²) and `city` / `neighborhood` (set by `Harvesting\Services\LandClassifier` on import, backfill with `lands:classify`). Filters: city chips, include unavailable, sort (`LandSort`). Query in `Lands\Queries\LandSearch`. No notifications yet.
-- Flow: `lands:analyze` → `Harvesting\Services\BrowserLandScraper` (capture in `storage/app/captures/lands`) → `LandListingExtractor` → `LandImporter`. Scheduled weekly in prod (Mondays 18:00), every 3 minutes in debug mode like rentals.
-- The AI uses `services.groq.land_reasoning_effort` (default `medium`): with `low` it gives up on long land listings and returns an empty list.
-
-## Houses
-- `House` (`app/Domains/Houses`): houses for sale, built like Lands (own table, `/casas` tab, `HouseController`, admins only with `@can('admin')` / `can:admin`). Same columns as `Land` but `bedrooms`, `bathrooms`, `covered_area` (built m²) and `total_area` (plot m²) instead of `area`. City / neighborhood by `Harvesting\Services\HouseClassifier` (backfill: `houses:classify`). Filters: city chips, include unavailable, sort (`HouseSort`). Query in `Houses\Queries\HouseSearch`. No notifications.
-- Flow: `houses:analyze` → `BrowserHouseScraper` (capture in `storage/app/captures/houses`) → `HouseListingExtractor` → `HouseImporter`. Scheduled weekly in prod (Mondays 18:30). Sources in `config/sources.php` `house_sites` (`Source::houses()`).
-- Long listings (30+ items) make the AI return a different subset on each run: split big sources by city (one source per city with `default_city`, like `disalvo_*`).
-
-## Market (Análisis)
-- `app/Domains/Market`: monthly price charts of the `/analisis` tab (`MarketController`, admins only). Reads Rentals, Lands and Houses; nothing depends on it.
-- One class per chart implementing `Contracts/PriceSeries` (`Series/ResidentialRentals`, `CommercialRentals`, `HousesForSale`, `LandsForSale`), listed in `config/market.php`. To add a chart: new class + add it there; `MarketSnapshot` and the page pick it up.
-- Measure: listings **published in each month** (`created_at`), so history can be rebuilt. Rentals in ARS and USD, houses in USD per built m² (`covered_area`), lands in USD per m²; listings without the area are left out. Each listing is converted with the monthly average of `config('market.dollar')` (blue) before the median.
-- Each chart has one median line per place (`PriceHistory::places()`: Toda la Comarca + every city with data, fixed color per place in `market-charts.js`); a picker above the charts (chips to remove, search box to add) applies to all of them and is kept in `?places=`. The p25–p75 band only shows with a single place.
-- Size ranges: houses (built m²) and lands (plot m²) also store stats per size range (`price_stats.size_range`, `SizeRange` key like `0-1000`, null = every size) so places are compared with similar listings. Bounds in `config('market.size_ranges')`, declared by `PriceSeries::sizeRanges()`. Each chart has its own chips ("Todas" by default, kept in `?size[<series>]=`). After changing the bounds, run `market:snapshot --backfill`.
-- `market:snapshot` (weekly, Tuesdays 04:00: last month and the current one, which shows as "(en curso)" until it ends; `--month=YYYY-MM`, `--backfill` up to the current month) syncs `exchange_rates` from `Integrations/ArgentinaDatos` and replaces those months' `price_stats` rows (per series, currency, city; `bedrooms` ready for houses via `groupsByBedrooms()`). Charts: Chart.js in `resources/js/market-charts.js`.
-
-## Sources
-- `config/sources.php` is the single source of truth for scraped sites (key, type, listing URL, link base URL, `wait_for`): `rental_sites`, `land_sites`, `house_sites`. To add a site, add it there only.
-- Read them with `App\Domains\Sources\Data\Source::rentals()` / `Source::findRental($key)` (`rental_sites`) and `Source::lands()` (`land_sites`); `SourceType` is `agency` or `portal`.
-- `BrowserRentalScraper` passes the sites to `scripts/scrape.cjs` through stdin. Paginated listings: `next_page_selector` (pages are merged into one capture so later pages aren't deactivated). Listing links in an `onclick` (no `href`) are kept as `href` by `scrape.cjs`.
-- Captures and snapshots are Harvesting config, per catalog: `config/harvesting.php` (`rentals.*`, `lands.*`, `houses.*`), read with `CaptureStore::forRentals()` / `forLands()` / `forHouses()`.
-
-## Architecture
-- `app/Console/Commands/AnalyzeRentals.php` (`rentals:analyze`) → main flow: capture → AI extraction → store → detail enrichment → notify. Scheduled in `routes/console.php`.
-- Harvesting (`app/Domains/Harvesting`): rentals, lands and houses share the same folders; classes are named symmetrically (`BrowserRentalScraper` / `BrowserLandScraper` / `BrowserHouseScraper`, `…ListingExtractor`, `…Importer`). Shared: `Services/SourceCapturer`, `Services/AiListingExtractor`, `Support/CaptureStore`, `Data/Capture`, `Data/ImportResult`.
-  - `Contracts/RentalScraper` → `BrowserRentalScraper` (Puppeteer) and `FakeRentalScraper` (`SCRAPE_MOCK=true`).
-  - `Support/CaptureStore` + `Data/Capture` → captures and snapshots (change detection).
-  - `RentalListingExtractor` → extracts rentals from a listing page capture.
-  - `RentalImporter` → imports them into Rentals: create, reactivate, deactivate and rented photo check (`RentalImageChecker`).
-  - `RentalDetailService` → detail page data (`RentalDetailFetcher` + `RentalDetailExtractor`). Backfill: `rentals:fetch-details`.
-- `app/Integrations/Groq/GroqClient.php` → shared Groq API client (models in `config/services.php`).
-- Subscriptions (`app/Domains/Subscriptions`):
-  - `Subscriber` (one per member, `user_id`; legacy rows have it null) → `NewRentalsNotifier` sends web push / Telegram to every **active** subscriber (`Subscriber::active()`, `expires_at` in the future).
-  - Expiry (rules in `docs/business/strategy.md`, numbers in `config/subscriptions.php`): registering subscribes for one period (`Registered` listener in `AppServiceProvider`); `Subscriber::extend()` renews from the current expiry (or now if expired); manual renewal with `subscriptions:extend <phone> [--days=]`. Only active subscribers see the "Activar notificaciones" button. Without an active subscription (admins excepted) the rentals listing only shows rentals added `free_delay_days` ago or more (`RentalSearch::$addedBefore`, decided in `RentalController`).
-  - `subscriptions:remind-expiring` (daily) → `ExpiryReminder`: once per period, only to members seen in the last `active_within_days` (`users.last_seen_at`, set by the `TrackLastSeen` web middleware at most once per hour).
-  - Push subscribe/unsubscribe: `PushSubscriptionController`, web routes `push-subscriptions.store/destroy` under `auth` (needs session + CSRF). There are no API routes. Browser side in `resources/js/push.js` (VAPID key and URL from `<meta>` tags in `layouts/app.blade.php`): "Activar notificaciones" on the rentals page only shows when this browser is not subscribed (`pushManager.getSubscription()` with the current VAPID key; an existing one is re-sent so the server keeps it), and disabling lives in the profile ("Notificaciones en este dispositivo", only shown when subscribed).
-  - Deleting a member deletes its subscriber and push subscriptions (`User::deleting` listener in `AppServiceProvider`).
-  - Telegram: `Channels/TelegramChannel` (client in `app/Integrations/Telegram`). Members link their chat from the profile (`t.me/<bot>?start=<telegram_link_token>`, handled by `TelegramWebhookController` on `POST /telegram/webhook`, checked with `TELEGRAM_WEBHOOK_SECRET`) and toggle it with the "Recibir avisos por Telegram" checkbox (`subscribers.telegram_enabled`, default on). Admins register members from their linked chat with `/registrar <phone>` (other chats are ignored): `Members\Actions\RegisterMember` (shared with the web registration, fires `Registered` so it subscribes) with `members.initial_password`. Run `telegram:set-webhook` whenever `APP_URL` changes (`switch-url.sh ngrok` does it). Local uses its own dev bot, never the prod one (`TechitoBot`): a bot has a single webhook, so outside production the command refuses to replace a non-ngrok webhook (`--force` to override). Without `TELEGRAM_BOT_TOKEN` the channel and the profile section are off.
-  - WhatsApp (`Contracts/WhatsappSender`: `TwilioWhatsappSender`, `KapsoWhatsappSender`) exists but is currently disabled.
-
-## PWA updates
-- The version (`App\Support\AppVersion`: `APP_VERSION` or the short hash of the deployed git commit) shows tiny in the bottom-right corner (`<x-app-version />`). When the installed app comes back to the foreground it polls `GET /version` and reloads if it changed (script in `layouts/app.blade.php`), so a deploy reaches it without reinstalling. Only manifest changes (name, icon) need a reinstall.
+## Gotchas
+- `Rental`: `source` is the listing URL, stored decoded (`RentalLink`); `site_path` is the source listing URL; `content` is the agency title, `title` the AI one (fallback to `content`); `source_path` is unused. Use `Rental::available()` for availability (`active` + no `rented_at`).
+- Sources: `config/sources.php` is the single source of truth (`rental_sites`, `land_sites`, `house_sites`); to add a site, add it there only. Long listings (30+ items) make the AI return a different subset each run: split big sources by city with `default_city` (like `disalvo_*`). Lands need `land_reasoning_effort` `medium` (with `low` the AI returns an empty list).
+- City / neighborhood / property use are resolved on import by the `…Classifier`s. To recognize a new one: add it to `City::aliases()` / `City::neighborhoods()` / `PropertyUse::keywords()` and run the `*:classify` commands.
+- Admin-only pages (Terrenos, Casas, Análisis): `admin` Gate backed by `ADMIN_PHONES`; `@can('admin')` in views, `can:admin` on routes.
+- Market: to add a chart, implement `PriceSeries` and list it in `config/market.php`. After changing what a series measures or the `size_ranges`, run `market:snapshot --backfill` (and add it to "Próximo deploy" in `docs/production.md`).
+- Subscriptions: only active subscribers (`Subscriber::active()`) get notifications; without one (admins excepted) the listing is delayed `free_delay_days`. Rules in `docs/business/strategy.md`.
+- Push routes are web routes under `auth` (session + CSRF); there are no API routes.
+- Telegram: local uses its own dev bot, never the prod one (`TechitoBot`). Run `telegram:set-webhook` whenever `APP_URL` changes (`switch-url.sh ngrok` does it).
+- PWA: a deploy reaches the installed app on its own (`GET /version`); only manifest changes (name, icon) need a reinstall.
 
 ## Laravel conventions
 - Follow Laravel defaults before inventing structure; check how the framework itself names things.
@@ -103,9 +76,7 @@ Laravel app that scrapes rental listings (El Bolsón / Lago Puelo), processes th
 - Code style: Laravel Pint (`vendor/bin/pint <paths>`), run it on the files you touch.
 - Tests: Pest, `RefreshDatabase` is applied to `tests/Feature` in `tests/Pest.php`. Fake external calls (`Http::fake()`, `Process::fake()`).
 
-## Roadmap
-- See `todo.md` (in Spanish) for milestones, pending tasks and known data-extraction bugs. Read it before proposing features or fixing AI parsing issues.
-- Business and product decisions (plans, pricing, free vs subscribed, launch stages) live in `docs/business/` (in Spanish), starting with `docs/business/strategy.md`. Read it before touching subscriptions or access rules, and record new decisions there.
+## Roadmap and prod
 - Milestones: v0.9 private MVP → v0.95 fixes → v1.0 public beta (free) → v1.1 paid beta (Mercado Pago) → WhatsApp version.
-- Prod: AWS Lightsail instance managed with Laravel Forge (Custom VPS, setup in `docs/lightsail.md`, Forge settings and why in `docs/forge.md`, domain change in `docs/domain-change.md`), MySQL 8.4, scheduler via `schedule:run` cron. Deploy steps, env vars and risks: `docs/production.md` (keep it updated when adding env vars, migrations with data changes or server requirements).
+- Prod: AWS Lightsail instance managed with Laravel Forge, MySQL 8.4, scheduler via `schedule:run` (all in `docs/production.md`).
 - Local (Sail, MySQL 8.0) and prod (MySQL 8.4) use the same engine; prod was PostgreSQL until 2026-11, so keep migrations portable.
