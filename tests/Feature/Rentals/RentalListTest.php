@@ -43,7 +43,7 @@ it('flags rentals detected 3 or more months ago as old', function () {
     $oldRental = createRental('https://example.com/old', createdAt: now()->subMonths(4));
     expect($oldRental->fresh()->isOld())->toBeTrue();
 
-    $this->get('/')->assertSee('Antiguo</span>', false)->assertSee('Detectado hace 4 meses');
+    $this->get('/')->assertSee('Antiguo</span>', false)->assertSee('Publicado hace 4 meses');
 });
 
 it('groups rentals into recent, old and inactive sections in that order', function () {

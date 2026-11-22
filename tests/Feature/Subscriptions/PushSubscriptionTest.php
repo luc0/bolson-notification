@@ -96,8 +96,17 @@ it('notifies every subscriber with a push subscription about new rentals', funct
 
     expect(app(NewRentalsNotifier::class)->notifyNewRentals(3))->toBe(2);
 
-    Notification::assertSentTo([$memberSubscriber, $legacySubscriber], NewRentalsNotification::class, fn ($notification) => $notification->body === 'Hoy hay 3 alquileres nuevos!');
+    Notification::assertSentTo([$memberSubscriber, $legacySubscriber], NewRentalsNotification::class, fn ($notification) => $notification->body === '3 alquileres nuevos.');
     Notification::assertNotSentTo($withoutPush, NewRentalsNotification::class);
+});
+
+it('uses the singular text when there is one new rental', function () {
+    Notification::fake();
+    $subscriber = subscriberWithPush('https://push.example.com/1', User::factory()->create());
+
+    app(NewRentalsNotifier::class)->notifyNewRentals(1);
+
+    Notification::assertSentTo($subscriber, NewRentalsNotification::class, fn ($notification) => $notification->body === '1 alquiler nuevo.');
 });
 
 it('does not notify when there are no new rentals', function () {

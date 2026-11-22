@@ -13,18 +13,18 @@
     <div class="p-6">
         <div class="flex flex-wrap items-center gap-2 mb-3">
             @if($isRented)
-                <span class="bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 text-xs font-medium px-2.5 py-0.5 rounded" title="La foto del aviso tiene un cartel de alquilado (detectado {{ $rental->rented_at->locale('es')->diffForHumans() }})">🔑 Alquilado</span>
+                <span class="bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 text-xs font-medium px-2.5 py-0.5 rounded" title="La inmobiliaria lo marcó como alquilado ({{ $rental->rented_at->locale('es')->diffForHumans() }})">🔑 Alquilado</span>
             @endif
             @if($isInactive)
-                <span class="bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 text-xs font-medium px-2.5 py-0.5 rounded" title="Ya no aparece en el sitio de la inmobiliaria">🚫 No disponible</span>
+                <span class="bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 text-xs font-medium px-2.5 py-0.5 rounded" title="La inmobiliaria ya no lo ofrece">🚫 No disponible</span>
             @endif
             @if($isOld)
-                <span class="bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 text-xs font-medium px-2.5 py-0.5 rounded" title="Detectado hace {{ \App\Domains\Rentals\Models\Rental::OLD_AFTER_MONTHS }} meses o más: probablemente ya no esté disponible">⏳ Antiguo</span>
+                <span class="bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 text-xs font-medium px-2.5 py-0.5 rounded" title="Publicado hace {{ \App\Domains\Rentals\Models\Rental::OLD_AFTER_MONTHS }} meses o más: probablemente ya no esté disponible">⏳ Antiguo</span>
             @endif
             @if($rental->property_use === \App\Domains\Rentals\Enums\PropertyUse::Commercial)
                 <span class="bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 text-xs font-medium px-2.5 py-0.5 rounded">🏪 {{ $rental->property_use->label() }}</span>
             @endif
-            <span class="text-xs text-gray-500 dark:text-gray-400" title="{{ $rental->created_at->format('d/m/Y H:i') }}">Detectado {{ $rental->detectedForHumans() }}</span>
+            <span class="text-xs text-gray-500 dark:text-gray-400" title="{{ $rental->created_at->format('d/m/Y H:i') }}">Publicado {{ $rental->detectedForHumans() }}</span>
         </div>
         <div class="flex justify-between items-start mb-3">
             @if($rental->source)

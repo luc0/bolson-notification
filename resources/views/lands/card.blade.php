@@ -9,9 +9,9 @@
     <div class="p-6">
         <div class="flex flex-wrap items-center gap-2 mb-3">
             @if($isUnavailable)
-                <span class="bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 text-xs font-medium px-2.5 py-0.5 rounded" title="Ya no aparece en el sitio de la inmobiliaria">🚫 No disponible</span>
+                <span class="bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 text-xs font-medium px-2.5 py-0.5 rounded" title="La inmobiliaria ya no lo ofrece">🚫 No disponible</span>
             @endif
-            <span class="text-xs text-gray-500 dark:text-gray-400" title="{{ $land->created_at->format('d/m/Y H:i') }}">Detectado {{ $land->detectedForHumans() }}</span>
+            <span class="text-xs text-gray-500 dark:text-gray-400" title="{{ $land->created_at->format('d/m/Y H:i') }}">Publicado {{ $land->detectedForHumans() }}</span>
         </div>
 
         <h3 class="card-title mb-3">

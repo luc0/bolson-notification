@@ -30,7 +30,7 @@ it('notifies a newly registered member about new rentals', function () {
     $this->artisan('rentals:analyze')->assertSuccessful();
 
     $subscriber = Subscriber::forUser(User::where('phone', '+5492944000000')->sole());
-    Notification::assertSentTo($subscriber, NewRentalsNotification::class, fn ($notification) => $notification->body === 'Hoy hay 3 alquileres nuevos!');
+    Notification::assertSentTo($subscriber, NewRentalsNotification::class, fn ($notification) => $notification->body === '3 alquileres nuevos.');
 });
 
 it('does not notify members that did not enable notifications', function () {

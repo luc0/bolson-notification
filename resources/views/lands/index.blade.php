@@ -4,7 +4,7 @@
 
     $sections = [
         ['title' => 'Terrenos en venta', 'subtitle' => null, 'lands' => $availableLands],
-        ['title' => 'No disponibles', 'subtitle' => 'Ya no aparecen en el sitio de la inmobiliaria.', 'lands' => $unavailableLands],
+        ['title' => 'No disponibles', 'subtitle' => 'Vendidos o dados de baja por la inmobiliaria.', 'lands' => $unavailableLands],
     ];
 @endphp
 <x-app-layout>

@@ -21,9 +21,10 @@ class NewRentalsNotifier
         }
 
         $config = config('notifications.new_rentals');
+        $bodyTemplate = $rentalCount === 1 ? $config['body_template_one'] : $config['body_template'];
         $notification = new NewRentalsNotification(
             title: $config['title'],
-            body: str_replace('{count}', (string) $rentalCount, $config['body_template']),
+            body: str_replace('{count}', (string) $rentalCount, $bodyTemplate),
             url: url($config['url']),
             icon: $config['icon'],
         );

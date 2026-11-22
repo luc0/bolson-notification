@@ -13,12 +13,12 @@
         ],
         [
             'title' => 'Antiguas',
-            'subtitle' => 'Detectadas hace más de ' . \App\Domains\Rentals\Models\Rental::OLD_AFTER_MONTHS . ' meses. Siguen publicadas, pero probablemente ya no estén disponibles.',
+            'subtitle' => 'Las sumamos hace más de ' . \App\Domains\Rentals\Models\Rental::OLD_AFTER_MONTHS . ' meses. Siguen publicadas, pero probablemente ya no estén disponibles.',
             'rentals' => $oldRentals,
         ],
         [
             'title' => 'No disponibles',
-            'subtitle' => 'Alquiladas (según el cartel en la foto) o que ya no aparecen en el sitio de la inmobiliaria.',
+            'subtitle' => 'Ya alquiladas o dadas de baja por la inmobiliaria.',
             'rentals' => $unavailableRentals,
         ],
     ];

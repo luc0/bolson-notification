@@ -24,6 +24,11 @@
                 </a>
             </div>
 
+            <div class="w-full sm:max-w-md mt-4 px-6 text-center">
+                <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">Alquileres en la Comarca</h1>
+                <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Alquileres de las inmobiliarias de El Bolsón y Lago Puelo. Te avisamos cuando hay uno nuevo.</p>
+            </div>
+
             <div class="w-full sm:max-w-md mt-6 px-6 py-4 bg-white dark:bg-gray-800 shadow-md overflow-hidden sm:rounded-lg">
                 {{ $slot }}
             </div>
