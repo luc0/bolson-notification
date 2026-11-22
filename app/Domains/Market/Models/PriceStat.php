@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * Price stats of the listings of a series published in a month (see MarketSnapshot).
- * city / bedrooms null = every city / every bedroom count.
+ * city / bedrooms / size_range null = every city / every bedroom count / every size.
  */
 class PriceStat extends Model
 {
@@ -18,6 +18,7 @@ class PriceStat extends Model
         'series',
         'city',
         'bedrooms',
+        'size_range',
         'currency',
         'unit',
         'listings_count',

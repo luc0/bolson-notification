@@ -89,7 +89,7 @@ En Forge → Scheduler, un cron cada minuto:
 php /home/forge/<sitio>/artisan schedule:run
 ```
 
-Corre `rentals:analyze` los días hábiles a las 17:00, `lands:analyze` (terrenos, sin notificaciones) una vez por semana, los lunes a las 18:00, `houses:analyze` (casas en venta, sin notificaciones) los lunes a las 18:30, `subscriptions:remind-expiring` (aviso de vencimiento de la suscripción) todos los días a las 10:00 y `market:snapshot` (precios del mes que terminó, sección Análisis) el día 1 de cada mes a las 04:00 (`routes/console.php`). Para ver qué está programado:
+Corre `rentals:analyze` los días hábiles a las 17:00, `lands:analyze` (terrenos, sin notificaciones) una vez por semana, los lunes a las 18:00, `houses:analyze` (casas en venta, sin notificaciones) los lunes a las 18:30, `subscriptions:remind-expiring` (aviso de vencimiento de la suscripción) todos los días a las 10:00 y `market:snapshot` (precios del mes pasado y del mes en curso, sección Análisis) los martes a las 04:00 (`routes/console.php`). Para ver qué está programado:
 
 ```bash
 php artisan schedule:list
@@ -155,7 +155,7 @@ Después del deploy: `php artisan schedule:list` tiene que mostrar `subscription
 
 ## 6c. Deploy de la sección Análisis
 
-Migraciones nuevas (`2026_11_22_000001/2`): `exchange_rates` y `price_stats`, vacías (sin cambios de datos).
+Migraciones nuevas (`2026_11_22_000001/2/3`): `exchange_rates` y `price_stats` (con `size_range`, rangos de superficie de casas y terrenos), vacías (sin cambios de datos).
 
 Después del deploy, una sola vez, para calcular toda la historia (descarga el dólar de api.argentinadatos.com):
 
@@ -163,7 +163,9 @@ Después del deploy, una sola vez, para calcular toda la historia (descarga el d
 php artisan market:snapshot --backfill
 ```
 
-Después, `php artisan schedule:list` tiene que mostrar `market:snapshot` el día 1 a las 04:00.
+Si ya se había corrido antes de los rangos de superficie (o se cambian los cortes en `config/market.php` `size_ranges`), volver a correr `--backfill`: reemplaza todos los meses.
+
+Después, `php artisan schedule:list` tiene que mostrar `market:snapshot` los martes a las 04:00.
 
 ## 7. Verificación después de cada deploy
 

@@ -11,8 +11,8 @@ use Throwable;
 class SnapshotMarket extends Command
 {
     protected $signature = 'market:snapshot
-        {--month= : Month to calculate (YYYY-MM), default: last month}
-        {--backfill : Recalculate every month since the oldest listing}';
+        {--month= : Month to calculate (YYYY-MM), default: last month and the current one}
+        {--backfill : Recalculate every month since the oldest listing, up to the current one}';
 
     protected $description = 'Stores the monthly price stats of the Análisis section (listings published each month)';
 
@@ -43,27 +43,30 @@ class SnapshotMarket extends Command
     }
 
     /**
+     * Runs weekly: the current month (partial, it grows every week) and the last one (so it ends up complete).
+     *
      * @return CarbonImmutable[]
      */
     private function months(MarketSnapshot $snapshot): array
     {
-        $lastMonth = CarbonImmutable::now()->subMonthNoOverflow()->startOfMonth();
+        $currentMonth = CarbonImmutable::now()->startOfMonth();
+        $lastMonth = $currentMonth->subMonthNoOverflow();
 
         if ($this->option('month')) {
             return [CarbonImmutable::createFromFormat('!Y-m', $this->option('month'))];
         }
 
         if (! $this->option('backfill')) {
-            return [$lastMonth];
+            return [$lastMonth, $currentMonth];
         }
 
         $firstMonth = $snapshot->firstMonth();
-        if ($firstMonth === null || $firstMonth->greaterThan($lastMonth)) {
+        if ($firstMonth === null) {
             return [];
         }
 
         $months = [];
-        for ($month = $firstMonth; $month->lessThanOrEqualTo($lastMonth); $month = $month->addMonth()) {
+        for ($month = $firstMonth; $month->lessThanOrEqualTo($currentMonth); $month = $month->addMonth()) {
             $months[] = $month;
         }
 

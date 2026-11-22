@@ -4,6 +4,7 @@ namespace App\Domains\Market\Services;
 
 use App\Domains\Market\Contracts\PriceSeries;
 use App\Domains\Market\Data\PricedListing;
+use App\Domains\Market\Data\SizeRange;
 use App\Domains\Market\Enums\Currency;
 use App\Domains\Market\Support\Distribution;
 use Carbon\CarbonImmutable;
@@ -11,7 +12,7 @@ use Illuminate\Support\Collection;
 
 /**
  * Turns the listings of a series published in a month into price_stats rows: one per currency of the
- * series and group (whole Comarca + each city, and each bedroom count when the series groups by them).
+ * series and group (whole Comarca + each city, and each bedroom count / size range when the series has them).
  * Each listing is converted to the stats currency first, so the median isn't a converted median.
  */
 class PriceStatsCalculator
@@ -38,6 +39,7 @@ class PriceStatsCalculator
                     'series' => $series->key(),
                     'city' => $group['city'],
                     'bedrooms' => $group['bedrooms'],
+                    'size_range' => $group['size_range'],
                     'currency' => $currency->value,
                     'unit' => $series->unit()->value,
                     ...$this->stats($group['listings']),
@@ -48,8 +50,11 @@ class PriceStatsCalculator
     }
 
     /**
+     * Every city (and the whole Comarca) broken down into: every listing, each bedroom count and each size range
+     * (each breakdown on its own, not combined).
+     *
      * @param  Collection<int, PricedListing>  $listings
-     * @return Collection<int, array{city: ?string, bedrooms: ?int, listings: Collection<int, PricedListing>}>
+     * @return Collection<int, array{city: ?string, bedrooms: ?int, size_range: ?string, listings: Collection<int, PricedListing>}>
      */
     private function groups(PriceSeries $series, Collection $listings): Collection
     {
@@ -59,32 +64,50 @@ class PriceStatsCalculator
         $cityGroups = collect([null => $listings])->union($byCity);
 
         return $cityGroups
-            ->flatMap(fn (Collection $cityListings, string $city) => $this->bedroomGroups($series, $cityListings)
-                ->map(fn (Collection $groupListings, string $bedrooms) => [
-                    'city' => $city === '' ? null : $city,
-                    'bedrooms' => $bedrooms === '' ? null : (int) $bedrooms,
-                    'listings' => $groupListings,
-                ])
-                ->values())
+            ->flatMap(fn (Collection $cityListings, string $city) => collect([
+                ['bedrooms' => null, 'size_range' => null, 'listings' => $cityListings],
+                ...$this->bedroomGroups($series, $cityListings),
+                ...$this->sizeGroups($series, $cityListings),
+            ])->map(fn (array $group) => ['city' => $city === '' ? null : $city, ...$group]))
             ->filter(fn (array $group) => $group['listings']->isNotEmpty())
             ->values();
     }
 
     /**
-     * @return Collection<string, Collection<int, PricedListing>> '' = every bedroom count.
+     * @param  Collection<int, PricedListing>  $listings
+     * @return array<int, array{bedrooms: int, size_range: null, listings: Collection<int, PricedListing>}>
      */
-    private function bedroomGroups(PriceSeries $series, Collection $listings): Collection
+    private function bedroomGroups(PriceSeries $series, Collection $listings): array
     {
-        $everyBedroomCount = collect(['' => $listings]);
         if (! $series->groupsByBedrooms()) {
-            return $everyBedroomCount;
+            return [];
         }
 
-        $byBedrooms = $listings
+        return $listings
             ->filter(fn (PricedListing $listing) => $listing->bedrooms !== null)
-            ->groupBy(fn (PricedListing $listing) => min($listing->bedrooms, self::MANY_BEDROOMS));
+            ->groupBy(fn (PricedListing $listing) => min($listing->bedrooms, self::MANY_BEDROOMS))
+            ->sortKeys()
+            ->map(fn (Collection $group, int $bedrooms) => ['bedrooms' => $bedrooms, 'size_range' => null, 'listings' => $group])
+            ->values()
+            ->all();
+    }
 
-        return $everyBedroomCount->union($byBedrooms);
+    /**
+     * @param  Collection<int, PricedListing>  $listings
+     * @return array<int, array{bedrooms: null, size_range: string, listings: Collection<int, PricedListing>}>
+     */
+    private function sizeGroups(PriceSeries $series, Collection $listings): array
+    {
+        $sizeRanges = $series->sizeRanges();
+        if ($sizeRanges === null) {
+            return [];
+        }
+
+        return array_map(fn (SizeRange $range) => [
+            'bedrooms' => null,
+            'size_range' => $range->key(),
+            'listings' => $listings->filter(fn (PricedListing $listing) => $sizeRanges->rangeOf($listing->size)?->key() === $range->key())->values(),
+        ], $sizeRanges->ranges);
     }
 
     /**
@@ -116,6 +139,6 @@ class PriceStatsCalculator
 
         $amount = $currency === Currency::Usd ? $listing->amount / $arsPerUsd : $listing->amount * $arsPerUsd;
 
-        return new PricedListing($amount, $currency, $listing->city, $listing->bedrooms);
+        return new PricedListing($amount, $currency, $listing->city, $listing->bedrooms, $listing->size);
     }
 }

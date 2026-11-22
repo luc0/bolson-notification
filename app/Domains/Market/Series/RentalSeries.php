@@ -4,6 +4,7 @@ namespace App\Domains\Market\Series;
 
 use App\Domains\Market\Contracts\PriceSeries;
 use App\Domains\Market\Data\PricedListing;
+use App\Domains\Market\Data\SizeRanges;
 use App\Domains\Market\Enums\Currency;
 use App\Domains\Market\Enums\PriceUnit;
 use App\Domains\Rentals\Enums\PropertyUse;
@@ -30,6 +31,11 @@ abstract class RentalSeries implements PriceSeries
     public function groupsByBedrooms(): bool
     {
         return false;
+    }
+
+    public function sizeRanges(): ?SizeRanges
+    {
+        return null;
     }
 
     public function listingsPublishedIn(CarbonImmutable $month): iterable

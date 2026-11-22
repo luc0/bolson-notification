@@ -5,6 +5,7 @@ namespace App\Domains\Market\Series;
 use App\Domains\Houses\Models\House;
 use App\Domains\Market\Contracts\PriceSeries;
 use App\Domains\Market\Data\PricedListing;
+use App\Domains\Market\Data\SizeRanges;
 use App\Domains\Market\Enums\Currency;
 use App\Domains\Market\Enums\PriceUnit;
 use Carbon\CarbonImmutable;
@@ -42,6 +43,14 @@ class HousesForSale implements PriceSeries
         return false;
     }
 
+    /**
+     * By built m² (houses without it only count in every size).
+     */
+    public function sizeRanges(): ?SizeRanges
+    {
+        return SizeRanges::fromBounds('Superficie cubierta', config('market.size_ranges.'.$this->key()));
+    }
+
     public function listingsPublishedIn(CarbonImmutable $month): iterable
     {
         return House::query()
@@ -53,6 +62,7 @@ class HousesForSale implements PriceSeries
                 currency: Currency::from($house->price_currency),
                 city: $house->city,
                 bedrooms: $house->bedrooms,
+                size: $house->covered_area,
             ));
     }
 

@@ -4,7 +4,7 @@
         <div class="px-4 sm:px-6 lg:px-8 py-6">
             <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">Análisis de precios</h1>
             <p class="text-sm text-gray-500 dark:text-gray-400">
-                Mediana de los avisos publicados cada mes, por lugar. Con un solo lugar elegido, la banda es el 50% central de los precios.
+                Mediana de los avisos publicados cada mes, por lugar. Con un solo lugar elegido, la banda es el 50% central de los precios. Casas y terrenos se pueden comparar por rango de superficie.
                 Los precios en otra moneda se convierten con el dólar {{ $dollar }} promedio del mes.
             </p>
 
@@ -32,11 +32,21 @@
                 @foreach($charts as $chart)
                     <section class="card p-6">
                         <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100">{{ $chart['label'] }}</h2>
-                        <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">{{ $chart['unit'] }} en {{ $chart['currency'] === 'USD' ? 'dólares' : 'pesos' }}</p>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">{{ $chart['unit'] }} en {{ $chart['currency'] === 'USD' ? 'dólares' : 'pesos' }}</p>
+                        @if($chart['sizes'] && $chart['lines'])
+                            {{-- Size range of this chart only (market-charts.js), kept in ?size[<series>]= --}}
+                            <div class="mt-3 flex flex-wrap items-center gap-2 text-sm" role="group" aria-label="{{ $chart['sizeLabel'] }}" data-size-picker="{{ $chart['key'] }}">
+                                <span class="text-gray-500 dark:text-gray-400">{{ $chart['sizeLabel'] }}:</span>
+                                <button type="button" class="filter-chip filter-chip-active" data-size="" aria-pressed="true">Todas</button>
+                                @foreach($chart['sizes'] as $size)
+                                    <button type="button" class="filter-chip" data-size="{{ $size['key'] }}" aria-pressed="false">{{ $size['label'] }}</button>
+                                @endforeach
+                            </div>
+                        @endif
                         @if(empty($chart['lines']))
                             <p class="py-10 text-center text-gray-500 dark:text-gray-400">Todavía no hay datos.</p>
                         @else
-                            <div class="relative h-72">
+                            <div class="relative mt-4 h-72">
                                 <canvas data-market-chart="{{ json_encode($chart) }}" aria-label="{{ $chart['label'] }}" role="img"></canvas>
                             </div>
                             <p data-chart-empty hidden class="py-10 text-center text-gray-500 dark:text-gray-400">No hay datos de los lugares elegidos.</p>

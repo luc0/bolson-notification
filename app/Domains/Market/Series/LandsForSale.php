@@ -5,6 +5,7 @@ namespace App\Domains\Market\Series;
 use App\Domains\Lands\Models\Land;
 use App\Domains\Market\Contracts\PriceSeries;
 use App\Domains\Market\Data\PricedListing;
+use App\Domains\Market\Data\SizeRanges;
 use App\Domains\Market\Enums\Currency;
 use App\Domains\Market\Enums\PriceUnit;
 use Carbon\CarbonImmutable;
@@ -40,6 +41,14 @@ class LandsForSale implements PriceSeries
         return false;
     }
 
+    /**
+     * Bigger plots are cheaper per m², so places are compared by plot size.
+     */
+    public function sizeRanges(): ?SizeRanges
+    {
+        return SizeRanges::fromBounds('Superficie', config('market.size_ranges.'.$this->key()));
+    }
+
     public function listingsPublishedIn(CarbonImmutable $month): iterable
     {
         return Land::query()
@@ -51,6 +60,7 @@ class LandsForSale implements PriceSeries
                 amount: (float) $land->price_amount / $land->area,
                 currency: Currency::from($land->price_currency),
                 city: $land->city,
+                size: $land->area,
             ));
     }
 

@@ -3,6 +3,7 @@
 namespace App\Domains\Market\Contracts;
 
 use App\Domains\Market\Data\PricedListing;
+use App\Domains\Market\Data\SizeRanges;
 use App\Domains\Market\Enums\Currency;
 use App\Domains\Market\Enums\PriceUnit;
 use Carbon\CarbonImmutable;
@@ -36,6 +37,11 @@ interface PriceSeries
      * Also store stats per bedroom count, besides the stats of every bedroom count.
      */
     public function groupsByBedrooms(): bool;
+
+    /**
+     * Also store stats per size range (PricedListing::$size), besides the stats of every size. null = no ranges.
+     */
+    public function sizeRanges(): ?SizeRanges;
 
     /**
      * Listings first seen in that month (available or not), with a known price.

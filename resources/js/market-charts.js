@@ -1,5 +1,6 @@
 // Análisis section: one line chart per price series with a median line per place (data from data-market-chart).
 // The place picker (chips to remove + search box to add) drives every chart and is kept in the `places` param.
+// Houses and lands also have a size range picker of their own, kept in `size[<series key>]`.
 import Chart from 'chart.js/auto';
 
 const isDark = () => document.documentElement.classList.contains('dark');
@@ -30,14 +31,21 @@ const picker = document.querySelector('[data-place-picker]');
 const places = JSON.parse(picker.dataset.places);
 let selected = JSON.parse(picker.dataset.selected);
 
-const charts = [...document.querySelectorAll('[data-market-chart]')].map(canvas => ({
-    canvas,
-    data: JSON.parse(canvas.dataset.marketChart),
-    instance: null,
-}));
+const sizeParam = seriesKey => `size[${seriesKey}]`;
+
+const charts = [...document.querySelectorAll('[data-market-chart]')].map(canvas => {
+    const data = JSON.parse(canvas.dataset.marketChart);
+    const requestedSize = new URLSearchParams(location.search).get(sizeParam(data.key));
+    const isKnownSize = data.sizes.some(size => size.key === requestedSize);
+
+    return { canvas, data, size: isKnownSize ? requestedSize : '', instance: null };
+});
+
+// Lines of the chosen size range ('' = every size).
+const linesOf = chart => chart.size === '' ? chart.data.lines : chart.data.sizes.find(size => size.key === chart.size).lines;
 
 function datasetsFor(chart) {
-    const lines = chart.data.lines.filter(line => selected.includes(line.place));
+    const lines = linesOf(chart).filter(line => selected.includes(line.place));
     const showsBand = lines.length === 1;
     const datasets = [];
 
@@ -204,16 +212,22 @@ function addPlace(place) {
     renderOptions();
 }
 
+// Places and size ranges in the page URL; the currency links keep them (only their own currency changes).
 function syncUrl() {
+    const url = new URL(location.href);
     const showsEveryPlace = selected.length === Object.keys(places).length;
-    const update = url => {
-        showsEveryPlace ? url.searchParams.delete('places') : url.searchParams.set('places', selected.join(','));
-        return url;
-    };
+    showsEveryPlace ? url.searchParams.delete('places') : url.searchParams.set('places', selected.join(','));
+    charts.forEach(chart => {
+        chart.size === '' ? url.searchParams.delete(sizeParam(chart.data.key)) : url.searchParams.set(sizeParam(chart.data.key), chart.size);
+    });
+    history.replaceState(null, '', url);
 
-    history.replaceState(null, '', update(new URL(location.href)));
     document.querySelectorAll('[data-keeps-places] a').forEach(link => {
-        link.href = update(new URL(link.href));
+        const linkUrl = new URL(link.href);
+        const currency = linkUrl.searchParams.get('currency');
+        linkUrl.search = url.search;
+        currency ? linkUrl.searchParams.set('currency', currency) : linkUrl.searchParams.delete('currency');
+        link.href = linkUrl;
     });
 }
 
@@ -240,6 +254,28 @@ search.addEventListener('keydown', event => {
     if (event.key === 'Escape') {
         search.blur();
     }
+});
+
+// Size ranges --------------------------------------------------------------------------------------
+
+function renderSizeChips(chart) {
+    document.querySelectorAll(`[data-size-picker="${chart.data.key}"] [data-size]`).forEach(button => {
+        const isActive = button.dataset.size === chart.size;
+        button.classList.toggle('filter-chip-active', isActive);
+        button.setAttribute('aria-pressed', String(isActive));
+    });
+}
+
+charts.forEach(chart => {
+    document.querySelectorAll(`[data-size-picker="${chart.data.key}"] [data-size]`).forEach(button => {
+        button.addEventListener('click', () => {
+            chart.size = button.dataset.size;
+            renderSizeChips(chart);
+            renderChart(chart);
+            syncUrl();
+        });
+    });
+    renderSizeChips(chart);
 });
 
 renderChips();

@@ -4,13 +4,15 @@ namespace App\Domains\Market\Queries;
 
 use App\Domains\Locations\Enums\City;
 use App\Domains\Market\Contracts\PriceSeries;
+use App\Domains\Market\Data\SizeRange;
 use App\Domains\Market\Enums\Currency;
 use App\Domains\Market\Models\PriceStat;
 use Illuminate\Support\Collection;
 
 /**
  * Month by month stats of a series for one chart: one line per place (the whole Comarca and every city
- * with data), every bedroom count, in the chosen currency when the series has it (otherwise in its own).
+ * with data), every bedroom count, every size and each size range of the series, in the chosen currency when
+ * the series has it (otherwise in its own).
  */
 final readonly class PriceHistory
 {
@@ -36,11 +38,12 @@ final readonly class PriceHistory
     }
 
     /**
-     * Lines share the months list: a month a place has no stats for is null.
+     * Lines share the months list: a month a place has no stats for is null. `lines` are every size;
+     * `sizes` has the lines of each size range when the series has them (empty otherwise).
      *
      * @return array{key: string, label: string, unit: string, currency: string, symbol: string, months: string[],
-     *     lines: array<int, array{place: string, label: string,
-     *         points: array<int, array{median: float, p25: float, p75: float, average: float, count: int}|null>}>}
+     *     lines: array<int, array{place: string, label: string, points: array<int, array<string, float|int>|null>}>,
+     *     sizeLabel: ?string, sizes: array<int, array{key: string, label: string, lines: array<int, array<string, mixed>>}>}
      */
     public function chart(PriceSeries $series): array
     {
@@ -55,17 +58,9 @@ final readonly class PriceHistory
 
         $statPerPeriod = $stats->unique(fn (PriceStat $stat) => $stat->period->toDateString())->values();
         $periods = $statPerPeriod->map(fn (PriceStat $stat) => $stat->period->toDateString());
-        $statsByPlace = $stats->groupBy(fn (PriceStat $stat) => $stat->city->value ?? self::COMARCA);
-
-        $lines = collect(self::places())
-            ->filter(fn (string $label, string $place) => $statsByPlace->has($place))
-            ->map(fn (string $label, string $place) => [
-                'place' => $place,
-                'label' => $label,
-                'points' => $this->pointsByPeriod($statsByPlace[$place], $periods),
-            ])
-            ->values()
-            ->all();
+        $statsBySize = $stats->groupBy(fn (PriceStat $stat) => $stat->size_range ?? '');
+        $linesOf = fn (string $size) => $this->lines($statsBySize->get($size, collect()), $periods);
+        $sizeRanges = $series->sizeRanges();
 
         return [
             'key' => $series->key(),
@@ -74,8 +69,36 @@ final readonly class PriceHistory
             'currency' => $currency->value,
             'symbol' => $currency->symbol(),
             'months' => $statPerPeriod->map($this->monthLabel(...))->all(),
-            'lines' => $lines,
+            'lines' => $linesOf(''),
+            'sizeLabel' => $sizeRanges?->label,
+            'sizes' => array_map(fn (SizeRange $range) => [
+                'key' => $range->key(),
+                'label' => $range->label(),
+                'lines' => $linesOf($range->key()),
+            ], $sizeRanges->ranges ?? []),
         ];
+    }
+
+    /**
+     * One line per place with stats, in places() order.
+     *
+     * @param  Collection<int, PriceStat>  $stats
+     * @param  Collection<int, string>  $periods
+     * @return array<int, array{place: string, label: string, points: array<int, array<string, float|int>|null>}>
+     */
+    private function lines(Collection $stats, Collection $periods): array
+    {
+        $statsByPlace = $stats->groupBy(fn (PriceStat $stat) => $stat->city->value ?? self::COMARCA);
+
+        return collect(self::places())
+            ->filter(fn (string $label, string $place) => $statsByPlace->has($place))
+            ->map(fn (string $label, string $place) => [
+                'place' => $place,
+                'label' => $label,
+                'points' => $this->pointsByPeriod($statsByPlace[$place], $periods),
+            ])
+            ->values()
+            ->all();
     }
 
     public function currencyFor(PriceSeries $series): Currency
@@ -108,10 +131,13 @@ final readonly class PriceHistory
     }
 
     /**
-     * "Oct 2026".
+     * "Oct 2026", "Nov 2026 (en curso)" for the current month (recalculated every week until it ends).
      */
     private function monthLabel(PriceStat $stat): string
     {
-        return ucfirst(str_replace('.', '', $stat->period->locale('es')->translatedFormat('M Y')));
+        $label = ucfirst(str_replace('.', '', $stat->period->locale('es')->translatedFormat('M Y')));
+        $isCurrentMonth = $stat->period->isSameMonth(now());
+
+        return $isCurrentMonth ? "{$label} (en curso)" : $label;
     }
 }

@@ -13,6 +13,7 @@ function storeStat(array $attributes): PriceStat
 }
 
 beforeEach(function () {
+    $this->travelTo('2026-11-22');
     config(['app.admin_phones' => ['2944000000']]);
     $this->actingAs(User::create(['phone' => '2944000000', 'password' => 'secret']));
 });
@@ -44,7 +45,7 @@ it('shows a chart per series with a line for the whole Comarca and one per city 
     $chart = collect($response->viewData('charts'))->firstWhere('key', 'residential_rentals');
     $lines = collect($chart['lines'])->keyBy('place');
     expect($chart['currency'])->toBe('ARS')
-        ->and($chart['months'])->toBe(['Oct 2026', 'Nov 2026'])
+        ->and($chart['months'])->toBe(['Oct 2026', 'Nov 2026 (en curso)'])
         ->and($lines->keys()->all())->toBe(['comarca', 'el_bolson', 'lago_puelo'])
         ->and($lines['comarca']['label'])->toBe('Toda la Comarca')
         ->and($lines['comarca']['points'][0])->toMatchArray(['median' => 700000.0, 'count' => 3])
@@ -74,4 +75,24 @@ it('starts with every place selected and keeps the chosen places in the currency
         ->and($response->viewData('currencyChips')[1]['url'])->toBe('/analisis?currency=USD&places=comarca%2Clago_puelo');
 
     expect($this->get('/analisis?places=unknown')->viewData('selectedPlaces'))->toHaveCount(6);
+});
+
+it('has the lines of each size range for houses and lands, with their chips', function () {
+    storeStat(['series' => 'lands_for_sale', 'currency' => 'USD', 'unit' => 'price_per_m2', 'median' => 20]);
+    storeStat(['series' => 'lands_for_sale', 'currency' => 'USD', 'unit' => 'price_per_m2', 'size_range' => '0-1000', 'city' => 'el_bolson', 'median' => 35]);
+
+    $response = $this->get('/analisis')->assertOk()
+        ->assertSee('data-size-picker="lands_for_sale"', false)
+        ->assertSee('Hasta 1.000 m²')
+        ->assertDontSee('data-size-picker="residential_rentals"', false);
+
+    $charts = collect($response->viewData('charts'));
+    $lands = $charts->firstWhere('key', 'lands_for_sale');
+    expect($lands['sizeLabel'])->toBe('Superficie')
+        ->and($lands['lines'])->toHaveCount(1)
+        ->and($lands['lines'][0]['points'][0]['median'])->toBe(20.0)
+        ->and(collect($lands['sizes'])->pluck('key')->all())->toBe(['0-1000', '1000-5000', '5000+'])
+        ->and($lands['sizes'][0]['lines'][0])->toMatchArray(['place' => 'el_bolson'])
+        ->and($lands['sizes'][1]['lines'])->toBe([])
+        ->and($charts->firstWhere('key', 'residential_rentals')['sizes'])->toBe([]);
 });

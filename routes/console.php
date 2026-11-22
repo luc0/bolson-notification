@@ -10,8 +10,9 @@ use Illuminate\Support\Facades\Schedule;
 // Once a day, at a reasonable hour to get a message.
 Schedule::command(SendExpiryReminders::class)->dailyAt('10:00');
 
-// Price stats of the month that just ended (Análisis section).
-Schedule::command(SnapshotMarket::class)->monthlyOn(1, '04:00');
+// Price stats of the last month and the current one (Análisis section), so charts don't wait for the month to end.
+// Tuesdays, after the Monday lands / houses scrapes.
+Schedule::command(SnapshotMarket::class)->weeklyOn(2, '04:00');
 
 $analyzeRentals = Schedule::command(AnalyzeRentals::class);
 $analyzeLands = Schedule::command(AnalyzeLands::class);

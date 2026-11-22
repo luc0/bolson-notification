@@ -162,7 +162,7 @@ Pendiente: notificaciones.
 | Series | Una clase por gráfico (`Contracts/PriceSeries`): qué avisos entran, qué precio se mide (total o por m²), en qué monedas y si se agrupa por dormitorios. Hoy: alquileres para vivir y comerciales (ARS y USD), casas en venta (USD) y terrenos en venta (USD por m²). Se listan en `config/market.php`. |
 | Cotización | `Services/ExchangeRates`: promedio mensual del dólar (`market.dollar`, blue) bajado de argentinadatos.com (`App\Integrations\ArgentinaDatos`) a `exchange_rates`. |
 | Estadísticas | `Services/PriceStatsCalculator`: de los avisos **publicados en el mes** saca cantidad, mediana, promedio, p25 y p75 por moneda, para toda la Comarca y por ciudad. Cada aviso se convierte antes de calcular. `Support/Distribution` hace las cuentas. |
-| Foto mensual | `Services/MarketSnapshot` + `market:snapshot`: guarda en `price_stats` el mes que terminó (el 1 de cada mes), reemplazando lo que hubiera de ese mes. `--backfill` recalcula toda la historia. |
+| Foto mensual | `Services/MarketSnapshot` + `market:snapshot`: guarda en `price_stats` el mes pasado y el mes en curso (todos los martes; el mes en curso se ve como "(en curso)" hasta que termina), reemplazando lo que hubiera de esos meses. `--backfill` recalcula toda la historia. |
 | Gráficos | `Queries/PriceHistory` arma los puntos de cada serie para una ciudad y moneda; `MarketController` + `resources/views/market` + Chart.js (`resources/js/market-charts.js`). |
 
 **Hoy:** `app/Domains/Market/`. Para sumar un gráfico: una clase que implemente `PriceSeries` y agregarla en `config/market.php`.
