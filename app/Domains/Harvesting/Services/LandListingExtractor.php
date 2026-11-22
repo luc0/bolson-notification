@@ -37,7 +37,7 @@ class LandListingExtractor extends AiListingExtractor
             Solo omití los que digan explícitamente que son en alquiler, o que sean casas, departamentos o locales.
 
             Para cada aviso:
-            - "Content": título o descripción del aviso (texto completo).
+            - "Content": título del aviso. Si no tiene título, el comienzo de la descripción (máximo 150 caracteres). No copies la descripción completa.
             - "Link": URL completa al aviso. Si es relativa, completala con el baseUrl: {$source->linkBaseUrl}
             - "Caracteristicas": solo datos extra que NO estén en los otros campos (ej: servicios, acceso, vista, escritura, financiación). Una por línea (separadas por \\n), cada una empezando con un emoji. No incluyas precio, ubicación ni superficie. Omití los datos sin valor (null, N/A, 0). String vacío si no hay ninguno.
             - "Price": precio de venta con la moneda, tal como aparece (ej: "U\$S 35.000", "$45.000.000", "Consultar"). null si no figura.

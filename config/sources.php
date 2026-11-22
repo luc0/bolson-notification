@@ -149,6 +149,82 @@ return [
             'wait_for' => '.item',
         ],
 
+        'ricardorubio' => [
+            'name' => 'Ricardo Rubio Inmobiliaria',
+            'type' => 'agency',
+            // Same site template as rioazul / puntopatagonia: shows the first 40 lots (loads more on scroll).
+            'listing_url' => 'https://www.ricardorubiopatagonia.com/Terrenos',
+            // e.g. https://www.ricardorubiopatagonia.com/p/3913442-Terreno-en-Venta-en-Las-Golondrinas
+            'link_base_url' => 'https://www.ricardorubiopatagonia.com/',
+            'wait_for' => null,
+        ],
+
+        'actitud' => [
+            'name' => 'Actitud Inmobiliaria',
+            'type' => 'agency',
+            // Same site template as rioazul / puntopatagonia: shows the first 40 lots (loads more on scroll).
+            'listing_url' => 'https://www.actitudinmobiliaria.com.ar/Terrenos',
+            // e.g. https://www.actitudinmobiliaria.com.ar/p/13741797-Terreno-en-Venta-en-El-Bolson-Terreno-en-barrio-Los-Abedules
+            'link_base_url' => 'https://www.actitudinmobiliaria.com.ar/',
+            'wait_for' => null,
+        ],
+
+        'alcalde' => [
+            'name' => 'Alcalde Inmobiliaria',
+            'type' => 'agency',
+            'listing_url' => 'https://www.alcaldeinmobiliaria.com.ar/venta/lotes',
+            // e.g. https://www.alcaldeinmobiliaria.com.ar/propiedad/venta-el-bolson-lote-en-venta-buena-vista-190
+            'link_base_url' => 'https://www.alcaldeinmobiliaria.com.ar',
+            'wait_for' => null,
+        ],
+
+        'disalvo' => [
+            'name' => 'Di Salvo Propiedades',
+            'type' => 'agency',
+            // Lots for sale (post_type=land), 10 per page.
+            'listing_url' => 'https://www.disalvopropiedades.com.ar/?action=epl_search&tax_feature=comprar&post_type=land',
+            // e.g. https://www.disalvopropiedades.com.ar/lotes/lote-en-venta-barrio-anden-el-bolson/
+            'link_base_url' => 'https://www.disalvopropiedades.com.ar',
+            'wait_for' => null,
+            'next_page_selector' => '.alignright a',
+        ],
+
+        'estercortez_bolson' => [
+            'name' => 'Ester Cortez Propiedades',
+            'type' => 'agency',
+            // WordPress category with the lots of El Bolsón only.
+            'listing_url' => 'https://www.estercortezpropiedades.com.ar/category/propiedades-en-el-bolson/lotes-en-venta-en-el-bolson/',
+            // e.g. https://www.estercortezpropiedades.com.ar/propiedades-bolson-puelo-hoyo/lote-en-venta-en-barrio-las-mutisias-el-bolson/
+            'link_base_url' => 'https://www.estercortezpropiedades.com.ar',
+            'wait_for' => null,
+            'default_city' => 'el_bolson', // listing filtered by city
+            'next_page_selector' => 'a.next.page-numbers',
+        ],
+
+        'estercortez_puelo' => [
+            'name' => 'Ester Cortez Propiedades',
+            'type' => 'agency',
+            // WordPress category with the lots of Lago Puelo only.
+            'listing_url' => 'https://www.estercortezpropiedades.com.ar/category/propiedades-en-lago-puelo/lotes-en-venta-en-lago-puelo/',
+            // e.g. https://www.estercortezpropiedades.com.ar/propiedades-bolson-puelo-hoyo/lote-en-venta-en-barrio-las-mutisias-el-bolson/
+            'link_base_url' => 'https://www.estercortezpropiedades.com.ar',
+            'wait_for' => null,
+            'default_city' => 'lago_puelo', // listing filtered by city
+            'next_page_selector' => 'a.next.page-numbers',
+        ],
+
+        'estercortez_hoyo' => [
+            'name' => 'Ester Cortez Propiedades',
+            'type' => 'agency',
+            // WordPress category with the lots of El Hoyo only.
+            'listing_url' => 'https://www.estercortezpropiedades.com.ar/category/propiedades-en-el-hoyo/lotes-en-venta-en-el-hoyo/',
+            // e.g. https://www.estercortezpropiedades.com.ar/propiedades-bolson-puelo-hoyo/lote-en-venta-en-barrio-las-mutisias-el-bolson/
+            'link_base_url' => 'https://www.estercortezpropiedades.com.ar',
+            'wait_for' => null,
+            'default_city' => 'el_hoyo', // listing filtered by city
+            'next_page_selector' => 'a.next.page-numbers',
+        ],
+
     ],
 
 ];
