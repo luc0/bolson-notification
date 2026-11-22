@@ -12,6 +12,8 @@ Lo que es propio del framework se queda donde Laravel lo espera:
 ## Regla de dependencias
 
 ```
+                         Market (lee Rentals, Lands y Houses)
+
 Sources ──► Harvesting ──► Rentals ◄── Subscriptions ──► Members
                  │            │             ▲
                  │            ▼          Payments
@@ -25,6 +27,7 @@ Sources ──► Harvesting ──► Rentals ◄── Subscriptions ──►
 - **Rentals solo depende de Locations.** Es el núcleo que los demás leen o escriben.
 - **Lands solo depende de Locations** y está separado de Rentals: Harvesting lo escribe con su propio flujo (`lands:analyze`) y no tiene notificaciones.
 - **Houses** (casas en venta) es igual que Lands: solo depende de Locations, flujo propio (`houses:analyze`) y sin notificaciones.
+- **Market** solo lee de Rentals, Lands y Houses (y de Locations para las ciudades); ninguno depende de él.
 - Harvesting escribe en Rentals. Subscriptions lee de Rentals (idealmente a partir de un evento `RentalPublished`).
 - Agregar una fuente o un canal de notificación no debería tocar Rentals.
 
@@ -38,6 +41,7 @@ Sources ──► Harvesting ──► Rentals ◄── Subscriptions ──►
 | [Rentals](#rentals) | El catálogo de alquileres y su ciclo de vida | **Core** | ✅ `app/Domains/Rentals` |
 | [Lands](#lands) | El catálogo de terrenos en venta | **Core** | ✅ `app/Domains/Lands` |
 | [Houses](#houses) | El catálogo de casas en venta | **Core** | ✅ `app/Domains/Houses` |
+| [Market](#market) | Cómo cambian los precios mes a mes (sección Análisis) | Soporte | ✅ `app/Domains/Market` |
 | [Subscriptions](#subscriptions) | Avisarle a cada persona los alquileres que le interesan | **Core** | ✅ `app/Domains/Subscriptions` |
 | [Members](#members) | Identidad de los usuarios | Genérico | ✅ `app/Domains/Members` |
 | [Payments](#payments) | Cobrar el acceso a las alertas | Genérico | Futuro (v1.1) |
@@ -148,6 +152,20 @@ Pendiente: notificaciones.
 | Búsqueda | `Queries/HouseSearch`: ciudad, incluir no disponibles y orden (`HouseSort`: más nuevas, precio con dólares primero, más grandes por m² cubiertos). |
 
 **Hoy:** `app/Domains/Houses/` (`Models/House`, `Enums/HouseSort`, `Queries/HouseSearch`). Pantalla: pestaña "Casas" (`/casas`, `HouseController`, `resources/views/houses`). Comando: `houses:analyze` (en producción los lunes a las 18:30). Extracción: `BrowserHouseScraper` → `HouseListingExtractor` → `HouseImporter` (capturas en `captures/houses`).
+
+## Market
+
+**Qué resuelve:** cómo evolucionan los precios de alquileres, casas y terrenos mes a mes (pestaña "Análisis", `/analisis`, solo admins).
+
+| Subdominio | Descripción |
+|---|---|
+| Series | Una clase por gráfico (`Contracts/PriceSeries`): qué avisos entran, qué precio se mide (total o por m²), en qué monedas y si se agrupa por dormitorios. Hoy: alquileres para vivir y comerciales (ARS y USD), casas en venta (USD) y terrenos en venta (USD por m²). Se listan en `config/market.php`. |
+| Cotización | `Services/ExchangeRates`: promedio mensual del dólar (`market.dollar`, blue) bajado de argentinadatos.com (`App\Integrations\ArgentinaDatos`) a `exchange_rates`. |
+| Estadísticas | `Services/PriceStatsCalculator`: de los avisos **publicados en el mes** saca cantidad, mediana, promedio, p25 y p75 por moneda, para toda la Comarca y por ciudad. Cada aviso se convierte antes de calcular. `Support/Distribution` hace las cuentas. |
+| Foto mensual | `Services/MarketSnapshot` + `market:snapshot`: guarda en `price_stats` el mes que terminó (el 1 de cada mes), reemplazando lo que hubiera de ese mes. `--backfill` recalcula toda la historia. |
+| Gráficos | `Queries/PriceHistory` arma los puntos de cada serie para una ciudad y moneda; `MarketController` + `resources/views/market` + Chart.js (`resources/js/market-charts.js`). |
+
+**Hoy:** `app/Domains/Market/`. Para sumar un gráfico: una clase que implemente `PriceSeries` y agregarla en `config/market.php`.
 
 ## Locations
 

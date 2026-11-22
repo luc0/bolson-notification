@@ -46,8 +46,9 @@ Las que usa la app además de las estándar de Laravel (`APP_*`, `DB_*`, `SESSIO
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | (secretos) | Web push. **No cambiarlas nunca**: si cambian, todas las suscripciones existentes dejan de funcionar y cada usuario tiene que volver a activar las notificaciones. Generarlas una sola vez con `php artisan webpush:vapid`. |
 | `ANALYZE_RENTALS_DEBUG_MODE` | `false` o sin definir | Con `true` el scraper corre cada 3 minutos (gasta tokens). |
 | `SCRAPE_MOCK` | `false` o sin definir | Con `true` usa `FakeRentalScraper` (datos de prueba). |
-| `ADMIN_PHONES` | tu teléfono, tal cual se registró | Teléfonos (separados por coma) de los admins: ven todo, por ejemplo los tabs Terrenos y Casas. Vacío: nadie. |
+| `ADMIN_PHONES` | tu teléfono, tal cual se registró | Teléfonos (separados por coma) de los admins: ven todo, por ejemplo los tabs Terrenos, Casas y Análisis. Vacío: nadie. |
 | `SUBSCRIPTION_DURATION_DAYS` | `30` o sin definir | Días que dura una suscripción (al registrarse y en cada renovación). |
+| `MARKET_DOLLAR` | `blue` o sin definir | Dólar con el que la sección Análisis convierte precios (tipos de argentinadatos.com: `blue`, `oficial`, `bolsa`...). Si se cambia, correr `php artisan market:snapshot --backfill`. |
 | `FREE_PLAN_DELAY_DAYS` | `3` o sin definir | Sin suscripción activa solo se ven los alquileres agregados hace esta cantidad de días o más. |
 | `EXPIRY_REMINDER_DAYS_BEFORE` | `3` o sin definir | Cuántos días antes de vencer se avisa (Telegram / push). |
 | `EXPIRY_REMINDER_ACTIVE_WITHIN_DAYS` | `5` o sin definir | Solo se avisa a quien abrió la app en los últimos N días. |
@@ -88,7 +89,7 @@ En Forge → Scheduler, un cron cada minuto:
 php /home/forge/<sitio>/artisan schedule:run
 ```
 
-Corre `rentals:analyze` los días hábiles a las 17:00, `lands:analyze` (terrenos, sin notificaciones) una vez por semana, los lunes a las 18:00, `houses:analyze` (casas en venta, sin notificaciones) los lunes a las 18:30, y `subscriptions:remind-expiring` (aviso de vencimiento de la suscripción) todos los días a las 10:00 (`routes/console.php`). Para ver qué está programado:
+Corre `rentals:analyze` los días hábiles a las 17:00, `lands:analyze` (terrenos, sin notificaciones) una vez por semana, los lunes a las 18:00, `houses:analyze` (casas en venta, sin notificaciones) los lunes a las 18:30, `subscriptions:remind-expiring` (aviso de vencimiento de la suscripción) todos los días a las 10:00 y `market:snapshot` (precios del mes que terminó, sección Análisis) el día 1 de cada mes a las 04:00 (`routes/console.php`). Para ver qué está programado:
 
 ```bash
 php artisan schedule:list
@@ -152,6 +153,18 @@ Migraciones con cambios de datos (`2026_11_14_*`):
 
 Después del deploy: `php artisan schedule:list` tiene que mostrar `subscriptions:remind-expiring`.
 
+## 6c. Deploy de la sección Análisis
+
+Migraciones nuevas (`2026_11_22_000001/2`): `exchange_rates` y `price_stats`, vacías (sin cambios de datos).
+
+Después del deploy, una sola vez, para calcular toda la historia (descarga el dólar de api.argentinadatos.com):
+
+```bash
+php artisan market:snapshot --backfill
+```
+
+Después, `php artisan schedule:list` tiene que mostrar `market:snapshot` el día 1 a las 04:00.
+
 ## 7. Verificación después de cada deploy
 
 - [ ] La home carga con HTTPS y se puede loguear.
@@ -170,6 +183,7 @@ Después del deploy: `php artisan schedule:list` tiene que mostrar `subscription
 | Avisos que aparecen y desaparecen | La IA a veces saltea algunos avisos de un listado largo: quedan inactivos hasta la corrida siguiente. | Pendiente en `todo.md`: desactivar recién tras N corridas. |
 | Fallas por sitio | Si la IA o la importación falla, no se guarda el snapshot y el sitio se reintenta en la próxima corrida. | Nada; revisar el log si se repite. |
 | VAPID | Cambiar las claves invalida todas las suscripciones. | No regenerarlas. |
+| Cotización del dólar | `market:snapshot` la baja de api.argentinadatos.com (pública, sin clave). Si no responde, usa las cotizaciones guardadas: el mes sin cotización queda sin los avisos en otra moneda. | Volver a correr `php artisan market:snapshot --month=YYYY-MM` cuando la API vuelva. |
 | Suscripciones | Vencen (`subscribers.expires_at`): sin suscripción activa no hay avisos y el listado se ve con retraso. La renovación es manual. | Renovar: `php artisan subscriptions:extend <teléfono>` (suma `SUBSCRIPTION_DURATION_DAYS`, o `--days=N`). |
 
 ## Verificaciones hechas

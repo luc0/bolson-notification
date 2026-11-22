@@ -3,6 +3,7 @@
 use App\Http\Controllers\AppVersionController;
 use App\Http\Controllers\HouseController;
 use App\Http\Controllers\LandController;
+use App\Http\Controllers\MarketController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PushSubscriptionController;
 use App\Http\Controllers\RentalController;
@@ -17,6 +18,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/', [RentalController::class, 'index'])->name('rentals.index');
     Route::get('/terrenos', [LandController::class, 'index'])->middleware('can:admin')->name('lands.index');
     Route::get('/casas', [HouseController::class, 'index'])->middleware('can:admin')->name('houses.index');
+    Route::get('/analisis', [MarketController::class, 'index'])->middleware('can:admin')->name('market.index');
     Route::view('/dashboard', 'dashboard')->name('dashboard');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

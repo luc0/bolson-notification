@@ -35,6 +35,11 @@ return [
         ],
     ],
 
+    // Daily history of the dollar (Market domain).
+    'argentinadatos' => [
+        'url' => env('ARGENTINADATOS_URL', 'https://api.argentinadatos.com/v1'),
+    ],
+
     'groq' => [
         'api_key' => env('GROQ_API_KEY'),
         'model' => env('GROQ_MODEL', 'openai/gpt-oss-20b'),

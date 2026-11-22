@@ -23,12 +23,12 @@ Laravel app that scrapes rental listings (El Bolsón / Lago Puelo), processes th
   `rm -f bootstrap/cache/*.php && mkdir -p storage/logs && chmod -R 777 storage bootstrap/cache`
 
 ## Structure (modular monolith)
-- Domains and their subdomains are documented in `docs/domains.md` (read it before adding features): Sources, Harvesting, Locations, Rentals, Lands, Houses, Subscriptions, Members, Payments.
+- Domains and their subdomains are documented in `docs/domains.md` (read it before adding features): Sources, Harvesting, Locations, Rentals, Lands, Houses, Market, Subscriptions, Members, Payments.
 - Each domain lives in `app/Domains/<Domain>/` using Laravel's folder names inside (`Models`, `Enums`, `Data`, `Support`, `Services`...).
 - Framework entry points stay where Laravel expects them: `app/Http`, `app/Console`, `resources/views`, `database/migrations`.
-- Shared external clients (Groq, Puppeteer, HTTP fetch) go to `app/Integrations/`.
-- Dependency rule: Locations (shared kernel: `City`, `CityResolver`) depends on nothing; Rentals, Lands and Houses depend only on Locations (never on each other); Harvesting writes into Rentals, Lands and Houses; Subscriptions reads from Rentals.
-- Migrated: Locations, Rentals, Lands, Houses, Sources, Harvesting (+ `app/Integrations/Groq`), Subscriptions, Members. Payments will be created with the checkout (v1.1).
+- Shared external clients (Groq, Telegram, ArgentinaDatos, Puppeteer, HTTP fetch) go to `app/Integrations/`.
+- Dependency rule: Locations (shared kernel: `City`, `CityResolver`) depends on nothing; Rentals, Lands and Houses depend only on Locations (never on each other); Harvesting writes into Rentals, Lands and Houses; Subscriptions reads from Rentals; Market reads from Rentals, Lands and Houses.
+- Migrated: Locations, Rentals, Lands, Houses, Market, Sources, Harvesting (+ `app/Integrations/Groq`), Subscriptions, Members. Payments will be created with the checkout (v1.1).
 - Models outside `App\Models` need `#[UseFactory(...)]` (and `$model` in the factory) because Laravel can't guess the factory name.
 - Polymorphic models must be registered in `Relation::morphMap()` (`AppServiceProvider::boot()`) so stored types don't depend on class names.
 
@@ -56,6 +56,12 @@ Laravel app that scrapes rental listings (El Bolsón / Lago Puelo), processes th
 - `House` (`app/Domains/Houses`): houses for sale, built like Lands (own table, `/casas` tab, `HouseController`, admins only with `@can('admin')` / `can:admin`). Same columns as `Land` but `bedrooms`, `bathrooms`, `covered_area` (built m²) and `total_area` (plot m²) instead of `area`. City / neighborhood by `Harvesting\Services\HouseClassifier` (backfill: `houses:classify`). Filters: city chips, include unavailable, sort (`HouseSort`). Query in `Houses\Queries\HouseSearch`. No notifications.
 - Flow: `houses:analyze` → `BrowserHouseScraper` (capture in `storage/app/captures/houses`) → `HouseListingExtractor` → `HouseImporter`. Scheduled weekly in prod (Mondays 18:30). Sources in `config/sources.php` `house_sites` (`Source::houses()`).
 - Long listings (30+ items) make the AI return a different subset on each run: split big sources by city (one source per city with `default_city`, like `disalvo_*`).
+
+## Market (Análisis)
+- `app/Domains/Market`: monthly price charts of the `/analisis` tab (`MarketController`, admins only). Reads Rentals, Lands and Houses; nothing depends on it.
+- One class per chart implementing `Contracts/PriceSeries` (`Series/ResidentialRentals`, `CommercialRentals`, `HousesForSale`, `LandsForSale`), listed in `config/market.php`. To add a chart: new class + add it there; `MarketSnapshot` and the page pick it up.
+- Measure: listings **published in each month** (`created_at`), so history can be rebuilt. Rentals in ARS and USD, houses in USD, lands in USD per m². Each listing is converted with the monthly average of `config('market.dollar')` (blue) before the median.
+- `market:snapshot` (1st of each month, previous month; `--month=YYYY-MM`, `--backfill`) syncs `exchange_rates` from `Integrations/ArgentinaDatos` and replaces that month's `price_stats` rows (per series, currency, city; `bedrooms` ready for houses via `groupsByBedrooms()`). Charts: Chart.js in `resources/js/market-charts.js`.
 
 ## Sources
 - `config/sources.php` is the single source of truth for scraped sites (key, type, listing URL, link base URL, `wait_for`): `rental_sites`, `land_sites`, `house_sites`. To add a site, add it there only.

@@ -4,10 +4,14 @@ use App\Console\Commands\AnalyzeHouses;
 use App\Console\Commands\AnalyzeLands;
 use App\Console\Commands\AnalyzeRentals;
 use App\Console\Commands\SendExpiryReminders;
+use App\Console\Commands\SnapshotMarket;
 use Illuminate\Support\Facades\Schedule;
 
 // Once a day, at a reasonable hour to get a message.
 Schedule::command(SendExpiryReminders::class)->dailyAt('10:00');
+
+// Price stats of the month that just ended (Análisis section).
+Schedule::command(SnapshotMarket::class)->monthlyOn(1, '04:00');
 
 $analyzeRentals = Schedule::command(AnalyzeRentals::class);
 $analyzeLands = Schedule::command(AnalyzeLands::class);

@@ -22,6 +22,9 @@
                         <x-nav-link :href="route('houses.index')" :active="request()->routeIs('houses.*')">
                             Casas
                         </x-nav-link>
+                        <x-nav-link :href="route('market.index')" :active="request()->routeIs('market.*')">
+                            Análisis
+                        </x-nav-link>
                     @endcan
                 </div>
             </div>
@@ -96,6 +99,9 @@
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('houses.index')" :active="request()->routeIs('houses.*')">
                     Casas
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('market.index')" :active="request()->routeIs('market.*')">
+                    Análisis
                 </x-responsive-nav-link>
             @endcan
         </div>
