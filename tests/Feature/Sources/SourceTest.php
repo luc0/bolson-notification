@@ -25,6 +25,13 @@ it('reads the rental sources from config', function () {
         ->and($sources[1]->waitFor)->toBeNull();
 });
 
+it('reads the next page selector of paginated sources', function () {
+    config(['sources.rental_sites.agency.next_page_selector' => 'a.next']);
+
+    expect(Source::findRental('agency')->nextPageSelector)->toBe('a.next')
+        ->and(Source::findRental('portal')->nextPageSelector)->toBeNull();
+});
+
 it('finds a rental source by key', function () {
     expect(Source::findRental('portal')->name)->toBe('Portal');
 });

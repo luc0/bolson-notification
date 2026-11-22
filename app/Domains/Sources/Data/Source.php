@@ -18,6 +18,7 @@ final readonly class Source
         public string $linkBaseUrl,
         public ?string $waitFor = null,
         public ?string $defaultCity = null,
+        public ?string $nextPageSelector = null,
     ) {}
 
     /**
@@ -81,6 +82,7 @@ final readonly class Source
             linkBaseUrl: $site['link_base_url'],
             waitFor: $site['wait_for'] ?? null,
             defaultCity: $site['default_city'] ?? null,
+            nextPageSelector: $site['next_page_selector'] ?? null,
         );
     }
 }

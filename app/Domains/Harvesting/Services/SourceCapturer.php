@@ -24,7 +24,7 @@ class SourceCapturer
         $input = [
             'capturePath' => $capturePath,
             'sites' => array_map(
-                fn (Source $source) => ['key' => $source->key, 'url' => $source->listingUrl, 'waitFor' => $source->waitFor],
+                fn (Source $source) => ['key' => $source->key, 'url' => $source->listingUrl, 'waitFor' => $source->waitFor, 'nextPage' => $source->nextPageSelector],
                 $sources,
             ),
         ];

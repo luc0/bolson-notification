@@ -3,7 +3,10 @@ const fs = require('fs');
 const path = require('path');
 
 // Sites and destination come from Laravel (config/sources.php) through stdin:
-// { "capturePath": "/abs/path", "sites": [{ "key": "anezca", "url": "https://...", "waitFor": ".item" }] }
+// { "capturePath": "/abs/path", "sites": [{ "key": "anezca", "url": "https://...", "waitFor": ".item", "nextPage": "a.next" }] }
+// nextPage: selector of the "next page" link on paginated listings; pages are followed (up to MAX_PAGES)
+// and merged into a single capture, so rentals on later pages aren't seen as removed.
+const MAX_PAGES = 5;
 const { capturePath, sites } = JSON.parse(fs.readFileSync(0, 'utf-8'));
 
 (async () => {
@@ -36,107 +39,23 @@ const { capturePath, sites } = JSON.parse(fs.readFileSync(0, 'utf-8'));
                 }
             });
 
-            const capture = await page.evaluate(() => {
-                // Eliminar estilos embebidos y hojas de estilo externas
-                document.querySelectorAll('style, link[rel="stylesheet"]').forEach(el => el.remove());
-
-                // Save the rendered width of each image before cloning (clones aren't rendered),
-                // to drop icons. Lazy images not loaded yet have width 0 and are kept.
-                document.querySelectorAll('img').forEach(img => {
-                    img.setAttribute('data-rendered-width', String(img.naturalWidth || img.width || 0));
-                });
-
-                const bodyClone = document.body.cloneNode(true);
-
-                // Remover scripts
-                bodyClone.querySelectorAll('script').forEach(s => s.remove());
-
-                // Remover el <header>
-                const header = bodyClone.querySelector('header');
-                if (header) header.remove();
-
-                // Remover comentarios HTML recursivamente
-                const removeComments = (node) => {
-                    for (let i = node.childNodes.length - 1; i >= 0; i--) {
-                        const child = node.childNodes[i];
-                        if (child.nodeType === Node.COMMENT_NODE) {
-                            node.removeChild(child);
-                        } else if (child.nodeType === Node.ELEMENT_NODE) {
-                            removeComments(child);
-                        }
-                    }
-                };
-                removeComments(bodyClone);
-
-                // 🖼️ Replace each image src with a short id ("#img-3") so the AI can return the main
-                // photo without copying long URLs. The real URLs are saved next to the capture.
-                const images = [];
-                const replaceImageSources = (node) => {
-                    for (const img of node.querySelectorAll('img')) {
-                        const lazySrc = img.getAttribute('data-src') || img.getAttribute('data-lazy-src');
-                        const rawSrc = lazySrc || img.getAttribute('src') || '';
-                        const isHttpImage = rawSrc !== '' && !rawSrc.startsWith('data:');
-                        const renderedWidth = Number(img.getAttribute('data-rendered-width'));
-                        const isIcon = renderedWidth > 0 && renderedWidth < 80;
-                        if (!isHttpImage || isIcon) {
-                            img.remove();
-                            continue;
-                        }
-                        images.push(new URL(rawSrc, document.baseURI).href);
-                        img.setAttribute('src', `#img-${images.length - 1}`);
-                    }
-                };
-                replaceImageSources(bodyClone);
-
-                // 🧹 Remover todos los atributos de las etiquetas (excepto href y src de imágenes)
-                const removeAttributes = (node) => {
-                    // Incluye el nodo raíz también
-                    const allElements = [node, ...node.querySelectorAll('*')];
-
-                    for (const el of allElements) {
-                        const attrs = Array.from(el.attributes).map(attr => attr.name.toLowerCase());
-                        for (const attrName of attrs) {
-                            const isKeptAttribute = attrName === 'href' || (el.tagName === 'IMG' && attrName === 'src');
-                            if (!isKeptAttribute) {
-                                el.removeAttribute(attrName);
-                            }
-                        }
-                    }
-                };
-                removeAttributes(bodyClone);
-
-                // 🗑️ Remover nodos vacíos recursivamente
-                const removeEmptyNodes = (node) => {
-                    const isEmpty = (el) =>
-                        el.nodeType === Node.ELEMENT_NODE &&
-                        el.tagName !== 'IMG' &&
-                        !(el.textContent || '').trim() &&
-                        el.children.length === 0;
-
-                    for (let i = node.children.length - 1; i >= 0; i--) {
-                        const child = node.children[i];
-                        removeEmptyNodes(child);
-                        if (isEmpty(child)) {
-                            child.remove();
-                        }
-                    }
-                };
-                removeEmptyNodes(bodyClone);
-
-                // ✅ Asegurar que se procesen atributos del nodo raíz también
-                removeAttributes(bodyClone);
-
-                // 🧼 Serializar todo el body con sus cambios
-                const tempContainer = document.createElement('div');
-                tempContainer.appendChild(bodyClone);
-
-                // Devolver outerHTML para incluir el nodo raíz limpio
-                return {
-                    html: tempContainer.innerHTML.replace(/\s+/g, ' ').trim(),
-                    images,
-                };
-
-            });
+            const pages = [await capturePage(page, 0)];
+            while (site['nextPage'] && pages.length < MAX_PAGES) {
+                const nextUrl = await page.$eval(site['nextPage'], a => a.href).catch(() => null);
+                if (!nextUrl) {
+                    break;
+                }
+                await page.goto(nextUrl, { waitUntil: 'networkidle0', timeout: 60000 });
+                const imageOffset = pages.reduce((count, captured) => count + captured.images.length, 0);
+                pages.push(await capturePage(page, imageOffset));
+            }
+            const capture = {
+                html: pages.map(captured => captured.html).join(' '),
+                images: pages.flatMap(captured => captured.images),
+            };
+            if (pages.length > 1) {
+                console.log(`📄 ${site.key}: ${pages.length} pages`);
+            }
 
             saveCapture(`${site.key}.html`, capture.html);
             saveCapture(`${site.key}.images.json`, JSON.stringify(capture.images, null, 1));
@@ -158,4 +77,120 @@ function saveCapture(fileName, html) {
     }
 
     fs.writeFileSync(filePath, html, 'utf-8');
+}
+
+/**
+ * Cleans the current page's body for the AI. Images get ids from imageOffset ("#img-N") so pages can be merged.
+ */
+function capturePage(page, imageOffset) {
+    return page.evaluate((imageOffset) => {
+        // Eliminar estilos embebidos y hojas de estilo externas
+        document.querySelectorAll('style, link[rel="stylesheet"]').forEach(el => el.remove());
+
+        // Save the rendered width of each image before cloning (clones aren't rendered),
+        // to drop icons. Lazy images not loaded yet have width 0 and are kept.
+        document.querySelectorAll('img').forEach(img => {
+            img.setAttribute('data-rendered-width', String(img.naturalWidth || img.width || 0));
+        });
+
+        const bodyClone = document.body.cloneNode(true);
+
+        // Remover scripts
+        bodyClone.querySelectorAll('script').forEach(s => s.remove());
+
+        // Remover el <header>
+        const header = bodyClone.querySelector('header');
+        if (header) header.remove();
+
+        // Remover comentarios HTML recursivamente
+        const removeComments = (node) => {
+            for (let i = node.childNodes.length - 1; i >= 0; i--) {
+                const child = node.childNodes[i];
+                if (child.nodeType === Node.COMMENT_NODE) {
+                    node.removeChild(child);
+                } else if (child.nodeType === Node.ELEMENT_NODE) {
+                    removeComments(child);
+                }
+            }
+        };
+        removeComments(bodyClone);
+
+        // 🖼️ Replace each image src with a short id ("#img-3") so the AI can return the main
+        // photo without copying long URLs. The real URLs are saved next to the capture.
+        const images = [];
+        const replaceImageSources = (node) => {
+            for (const img of node.querySelectorAll('img')) {
+                const lazySrc = img.getAttribute('data-src') || img.getAttribute('data-lazy-src');
+                const rawSrc = lazySrc || img.getAttribute('src') || '';
+                const isHttpImage = rawSrc !== '' && !rawSrc.startsWith('data:');
+                const renderedWidth = Number(img.getAttribute('data-rendered-width'));
+                const isIcon = renderedWidth > 0 && renderedWidth < 80;
+                if (!isHttpImage || isIcon) {
+                    img.remove();
+                    continue;
+                }
+                images.push(new URL(rawSrc, document.baseURI).href);
+                img.setAttribute('src', `#img-${imageOffset + images.length - 1}`);
+            }
+        };
+        replaceImageSources(bodyClone);
+
+        // 🔗 Some sites open each listing from an onclick (no href), and attributes are stripped below:
+        // keep that URL as an href so the AI can return the listing link.
+        for (const el of bodyClone.querySelectorAll('[onclick]')) {
+            const match = el.getAttribute('onclick').match(/(?:window\.open|location(?:\.href)?\s*=)\s*\(?\s*['"]([^'"]+)['"]/);
+            if (match && !el.hasAttribute('href')) {
+                el.setAttribute('href', new URL(match[1], document.baseURI).href);
+            }
+        }
+
+        // 🧹 Remover todos los atributos de las etiquetas (excepto href y src de imágenes)
+        const removeAttributes = (node) => {
+            // Incluye el nodo raíz también
+            const allElements = [node, ...node.querySelectorAll('*')];
+
+            for (const el of allElements) {
+                const attrs = Array.from(el.attributes).map(attr => attr.name.toLowerCase());
+                for (const attrName of attrs) {
+                    const isKeptAttribute = attrName === 'href' || (el.tagName === 'IMG' && attrName === 'src');
+                    if (!isKeptAttribute) {
+                        el.removeAttribute(attrName);
+                    }
+                }
+            }
+        };
+        removeAttributes(bodyClone);
+
+        // 🗑️ Remover nodos vacíos recursivamente
+        const removeEmptyNodes = (node) => {
+            const isEmpty = (el) =>
+                el.nodeType === Node.ELEMENT_NODE &&
+                el.tagName !== 'IMG' &&
+                !(el.textContent || '').trim() &&
+                el.children.length === 0;
+
+            for (let i = node.children.length - 1; i >= 0; i--) {
+                const child = node.children[i];
+                removeEmptyNodes(child);
+                if (isEmpty(child)) {
+                    child.remove();
+                }
+            }
+        };
+        removeEmptyNodes(bodyClone);
+
+        // ✅ Asegurar que se procesen atributos del nodo raíz también
+        removeAttributes(bodyClone);
+
+        // 🧼 Serializar todo el body con sus cambios
+        const tempContainer = document.createElement('div');
+        tempContainer.appendChild(bodyClone);
+
+        // Devolver outerHTML para incluir el nodo raíz limpio
+        return {
+            html: tempContainer.innerHTML.replace(/\s+/g, ' ').trim(),
+            images,
+        };
+
+    }, imageOffset);
 }

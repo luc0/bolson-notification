@@ -28,6 +28,7 @@ class RentalListingExtractor extends AiListingExtractor
     {
         return <<<EOT
             Extraé todos los avisos de alquiler del siguiente HTML.
+            Omití los avisos que no tienen un link propio (no inventes URLs) y los marcados como alquilados en el texto (ej: "ALQUILADA", "ALQUILADO").
 
             Para cada aviso:
             - "Content": título o descripción del aviso (texto completo).

@@ -58,7 +58,7 @@ it('passes the land sites and their own capture folder to the node scraper', fun
         $input = json_decode($process->input, true);
 
         return $input['capturePath'] === "{$this->tempPath}/captures/lands"
-            && $input['sites'] === [['key' => 'example', 'url' => 'https://example.com/terrenos', 'waitFor' => null]];
+            && $input['sites'] === [['key' => 'example', 'url' => 'https://example.com/terrenos', 'waitFor' => null, 'nextPage' => null]];
     });
 });
 

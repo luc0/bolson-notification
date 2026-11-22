@@ -55,7 +55,7 @@ Laravel app that scrapes rental listings (El Bolsón / Lago Puelo), processes th
 ## Sources
 - `config/sources.php` is the single source of truth for scraped sites (key, type, listing URL, link base URL, `wait_for`). To add a site, add it there only.
 - Read them with `App\Domains\Sources\Data\Source::rentals()` / `Source::findRental($key)` (`rental_sites`) and `Source::lands()` (`land_sites`); `SourceType` is `agency` or `portal`.
-- `BrowserRentalScraper` passes the sites to `scripts/scrape.cjs` through stdin.
+- `BrowserRentalScraper` passes the sites to `scripts/scrape.cjs` through stdin. Paginated listings: `next_page_selector` (pages are merged into one capture so later pages aren't deactivated). Listing links in an `onclick` (no `href`) are kept as `href` by `scrape.cjs`.
 - Captures and snapshots are Harvesting config, per catalog: `config/harvesting.php` (`rentals.*`, `lands.*`), read with `CaptureStore::forRentals()` / `forLands()`.
 
 ## Architecture

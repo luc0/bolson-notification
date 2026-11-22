@@ -43,7 +43,7 @@ it('passes the configured sites to the node scraper', function () {
 
         return $process->command === ['node', base_path('scripts/scrape.cjs')]
             && $input['capturePath'] === "{$this->tempPath}/captures"
-            && $input['sites'] === [['key' => 'example', 'url' => 'https://example.com/alquileres', 'waitFor' => '.item']];
+            && $input['sites'] === [['key' => 'example', 'url' => 'https://example.com/alquileres', 'waitFor' => '.item', 'nextPage' => null]];
     });
 });
 

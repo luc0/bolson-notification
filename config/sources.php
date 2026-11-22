@@ -19,6 +19,9 @@
 | - wait_for: CSS selector to wait for on sites that render listings with JS.
 | - default_city: City enum value, only for sources whose listing_url is filtered by city.
 |   Used when a rental's texts don't name its city.
+| - next_page_selector: CSS selector of the "next page" link on paginated listings. The scraper follows it
+|   (up to 5 pages) and merges them into one capture, so rentals on later pages aren't deactivated.
+|   Sites that open listings from an onclick (no href) work too: scrape.cjs keeps that URL as an href.
 |
 */
 
@@ -73,6 +76,28 @@ return [
             'link_base_url' => 'https://inmobiliariadelagua.com.ar',
             'wait_for' => '.item',
             'default_city' => null, // listing mixes cities
+        ],
+
+        'surpatagonian' => [
+            'name' => 'Sur Patagonian',
+            'type' => 'agency',
+            // Listings rendered with JS (Supabase); each card opens the listing from an onclick.
+            'listing_url' => 'https://surpatagonian.com/propiedades?op=alquiler',
+            // e.g. https://surpatagonian.com/propiedad.html?id=b0d9b5b5-a0ab-4c34-b5da-be4186ea2f69
+            'link_base_url' => 'https://surpatagonian.com/',
+            'wait_for' => '.card-propiedad',
+            'default_city' => null, // the site covers the whole Comarca
+        ],
+
+        'tornero' => [
+            'name' => 'Tornero Inmobiliaria',
+            'type' => 'agency',
+            'listing_url' => 'https://www.torneroinmobiliaria.com.ar/categoria/alquileres/',
+            // e.g. https://www.torneroinmobiliaria.com.ar/propiedad/depto-centrico/
+            'link_base_url' => 'https://www.torneroinmobiliaria.com.ar',
+            'wait_for' => null,
+            'default_city' => null, // listing mixes cities (e.g. Las Golondrinas)
+            'next_page_selector' => 'a.next.page-numbers', // WordPress pagination, 5 per page
         ],
 
     ],
