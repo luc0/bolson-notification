@@ -28,9 +28,10 @@ it('has an Análisis tab for admins', function () {
     $this->get('/')->assertSee(route('market.index'), false)->assertSee('Análisis');
 });
 
-it('shows a chart per series with the stats of the whole Comarca in pesos', function () {
+it('shows a chart per series with a line for the whole Comarca and one per city with data', function () {
     storeStat([]);
     storeStat(['city' => 'el_bolson', 'median' => 111111]);
+    storeStat(['city' => 'lago_puelo', 'period' => '2026-11-01', 'median' => 222222]);
     storeStat(['currency' => 'USD', 'median' => 636.36]);
 
     $response = $this->get('/analisis')->assertOk()
@@ -41,20 +42,36 @@ it('shows a chart per series with the stats of the whole Comarca in pesos', func
         ->assertSee('Todavía no hay datos.');
 
     $chart = collect($response->viewData('charts'))->firstWhere('key', 'residential_rentals');
+    $lines = collect($chart['lines'])->keyBy('place');
     expect($chart['currency'])->toBe('ARS')
-        ->and($chart['points'])->toHaveCount(1)
-        ->and($chart['points'][0])->toMatchArray(['month' => 'Oct 2026', 'median' => 700000.0, 'count' => 3]);
+        ->and($chart['months'])->toBe(['Oct 2026', 'Nov 2026'])
+        ->and($lines->keys()->all())->toBe(['comarca', 'el_bolson', 'lago_puelo'])
+        ->and($lines['comarca']['label'])->toBe('Toda la Comarca')
+        ->and($lines['comarca']['points'][0])->toMatchArray(['median' => 700000.0, 'count' => 3])
+        ->and($lines['comarca']['points'][1])->toBeNull()
+        ->and($lines['el_bolson']['points'][0]['median'])->toBe(111111.0)
+        ->and($lines['lago_puelo']['points'])->toBe([null, ['median' => 222222.0, 'p25' => 600000.0, 'p75' => 955000.0, 'average' => 800000.0, 'count' => 3]]);
 });
 
-it('filters by city and currency, keeping dollar-only series in dollars', function () {
+it('filters by currency, keeping dollar-only series in dollars', function () {
     storeStat(['city' => 'el_bolson', 'currency' => 'USD', 'median' => 500]);
     storeStat(['series' => 'houses_for_sale', 'currency' => 'USD', 'city' => 'el_bolson', 'median' => 120000]);
 
-    $response = $this->get('/analisis?city=el_bolson&currency=USD')->assertOk();
-    $charts = collect($response->viewData('charts'));
-    expect($charts->firstWhere('key', 'residential_rentals')['points'][0]['median'])->toBe(500.0)
-        ->and($charts->firstWhere('key', 'houses_for_sale')['points'][0]['median'])->toBe(120000.0);
+    $charts = collect($this->get('/analisis?currency=USD')->assertOk()->viewData('charts'));
+    expect($charts->firstWhere('key', 'residential_rentals')['lines'][0]['points'][0]['median'])->toBe(500.0)
+        ->and($charts->firstWhere('key', 'houses_for_sale')['lines'][0]['points'][0]['median'])->toBe(120000.0);
 
-    $housesInPesos = collect($this->get('/analisis?city=el_bolson')->viewData('charts'))->firstWhere('key', 'houses_for_sale');
-    expect($housesInPesos['currency'])->toBe('USD')->and($housesInPesos['points'])->toHaveCount(1);
+    $housesInPesos = collect($this->get('/analisis')->viewData('charts'))->firstWhere('key', 'houses_for_sale');
+    expect($housesInPesos['currency'])->toBe('USD')->and($housesInPesos['lines'])->toHaveCount(1);
+});
+
+it('starts with every place selected and keeps the chosen places in the currency links', function () {
+    $response = $this->get('/analisis')->assertOk();
+    expect($response->viewData('selectedPlaces'))->toBe(['comarca', 'el_bolson', 'lago_puelo', 'el_hoyo', 'epuyen', 'cholila']);
+
+    $response = $this->get('/analisis?places=lago_puelo,unknown,comarca')->assertOk();
+    expect($response->viewData('selectedPlaces'))->toBe(['comarca', 'lago_puelo'])
+        ->and($response->viewData('currencyChips')[1]['url'])->toBe('/analisis?currency=USD&places=comarca%2Clago_puelo');
+
+    expect($this->get('/analisis?places=unknown')->viewData('selectedPlaces'))->toHaveCount(6);
 });

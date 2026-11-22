@@ -61,6 +61,7 @@ Laravel app that scrapes rental listings (El Bolsón / Lago Puelo), processes th
 - `app/Domains/Market`: monthly price charts of the `/analisis` tab (`MarketController`, admins only). Reads Rentals, Lands and Houses; nothing depends on it.
 - One class per chart implementing `Contracts/PriceSeries` (`Series/ResidentialRentals`, `CommercialRentals`, `HousesForSale`, `LandsForSale`), listed in `config/market.php`. To add a chart: new class + add it there; `MarketSnapshot` and the page pick it up.
 - Measure: listings **published in each month** (`created_at`), so history can be rebuilt. Rentals in ARS and USD, houses in USD, lands in USD per m². Each listing is converted with the monthly average of `config('market.dollar')` (blue) before the median.
+- Each chart has one median line per place (`PriceHistory::places()`: Toda la Comarca + every city with data, fixed color per place in `market-charts.js`); a picker above the charts (chips to remove, search box to add) applies to all of them and is kept in `?places=`. The p25–p75 band only shows with a single place.
 - `market:snapshot` (1st of each month, previous month; `--month=YYYY-MM`, `--backfill`) syncs `exchange_rates` from `Integrations/ArgentinaDatos` and replaces that month's `price_stats` rows (per series, currency, city; `bedrooms` ready for houses via `groupsByBedrooms()`). Charts: Chart.js in `resources/js/market-charts.js`.
 
 ## Sources

@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Domains\Locations\Enums\City;
 use App\Domains\Market\Contracts\PriceSeries;
 use App\Domains\Market\Enums\Currency;
 use App\Domains\Market\Queries\PriceHistory;
@@ -11,48 +10,57 @@ use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 /**
- * Análisis section: monthly price charts of every series (admins only).
+ * Análisis section: monthly price charts of every series (admins only), one line per place.
+ * The places shown are picked in the browser (market-charts.js) and kept in the `places` query param.
  */
 class MarketController extends Controller
 {
     public function index(Request $request, PriceSeriesRegistry $registry): View
     {
         $history = new PriceHistory(
-            city: City::tryFrom($request->string('city')->toString()),
             currency: Currency::tryFrom($request->string('currency')->toString()) ?? Currency::Ars,
         );
+        $places = PriceHistory::places();
+        $selectedPlaces = $this->selectedPlaces($request, array_keys($places));
 
         return view('market.index', [
             'charts' => array_map(fn (PriceSeries $series) => $history->chart($series), $registry->all()),
             'dollar' => config('market.dollar'),
-            'filterChips' => $this->filterChips($history),
+            'places' => $places,
+            'selectedPlaces' => $selectedPlaces,
+            'currencyChips' => $this->currencyChips($history, $selectedPlaces, count($places)),
         ]);
     }
 
     /**
-     * @return array<string, array<int, array{label: string, url: string, active: bool}>>
+     * Every place when the param is missing or has no known place.
+     *
+     * @param  string[]  $knownPlaces
+     * @return string[]
      */
-    private function filterChips(PriceHistory $history): array
+    private function selectedPlaces(Request $request, array $knownPlaces): array
     {
-        $url = fn (?City $city, Currency $currency) => route('market.index', array_filter([
-            'city' => $city?->value,
-            'currency' => $currency === Currency::Ars ? null : $currency->value,
-        ]), absolute: false);
+        $requested = explode(',', $request->string('places')->toString());
+        $selected = array_values(array_intersect($knownPlaces, $requested));
 
-        $comarcaChip = ['label' => 'Toda la Comarca', 'url' => $url(null, $history->currency), 'active' => $history->city === null];
-        $cityChips = array_map(fn (City $city) => [
-            'label' => $city->label(),
-            'url' => $url($city, $history->currency),
-            'active' => $history->city === $city,
-        ], City::cases());
+        return $selected ?: $knownPlaces;
+    }
 
-        return [
-            'cities' => [$comarcaChip, ...$cityChips],
-            'currency' => array_map(fn (Currency $currency) => [
-                'label' => $currency->label(),
-                'url' => $url($history->city, $currency),
-                'active' => $history->currency === $currency,
-            ], Currency::cases()),
-        ];
+    /**
+     * @param  string[]  $selectedPlaces
+     * @return array<int, array{label: string, url: string, active: bool}>
+     */
+    private function currencyChips(PriceHistory $history, array $selectedPlaces, int $placesCount): array
+    {
+        $showsEveryPlace = count($selectedPlaces) === $placesCount;
+
+        return array_map(fn (Currency $currency) => [
+            'label' => $currency->label(),
+            'url' => route('market.index', array_filter([
+                'currency' => $currency === Currency::Ars ? null : $currency->value,
+                'places' => $showsEveryPlace ? null : implode(',', $selectedPlaces),
+            ]), absolute: false),
+            'active' => $history->currency === $currency,
+        ], Currency::cases());
     }
 }
