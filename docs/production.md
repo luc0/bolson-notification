@@ -39,13 +39,14 @@ Las que usa la app además de las estándar de Laravel (`APP_*`, `DB_*`, `SESSIO
 | `GROQ_MODEL` | `openai/gpt-oss-20b` (default) | Si Groq da de baja el modelo, el log muestra `model_not_found`: cambiarlo acá. |
 | `GROQ_REASONING_EFFORT` | `low` (default) | |
 | `GROQ_LAND_REASONING_EFFORT` | `medium` (default) | Extracción de terrenos. Con `low` el modelo se rinde con listados largos y devuelve una lista vacía. |
+| `GROQ_HOUSE_REASONING_EFFORT` | `medium` (default) | Extracción de casas en venta. Con `high` falla siempre (se queda sin tokens). |
 | `GROQ_VISION_MODEL` | `qwen/qwen3.6-27b` (default) | Detección de carteles "ALQUILADO" en las fotos. |
 | `TELEGRAM_BOT_TOKEN` / `TELEGRAM_BOT_USERNAME` | (secreto) / nombre del bot sin @ | Avisos por Telegram (bot creado con @BotFather). Sin token, el canal y la sección del perfil quedan apagados. Prod usa `TechitoBot`; en local se usa **otro bot** (un bot tiene un solo webhook: si local registra el suyo, prod deja de recibir mensajes). Desde local, `telegram:set-webhook` se niega a pisar un webhook que no sea de ngrok. |
 | `TELEGRAM_WEBHOOK_SECRET` | (secreto, un string largo al azar) | Telegram lo manda en cada llamada al webhook; sin él, `/telegram/webhook` responde 403. Después de configurarlo (o de cambiar `APP_URL`) correr `php artisan telegram:set-webhook`. |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | (secretos) | Web push. **No cambiarlas nunca**: si cambian, todas las suscripciones existentes dejan de funcionar y cada usuario tiene que volver a activar las notificaciones. Generarlas una sola vez con `php artisan webpush:vapid`. |
 | `ANALYZE_RENTALS_DEBUG_MODE` | `false` o sin definir | Con `true` el scraper corre cada 3 minutos (gasta tokens). |
 | `SCRAPE_MOCK` | `false` o sin definir | Con `true` usa `FakeRentalScraper` (datos de prueba). |
-| `ADMIN_PHONES` | tu teléfono, tal cual se registró | Teléfonos (separados por coma) de los admins: ven todo, por ejemplo el tab Terrenos. Vacío: nadie. |
+| `ADMIN_PHONES` | tu teléfono, tal cual se registró | Teléfonos (separados por coma) de los admins: ven todo, por ejemplo los tabs Terrenos y Casas. Vacío: nadie. |
 | `SUBSCRIPTION_DURATION_DAYS` | `30` o sin definir | Días que dura una suscripción (al registrarse y en cada renovación). |
 | `FREE_PLAN_DELAY_DAYS` | `3` o sin definir | Sin suscripción activa solo se ven los alquileres agregados hace esta cantidad de días o más. |
 | `EXPIRY_REMINDER_DAYS_BEFORE` | `3` o sin definir | Cuántos días antes de vencer se avisa (Telegram / push). |
@@ -87,7 +88,7 @@ En Forge → Scheduler, un cron cada minuto:
 php /home/forge/<sitio>/artisan schedule:run
 ```
 
-Corre `rentals:analyze` los días hábiles a las 17:00, `lands:analyze` (terrenos, sin notificaciones) una vez por semana, los lunes a las 18:00, y `subscriptions:remind-expiring` (aviso de vencimiento de la suscripción) todos los días a las 10:00 (`routes/console.php`). Para ver qué está programado:
+Corre `rentals:analyze` los días hábiles a las 17:00, `lands:analyze` (terrenos, sin notificaciones) una vez por semana, los lunes a las 18:00, `houses:analyze` (casas en venta, sin notificaciones) los lunes a las 18:30, y `subscriptions:remind-expiring` (aviso de vencimiento de la suscripción) todos los días a las 10:00 (`routes/console.php`). Para ver qué está programado:
 
 ```bash
 php artisan schedule:list
@@ -101,8 +102,8 @@ Todo dentro de `storage/` (tiene que ser escribible por el usuario de PHP y del 
 
 | Ruta | Qué es |
 |---|---|
-| `storage/app/captures/` | Última captura HTML de cada fuente + `<fuente>.images.json`. Los terrenos en `captures/lands/`. |
-| `storage/app/snapshots/` | Última captura procesada con éxito, para no reprocesar sitios sin cambios. Borrar un snapshot fuerza a re-analizar ese sitio. Los terrenos en `snapshots/lands/`. |
+| `storage/app/captures/` | Última captura HTML de cada fuente + `<fuente>.images.json`. Los terrenos en `captures/lands/` y las casas en `captures/houses/`. |
+| `storage/app/snapshots/` | Última captura procesada con éxito, para no reprocesar sitios sin cambios. Borrar un snapshot fuerza a re-analizar ese sitio. Los terrenos en `snapshots/lands/` y las casas en `snapshots/houses/`. |
 | `storage/app/rental.json` | Avisos nuevos de la última corrida (debug). |
 | `storage/logs/` | Logs. |
 

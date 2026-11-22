@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\File;
 
 /**
  * Captures written by scripts/scrape.cjs and snapshots of the last fully processed capture
- * of each source (see config/harvesting.php). Each catalog has its own folders (`forRentals()`, `forLands()`),
+ * of each source (see config/harvesting.php). Each catalog has its own folders (`forRentals()`, `forLands()`, `forHouses()`),
  * so an agency key can appear in both.
  */
 class CaptureStore
@@ -26,6 +26,11 @@ class CaptureStore
     public static function forLands(): self
     {
         return new self(config('harvesting.lands.capture_path'), config('harvesting.lands.snapshot_path'));
+    }
+
+    public static function forHouses(): self
+    {
+        return new self(config('harvesting.houses.capture_path'), config('harvesting.houses.snapshot_path'));
     }
 
     public function capturePath(): string

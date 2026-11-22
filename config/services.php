@@ -41,6 +41,8 @@ return [
         'reasoning_effort' => env('GROQ_REASONING_EFFORT', 'low'),
         // Land listings are long (40-60 items): with "low" the model gives up and returns an empty list.
         'land_reasoning_effort' => env('GROQ_LAND_REASONING_EFFORT', 'medium'),
+        // Houses for sale listings are as long as the land ones.
+        'house_reasoning_effort' => env('GROQ_HOUSE_REASONING_EFFORT', 'medium'),
         'vision_model' => env('GROQ_VISION_MODEL', 'qwen/qwen3.6-27b'),
     ],
 

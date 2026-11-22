@@ -11,6 +11,7 @@
 | - rental_sites: rental listings (Rentals), read with Source::rentals().
 | - land_sites: lands for sale (Lands), read with Source::lands(). Same keys as `rental_sites` are fine:
 |   land captures are stored in their own folder (config/harvesting.php).
+| - house_sites: houses for sale (Houses), read with Source::houses(). Own capture folder too.
 |
 | - key (array key): identifies the source (also used for capture file names).
 | - type: "agency" (own properties) or "portal" (aggregator), see SourceType.
@@ -178,14 +179,42 @@ return [
             'wait_for' => null,
         ],
 
-        'disalvo' => [
+        'disalvo_bolson' => [
             'name' => 'Di Salvo Propiedades',
             'type' => 'agency',
-            // Lots for sale (post_type=land), 10 per page.
-            'listing_url' => 'https://www.disalvopropiedades.com.ar/?action=epl_search&tax_feature=comprar&post_type=land',
+            // Lots for sale of El Bolsón (property_location=62), 10 per page. One source per city: the whole
+            // list (50+) is too long for the AI, which then returns a different subset on every run.
+            'listing_url' => 'https://www.disalvopropiedades.com.ar/?action=epl_search&property_location=62&tax_feature=comprar&post_type=land',
             // e.g. https://www.disalvopropiedades.com.ar/lotes/lote-en-venta-barrio-anden-el-bolson/
             'link_base_url' => 'https://www.disalvopropiedades.com.ar',
             'wait_for' => null,
+            'default_city' => 'el_bolson', // listing filtered by property_location
+            'next_page_selector' => '.alignright a',
+        ],
+
+        'disalvo_puelo' => [
+            'name' => 'Di Salvo Propiedades',
+            'type' => 'agency',
+            // Lots for sale of Lago Puelo (property_location=107), 10 per page. One source per city: the whole
+            // list (50+) is too long for the AI, which then returns a different subset on every run.
+            'listing_url' => 'https://www.disalvopropiedades.com.ar/?action=epl_search&property_location=107&tax_feature=comprar&post_type=land',
+            // e.g. https://www.disalvopropiedades.com.ar/lotes/lote-en-venta-barrio-anden-el-bolson/
+            'link_base_url' => 'https://www.disalvopropiedades.com.ar',
+            'wait_for' => null,
+            'default_city' => 'lago_puelo', // listing filtered by property_location
+            'next_page_selector' => '.alignright a',
+        ],
+
+        'disalvo_hoyo' => [
+            'name' => 'Di Salvo Propiedades',
+            'type' => 'agency',
+            // Lots for sale of El Hoyo (property_location=108), 10 per page. One source per city: the whole
+            // list (50+) is too long for the AI, which then returns a different subset on every run.
+            'listing_url' => 'https://www.disalvopropiedades.com.ar/?action=epl_search&property_location=108&tax_feature=comprar&post_type=land',
+            // e.g. https://www.disalvopropiedades.com.ar/lotes/lote-en-venta-barrio-anden-el-bolson/
+            'link_base_url' => 'https://www.disalvopropiedades.com.ar',
+            'wait_for' => null,
+            'default_city' => 'el_hoyo', // listing filtered by property_location
             'next_page_selector' => '.alignright a',
         ],
 
@@ -219,6 +248,110 @@ return [
             // WordPress category with the lots of El Hoyo only.
             'listing_url' => 'https://www.estercortezpropiedades.com.ar/category/propiedades-en-el-hoyo/lotes-en-venta-en-el-hoyo/',
             // e.g. https://www.estercortezpropiedades.com.ar/propiedades-bolson-puelo-hoyo/lote-en-venta-en-barrio-las-mutisias-el-bolson/
+            'link_base_url' => 'https://www.estercortezpropiedades.com.ar',
+            'wait_for' => null,
+            'default_city' => 'el_hoyo', // listing filtered by city
+            'next_page_selector' => 'a.next.page-numbers',
+        ],
+
+    ],
+
+    'house_sites' => [
+
+        'ricardorubio' => [
+            'name' => 'Ricardo Rubio Inmobiliaria',
+            'type' => 'agency',
+            // Same site template as rioazul / puntopatagonia: shows the first 40 houses (loads more on scroll).
+            'listing_url' => 'https://www.ricardorubiopatagonia.com/Casas',
+            // e.g. https://www.ricardorubiopatagonia.com/p/709133-Casa-en-Venta-en-Centro-RR3699
+            'link_base_url' => 'https://www.ricardorubiopatagonia.com/',
+            'wait_for' => null,
+        ],
+
+        'actitud' => [
+            'name' => 'Actitud Inmobiliaria',
+            'type' => 'agency',
+            // Same site template as rioazul / puntopatagonia: shows the first 40 houses (loads more on scroll).
+            'listing_url' => 'https://www.actitudinmobiliaria.com.ar/Casas',
+            'link_base_url' => 'https://www.actitudinmobiliaria.com.ar/',
+            'wait_for' => null,
+        ],
+
+        'alcalde' => [
+            'name' => 'Alcalde Inmobiliaria',
+            'type' => 'agency',
+            'listing_url' => 'https://www.alcaldeinmobiliaria.com.ar/venta/casas',
+            // e.g. https://www.alcaldeinmobiliaria.com.ar/propiedad/venta-el-bolson-casa-centrica-el-bolson-130
+            'link_base_url' => 'https://www.alcaldeinmobiliaria.com.ar',
+            'wait_for' => null,
+        ],
+
+        'disalvo_bolson' => [
+            'name' => 'Di Salvo Propiedades',
+            'type' => 'agency',
+            // Houses for sale of El Bolsón (property_location=62), 10 per page. One source per city: the whole
+            // list (50+) is too long for the AI, which then returns a different subset on every run.
+            'listing_url' => 'https://www.disalvopropiedades.com.ar/?action=epl_search&property_location=62&tax_feature=comprar&post_type=property',
+            // e.g. https://www.disalvopropiedades.com.ar/propiedades/casa-en-venta-villa-turismo-el-bolson/
+            'link_base_url' => 'https://www.disalvopropiedades.com.ar',
+            'wait_for' => null,
+            'default_city' => 'el_bolson', // listing filtered by property_location
+            'next_page_selector' => '.alignright a',
+        ],
+
+        'disalvo_puelo' => [
+            'name' => 'Di Salvo Propiedades',
+            'type' => 'agency',
+            // Houses for sale of Lago Puelo (property_location=107), 10 per page. One source per city: the whole
+            // list (50+) is too long for the AI, which then returns a different subset on every run.
+            'listing_url' => 'https://www.disalvopropiedades.com.ar/?action=epl_search&property_location=107&tax_feature=comprar&post_type=property',
+            // e.g. https://www.disalvopropiedades.com.ar/propiedades/casa-en-venta-villa-turismo-el-bolson/
+            'link_base_url' => 'https://www.disalvopropiedades.com.ar',
+            'wait_for' => null,
+            'default_city' => 'lago_puelo', // listing filtered by property_location
+            'next_page_selector' => '.alignright a',
+        ],
+
+        'disalvo_hoyo' => [
+            'name' => 'Di Salvo Propiedades',
+            'type' => 'agency',
+            // Houses for sale of El Hoyo (property_location=108), 10 per page. One source per city: the whole
+            // list (50+) is too long for the AI, which then returns a different subset on every run.
+            'listing_url' => 'https://www.disalvopropiedades.com.ar/?action=epl_search&property_location=108&tax_feature=comprar&post_type=property',
+            // e.g. https://www.disalvopropiedades.com.ar/propiedades/casa-en-venta-villa-turismo-el-bolson/
+            'link_base_url' => 'https://www.disalvopropiedades.com.ar',
+            'wait_for' => null,
+            'default_city' => 'el_hoyo', // listing filtered by property_location
+            'next_page_selector' => '.alignright a',
+        ],
+
+        'estercortez_bolson' => [
+            'name' => 'Ester Cortez Propiedades',
+            'type' => 'agency',
+            // WordPress category with the houses of El Bolsón only.
+            'listing_url' => 'https://www.estercortezpropiedades.com.ar/category/propiedades-en-el-bolson/casas-en-venta-en-el-bolson/',
+            'link_base_url' => 'https://www.estercortezpropiedades.com.ar',
+            'wait_for' => null,
+            'default_city' => 'el_bolson', // listing filtered by city
+            'next_page_selector' => 'a.next.page-numbers',
+        ],
+
+        'estercortez_puelo' => [
+            'name' => 'Ester Cortez Propiedades',
+            'type' => 'agency',
+            // WordPress category with the houses of Lago Puelo only.
+            'listing_url' => 'https://www.estercortezpropiedades.com.ar/category/propiedades-en-lago-puelo/casas-en-venta-en-lago-puelo/',
+            'link_base_url' => 'https://www.estercortezpropiedades.com.ar',
+            'wait_for' => null,
+            'default_city' => 'lago_puelo', // listing filtered by city
+            'next_page_selector' => 'a.next.page-numbers',
+        ],
+
+        'estercortez_hoyo' => [
+            'name' => 'Ester Cortez Propiedades',
+            'type' => 'agency',
+            // WordPress category with the houses of El Hoyo only.
+            'listing_url' => 'https://www.estercortezpropiedades.com.ar/category/propiedades-en-el-hoyo/casas-en-venta-en-el-hoyo/',
             'link_base_url' => 'https://www.estercortezpropiedades.com.ar',
             'wait_for' => null,
             'default_city' => 'el_hoyo', // listing filtered by city

@@ -15,14 +15,16 @@ Lo que es propio del framework se queda donde Laravel lo espera:
 Sources ──► Harvesting ──► Rentals ◄── Subscriptions ──► Members
                  │            │             ▲
                  │            ▼          Payments
-                 │        Locations
-                 │            ▲
-                 └───────► Lands
+                 │        Locations ◄──┐
+                 │            ▲        │
+                 ├───────► Lands       │
+                 └───────► Houses ─────┘
 ```
 
-- **Locations** es un núcleo compartido chico (ciudades de la Comarca y cómo reconocerlas en un texto): no depende de nadie y lo usan Rentals, Lands y Harvesting.
+- **Locations** es un núcleo compartido chico (ciudades de la Comarca y cómo reconocerlas en un texto): no depende de nadie y lo usan Rentals, Lands, Houses y Harvesting.
 - **Rentals solo depende de Locations.** Es el núcleo que los demás leen o escriben.
 - **Lands solo depende de Locations** y está separado de Rentals: Harvesting lo escribe con su propio flujo (`lands:analyze`) y no tiene notificaciones.
+- **Houses** (casas en venta) es igual que Lands: solo depende de Locations, flujo propio (`houses:analyze`) y sin notificaciones.
 - Harvesting escribe en Rentals. Subscriptions lee de Rentals (idealmente a partir de un evento `RentalPublished`).
 - Agregar una fuente o un canal de notificación no debería tocar Rentals.
 
@@ -35,6 +37,7 @@ Sources ──► Harvesting ──► Rentals ◄── Subscriptions ──►
 | [Locations](#locations) | Ciudades y barrios de la Comarca, compartidos por los catálogos | Soporte | ✅ `app/Domains/Locations` |
 | [Rentals](#rentals) | El catálogo de alquileres y su ciclo de vida | **Core** | ✅ `app/Domains/Rentals` |
 | [Lands](#lands) | El catálogo de terrenos en venta | **Core** | ✅ `app/Domains/Lands` |
+| [Houses](#houses) | El catálogo de casas en venta | **Core** | ✅ `app/Domains/Houses` |
 | [Subscriptions](#subscriptions) | Avisarle a cada persona los alquileres que le interesan | **Core** | ✅ `app/Domains/Subscriptions` |
 | [Members](#members) | Identidad de los usuarios | Genérico | ✅ `app/Domains/Members` |
 | [Payments](#payments) | Cobrar el acceso a las alertas | Genérico | Futuro (v1.1) |
@@ -49,7 +52,7 @@ Sources ──► Harvesting ──► Rentals ◄── Subscriptions ──►
 
 | Subdominio | Descripción |
 |---|---|
-| Catálogo de fuentes | Lista de sitios en `config/sources.php` (clave, URL del listado, URL base de los links, selector a esperar). Alquileres en `rental_sites` (`Source::rentals()` / `Source::findRental()`), terrenos en `land_sites` (`Source::lands()`). |
+| Catálogo de fuentes | Lista de sitios en `config/sources.php` (clave, URL del listado, URL base de los links, selector a esperar). Alquileres en `rental_sites` (`Source::rentals()` / `Source::findRental()`), terrenos en `land_sites` (`Source::lands()`), casas en venta en `house_sites` (`Source::houses()`). |
 | Tipo de fuente | `SourceType`: inmobiliaria (`agency`, publica solo lo suyo) o portal (`portal`: Properati, MercadoLibre, agrega de muchos y puede repetir avisos). |
 | Configuración por sitio | Particularidades de cada sitio: si renderiza con JS (`wait_for`), cómo se arman los links, etc. |
 
@@ -132,16 +135,30 @@ Usa `App\Integrations\Groq\GroqClient` para hablar con la IA.
 
 Pendiente: notificaciones.
 
+## Houses
+
+**Qué resuelve:** es el catálogo de casas en venta. Igual que Lands, separado de Rentals: no comparte modelo, tabla ni pantalla. Por ahora solo lo ven los admins.
+
+| Subdominio | Descripción |
+|---|---|
+| Disponibilidad | Activa (sigue publicada en el sitio) o no disponible. |
+| Precio | Texto de la inmobiliaria + monto y moneda normalizados (montos menores a 1.000 se toman como relleno). |
+| Características | Dormitorios, baños, superficie cubierta (`covered_area`) y del terreno (`total_area`, en ha desde 1 ha), más datos extra de la IA. |
+| Ubicación | Ciudad y barrio (ver [Locations](#locations)), resueltos al importar por `Harvesting\Services\HouseClassifier`. Reclasificar sin IA: `houses:classify`. |
+| Búsqueda | `Queries/HouseSearch`: ciudad, incluir no disponibles y orden (`HouseSort`: más nuevas, precio con dólares primero, más grandes por m² cubiertos). |
+
+**Hoy:** `app/Domains/Houses/` (`Models/House`, `Enums/HouseSort`, `Queries/HouseSearch`). Pantalla: pestaña "Casas" (`/casas`, `HouseController`, `resources/views/houses`). Comando: `houses:analyze` (en producción los lunes a las 18:30). Extracción: `BrowserHouseScraper` → `HouseListingExtractor` → `HouseImporter` (capturas en `captures/houses`).
+
 ## Locations
 
-**Qué resuelve:** las ciudades de la Comarca Andina y cómo reconocerlas en el texto de un aviso. Lo comparten Rentals y Lands para filtrar por ciudad sin depender uno del otro.
+**Qué resuelve:** las ciudades de la Comarca Andina y cómo reconocerlas en el texto de un aviso. Lo comparten Rentals, Lands y Houses para filtrar por ciudad sin depender uno del otro.
 
 | Subdominio | Descripción |
 |---|---|
 | Ciudades | `Enums/City` (El Bolsón, Lago Puelo, El Hoyo, Epuyén, Cholila): etiqueta, alias y barrios conocidos de cada una. |
 | Reconocimiento | `Support/CityResolver` → `Data/ResolvedLocation`: ciudad y barrio a partir de los textos del aviso (alias + barrios conocidos, basado en evidencia, nunca adivina). |
 
-**Hoy:** `app/Domains/Locations/`. Para reconocer una ciudad o barrio nuevo: agregarlo en `City` y correr `rentals:classify` y `lands:classify` (sin IA).
+**Hoy:** `app/Domains/Locations/`. Para reconocer una ciudad o barrio nuevo: agregarlo en `City` y correr `rentals:classify`, `lands:classify` y `houses:classify` (sin IA).
 
 ## Subscriptions
 

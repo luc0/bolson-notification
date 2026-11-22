@@ -7,7 +7,7 @@
 |
 | Where the scraper stores its files (Harvesting domain).
 |
-| Per catalog (rentals: sources.rental_sites, lands: sources.land_sites):
+| Per catalog (rentals: sources.rental_sites, lands: sources.land_sites, houses: sources.house_sites):
 | - capture_path: last HTML capture of each source (+ "<key>.images.json").
 | - snapshot_path: last capture that was fully processed, to skip unchanged sources.
 |
@@ -25,6 +25,11 @@ return [
     'lands' => [
         'capture_path' => storage_path('app/captures/lands'),
         'snapshot_path' => storage_path('app/snapshots/lands'),
+    ],
+
+    'houses' => [
+        'capture_path' => storage_path('app/captures/houses'),
+        'snapshot_path' => storage_path('app/snapshots/houses'),
     ],
 
 ];

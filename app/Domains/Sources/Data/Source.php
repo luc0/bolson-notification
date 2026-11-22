@@ -41,6 +41,16 @@ final readonly class Source
         return self::fromConfigList(config('sources.land_sites', []));
     }
 
+    /**
+     * House-for-sale sources.
+     *
+     * @return self[]
+     */
+    public static function houses(): array
+    {
+        return self::fromConfigList(config('sources.house_sites', []));
+    }
+
     public static function findRental(string $key): self
     {
         $site = config("sources.rental_sites.{$key}");
@@ -59,6 +69,11 @@ final readonly class Source
     public static function findLandByListingUrl(string $listingUrl): ?self
     {
         return collect(self::lands())->first(fn (self $source) => $source->listingUrl === $listingUrl);
+    }
+
+    public static function findHouseByListingUrl(string $listingUrl): ?self
+    {
+        return collect(self::houses())->first(fn (self $source) => $source->listingUrl === $listingUrl);
     }
 
     /**

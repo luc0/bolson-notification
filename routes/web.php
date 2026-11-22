@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AppVersionController;
+use App\Http\Controllers\HouseController;
 use App\Http\Controllers\LandController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PushSubscriptionController;
@@ -15,6 +16,7 @@ use Rap2hpoutre\LaravelLogViewer\LogViewerController;
 Route::middleware('auth')->group(function () {
     Route::get('/', [RentalController::class, 'index'])->name('rentals.index');
     Route::get('/terrenos', [LandController::class, 'index'])->middleware('can:admin')->name('lands.index');
+    Route::get('/casas', [HouseController::class, 'index'])->middleware('can:admin')->name('houses.index');
     Route::view('/dashboard', 'dashboard')->name('dashboard');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

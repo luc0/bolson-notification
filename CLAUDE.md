@@ -23,12 +23,12 @@ Laravel app that scrapes rental listings (El Bolsón / Lago Puelo), processes th
   `rm -f bootstrap/cache/*.php && mkdir -p storage/logs && chmod -R 777 storage bootstrap/cache`
 
 ## Structure (modular monolith)
-- Domains and their subdomains are documented in `docs/domains.md` (read it before adding features): Sources, Harvesting, Locations, Rentals, Lands, Subscriptions, Members, Payments.
+- Domains and their subdomains are documented in `docs/domains.md` (read it before adding features): Sources, Harvesting, Locations, Rentals, Lands, Houses, Subscriptions, Members, Payments.
 - Each domain lives in `app/Domains/<Domain>/` using Laravel's folder names inside (`Models`, `Enums`, `Data`, `Support`, `Services`...).
 - Framework entry points stay where Laravel expects them: `app/Http`, `app/Console`, `resources/views`, `database/migrations`.
 - Shared external clients (Groq, Puppeteer, HTTP fetch) go to `app/Integrations/`.
-- Dependency rule: Locations (shared kernel: `City`, `CityResolver`) depends on nothing; Rentals and Lands depend only on Locations (never on each other); Harvesting writes into Rentals and Lands; Subscriptions reads from Rentals.
-- Migrated: Locations, Rentals, Lands, Sources, Harvesting (+ `app/Integrations/Groq`), Subscriptions, Members. Payments will be created with the checkout (v1.1).
+- Dependency rule: Locations (shared kernel: `City`, `CityResolver`) depends on nothing; Rentals, Lands and Houses depend only on Locations (never on each other); Harvesting writes into Rentals, Lands and Houses; Subscriptions reads from Rentals.
+- Migrated: Locations, Rentals, Lands, Houses, Sources, Harvesting (+ `app/Integrations/Groq`), Subscriptions, Members. Payments will be created with the checkout (v1.1).
 - Models outside `App\Models` need `#[UseFactory(...)]` (and `$model` in the factory) because Laravel can't guess the factory name.
 - Polymorphic models must be registered in `Relation::morphMap()` (`AppServiceProvider::boot()`) so stored types don't depend on class names.
 
@@ -52,15 +52,20 @@ Laravel app that scrapes rental listings (El Bolsón / Lago Puelo), processes th
 - Flow: `lands:analyze` → `Harvesting\Services\BrowserLandScraper` (capture in `storage/app/captures/lands`) → `LandListingExtractor` → `LandImporter`. Scheduled weekly in prod (Mondays 18:00), every 3 minutes in debug mode like rentals.
 - The AI uses `services.groq.land_reasoning_effort` (default `medium`): with `low` it gives up on long land listings and returns an empty list.
 
+## Houses
+- `House` (`app/Domains/Houses`): houses for sale, built like Lands (own table, `/casas` tab, `HouseController`, admins only with `@can('admin')` / `can:admin`). Same columns as `Land` but `bedrooms`, `bathrooms`, `covered_area` (built m²) and `total_area` (plot m²) instead of `area`. City / neighborhood by `Harvesting\Services\HouseClassifier` (backfill: `houses:classify`). Filters: city chips, include unavailable, sort (`HouseSort`). Query in `Houses\Queries\HouseSearch`. No notifications.
+- Flow: `houses:analyze` → `BrowserHouseScraper` (capture in `storage/app/captures/houses`) → `HouseListingExtractor` → `HouseImporter`. Scheduled weekly in prod (Mondays 18:30). Sources in `config/sources.php` `house_sites` (`Source::houses()`).
+- Long listings (30+ items) make the AI return a different subset on each run: split big sources by city (one source per city with `default_city`, like `disalvo_*`).
+
 ## Sources
-- `config/sources.php` is the single source of truth for scraped sites (key, type, listing URL, link base URL, `wait_for`). To add a site, add it there only.
+- `config/sources.php` is the single source of truth for scraped sites (key, type, listing URL, link base URL, `wait_for`): `rental_sites`, `land_sites`, `house_sites`. To add a site, add it there only.
 - Read them with `App\Domains\Sources\Data\Source::rentals()` / `Source::findRental($key)` (`rental_sites`) and `Source::lands()` (`land_sites`); `SourceType` is `agency` or `portal`.
 - `BrowserRentalScraper` passes the sites to `scripts/scrape.cjs` through stdin. Paginated listings: `next_page_selector` (pages are merged into one capture so later pages aren't deactivated). Listing links in an `onclick` (no `href`) are kept as `href` by `scrape.cjs`.
-- Captures and snapshots are Harvesting config, per catalog: `config/harvesting.php` (`rentals.*`, `lands.*`), read with `CaptureStore::forRentals()` / `forLands()`.
+- Captures and snapshots are Harvesting config, per catalog: `config/harvesting.php` (`rentals.*`, `lands.*`, `houses.*`), read with `CaptureStore::forRentals()` / `forLands()` / `forHouses()`.
 
 ## Architecture
 - `app/Console/Commands/AnalyzeRentals.php` (`rentals:analyze`) → main flow: capture → AI extraction → store → detail enrichment → notify. Scheduled in `routes/console.php`.
-- Harvesting (`app/Domains/Harvesting`): rentals and lands share the same folders; classes are named symmetrically (`BrowserRentalScraper` / `BrowserLandScraper`, `RentalListingExtractor` / `LandListingExtractor`, `RentalImporter` / `LandImporter`). Shared: `Services/SourceCapturer`, `Services/AiListingExtractor`, `Support/CaptureStore`, `Data/Capture`, `Data/ImportResult`.
+- Harvesting (`app/Domains/Harvesting`): rentals, lands and houses share the same folders; classes are named symmetrically (`BrowserRentalScraper` / `BrowserLandScraper` / `BrowserHouseScraper`, `…ListingExtractor`, `…Importer`). Shared: `Services/SourceCapturer`, `Services/AiListingExtractor`, `Support/CaptureStore`, `Data/Capture`, `Data/ImportResult`.
   - `Contracts/RentalScraper` → `BrowserRentalScraper` (Puppeteer) and `FakeRentalScraper` (`SCRAPE_MOCK=true`).
   - `Support/CaptureStore` + `Data/Capture` → captures and snapshots (change detection).
   - `RentalListingExtractor` → extracts rentals from a listing page capture.

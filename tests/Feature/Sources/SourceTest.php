@@ -64,3 +64,20 @@ it('has a valid definition for every configured land site', function () {
     expect(Source::lands())->not->toBeEmpty()
         ->each(fn ($source) => $source->listingUrl->toStartWith('https://'));
 });
+
+it('reads the house sources apart from the rental and land ones', function () {
+    config(['sources.house_sites' => [
+        'agency' => ['name' => 'Agency', 'type' => 'agency', 'listing_url' => 'https://agency.com/casas', 'link_base_url' => 'https://agency.com/p/'],
+    ]]);
+
+    expect(Source::houses())->toHaveCount(1)
+        ->and(Source::findHouseByListingUrl('https://agency.com/casas')->key)->toBe('agency')
+        ->and(Source::rentals())->toHaveCount(2);
+});
+
+it('has a valid definition for every configured house site', function () {
+    config(['sources.house_sites' => (require config_path('sources.php'))['house_sites']]);
+
+    expect(Source::houses())->not->toBeEmpty()
+        ->each(fn ($source) => $source->listingUrl->toStartWith('https://'));
+});

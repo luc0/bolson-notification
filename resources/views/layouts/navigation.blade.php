@@ -19,6 +19,9 @@
                         <x-nav-link :href="route('lands.index')" :active="request()->routeIs('lands.*')">
                             {{ __('Terrenos') }}
                         </x-nav-link>
+                        <x-nav-link :href="route('houses.index')" :active="request()->routeIs('houses.*')">
+                            Casas
+                        </x-nav-link>
                     @endcan
                 </div>
             </div>
@@ -90,6 +93,9 @@
             @can('admin')
                 <x-responsive-nav-link :href="route('lands.index')" :active="request()->routeIs('lands.*')">
                     {{ __('Terrenos') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('houses.index')" :active="request()->routeIs('houses.*')">
+                    Casas
                 </x-responsive-nav-link>
             @endcan
         </div>
