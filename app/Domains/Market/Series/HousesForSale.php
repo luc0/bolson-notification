@@ -55,17 +55,26 @@ class HousesForSale implements PriceSeries
     public function listingsPublishedIn(CarbonImmutable $month): iterable
     {
         return House::query()
-            ->whereNotNull('price_amount')
+            ->with('firstKnownPrice')
             ->where('covered_area', '>', 0)
             ->whereBetween('created_at', [$month->startOfMonth(), $month->endOfMonth()])
             ->lazy()
-            ->map(fn (House $house) => new PricedListing(
-                amount: (float) $house->price_amount / $house->covered_area,
-                currency: Currency::from($house->price_currency),
-                city: $house->city,
-                bedrooms: $house->bedrooms,
-                size: $house->covered_area,
-            ));
+            ->map(function (House $house) {
+                // The price it was published with: later changes belong to later months, not to this one.
+                $price = $house->firstKnownPrice ?? $house;
+                if ($price->price_amount === null) {
+                    return null;
+                }
+
+                return new PricedListing(
+                    amount: (float) $price->price_amount / $house->covered_area,
+                    currency: Currency::from($price->price_currency),
+                    city: $house->city,
+                    bedrooms: $house->bedrooms,
+                    size: $house->covered_area,
+                );
+            })
+            ->filter();
     }
 
     public function firstPublishedAt(): ?CarbonImmutable

@@ -24,6 +24,9 @@
             @if($rental->property_use === \App\Domains\Rentals\Enums\PropertyUse::Commercial)
                 <span class="bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 text-xs font-medium px-2.5 py-0.5 rounded">🏪 {{ $rental->property_use->label() }}</span>
             @endif
+            @if($rental->hasPriceDrop())
+                <span class="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 text-xs font-medium px-2.5 py-0.5 rounded" title="Antes: {{ $rental->previousPrice()->formattedPrice() }}">📉 Bajó de precio</span>
+            @endif
             <span class="text-xs text-gray-500 dark:text-gray-400" title="{{ $rental->created_at->format('d/m/Y H:i') }}">Publicado {{ $rental->detectedForHumans() }}</span>
         </div>
         <div class="flex justify-between items-start mb-3">
@@ -86,7 +89,12 @@
                 @endif
             </div>
             @if($rental->price_amount)
-                <span class="text-xl font-bold text-green-600">{{ $rental->formattedPrice() }}/mes</span>
+                <span class="text-right">
+                    @if($rental->hasPriceDrop())
+                        <span class="block text-sm text-gray-500 dark:text-gray-400 line-through" title="Precio anterior">{{ $rental->previousPrice()->formattedPrice() }}</span>
+                    @endif
+                    <span class="text-xl font-bold text-green-600">{{ $rental->formattedPrice() }}/mes</span>
+                </span>
             @else
                 <span class="text-sm font-semibold text-gray-600 dark:text-gray-300">{{ $rental->formattedPrice() ?? 'Consultar precio' }}</span>
             @endif

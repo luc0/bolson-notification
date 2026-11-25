@@ -64,7 +64,7 @@ Esta regla la verifican tests de arquitectura de Pest (*fitness functions*) en `
 |---|---|
 | Catálogo de fuentes | `config/sources.php` es la única fuente de verdad (clave, tipo, URL del listado, URL base de los links, selector a esperar `wait_for`). Alquileres en `rental_sites` (`Source::rentals()` / `Source::findRental($key)`), terrenos en `land_sites` (`Source::lands()`), casas en venta en `house_sites` (`Source::houses()`). Para sumar un sitio, se agrega ahí y nada más. |
 | Tipo de fuente | `SourceType`: inmobiliaria (`agency`, publica solo lo suyo) o portal (`portal`: Properati, MercadoLibre, agrega de muchos y puede repetir avisos). |
-| Configuración por sitio | Particularidades de cada sitio: si renderiza con JS (`wait_for`), cómo se arman los links, listados paginados (`next_page_selector`: las páginas se unen en una sola captura para que las siguientes no se desactiven), `default_city` cuando la fuente es de una sola ciudad. |
+| Configuración por sitio | Particularidades de cada sitio: si renderiza con JS (`wait_for`), cómo se arman los links, listados paginados (`next_page_selector`: las páginas se unen en una sola captura para que las siguientes no se desactiven), `default_city` cuando la fuente es de una sola ciudad, `listing_id_pattern` (regex con el id propio de la inmobiliaria en el link, `Source::listingIdFrom()`; solo en sitios con id estable: los que usan solo slug, como Tornero, Di Salvo o Ester Cortez, no lo tienen). |
 
 **Hoy:** `config/sources.php`, `app/Domains/Sources/` (`Data/Source`, `Enums/SourceType`).
 
@@ -84,6 +84,7 @@ Dónde se guardan las capturas y snapshots no es parte de Sources sino de Harves
 | Enriquecimiento | Visitar la página de detalle de cada aviso y extraer superficie, dormitorios, servicios, título descriptivo, etc., sin inventar datos. |
 | Detección de alquilados | Revisar la foto del aviso para detectar carteles de "ALQUILADO" o "RESERVADO". |
 | Clasificación | Ciudad, barrio y uso de cada aviso al importar (ver [Locations](#locations)). |
+| Identidad y precios | Reconocer un aviso ya guardado aunque cambie su URL y registrar sus cambios de precio (ver [Identidad del aviso e historial de precios](#identidad-del-aviso-e-historial-de-precios)). |
 | Deduplicación | (Futuro, con portales) Reconocer el mismo aviso publicado en varias fuentes. |
 
 **Flujo principal** (`app/Console/Commands/AnalyzeRentals.php`, `rentals:analyze`, programado en `routes/console.php`): captura → extracción con IA → guardado → enriquecimiento del detalle → notificación.
@@ -96,6 +97,8 @@ Dónde se guardan las capturas y snapshots no es parte de Sources sino de Harves
 | `Data/Capture`, `Support/CaptureStore` | Captura y detección de cambios (carpetas por catálogo en `config/harvesting.php` `rentals.*` / `lands.*` / `houses.*`: `CaptureStore::forRentals()` / `forLands()` / `forHouses()`) |
 | `Services/AiListingExtractor` | Base de la extracción con IA (pedido con schema estricto, reintento y validación) |
 | `Data/ImportResult` | Resultado de una importación |
+| `Services/ListingMatcher`, `Data/ListingMatch`, `Enums/MatchMethod` | Identidad: busca el aviso guardado por URL y después por `external_id` dentro de la misma fuente |
+| `Support/PriceChangeDetector`, `Enums/PriceReview` | Decide qué hacer con el precio leído: sin cambios, pendiente (primera lectura distinta) o confirmado (la segunda lectura coincide); ignora precios ilegibles y saltos de más de `harvesting.price_changes.max_ratio` veces |
 
 **Alquileres:**
 
@@ -103,7 +106,7 @@ Dónde se guardan las capturas y snapshots no es parte de Sources sino de Harves
 |---|---|
 | `Contracts/RentalScraper`, `Services/BrowserRentalScraper` (Puppeteer), `Services/FakeRentalScraper` (`SCRAPE_MOCK=true`) | Orquesta todo el proceso de un sitio |
 | `Services/RentalListingExtractor` | Extracción |
-| `Services/RentalImporter` | Importación de los avisos en Rentals (alta, reactivación y desactivación) + revisión de la foto |
+| `Services/RentalImporter` | Importación de los avisos en Rentals (alta, reactivación, cambio de precio o de URL y desactivación) + revisión de la foto |
 | `Services/RentalDetailService`, `RentalDetailFetcher`, `RentalDetailExtractor` | Enriquecimiento. Completar los que faltan: `rentals:fetch-details` (`--missing-titles` para los títulos) |
 | `Services/RentalImageChecker` | Detección de alquilados |
 | `Services/RentalClassifier` | Ciudad, barrio y uso (para vivir / comercial) al importar: texto del aviso → valor ya conocido (detalle) → `default_city` de la fuente |
@@ -114,7 +117,7 @@ Dónde se guardan las capturas y snapshots no es parte de Sources sino de Harves
 |---|---|
 | `Services/BrowserLandScraper` | Orquesta todo el proceso de un sitio (capturas en `storage/app/captures/lands`) |
 | `Services/LandListingExtractor` | Extracción. Usa `services.groq.land_reasoning_effort` (default `medium`): con `low` la IA se rinde con listados largos y devuelve una lista vacía. |
-| `Services/LandImporter` | Importación en Lands (alta, reactivación y desactivación). Sin enriquecimiento ni notificaciones por ahora. |
+| `Services/LandImporter` | Importación en Lands (alta, reactivación, cambio de precio o de URL y desactivación). Sin enriquecimiento ni notificaciones por ahora. |
 | `Services/LandClassifier` | Ciudad y barrio al importar |
 
 **Casas:**
@@ -123,7 +126,7 @@ Dónde se guardan las capturas y snapshots no es parte de Sources sino de Harves
 |---|---|
 | `Services/BrowserHouseScraper` | Orquesta todo el proceso de un sitio (capturas en `storage/app/captures/houses`) |
 | `Services/HouseListingExtractor` | Extracción (`services.groq.house_reasoning_effort`, default `medium`; con `high` se queda sin tokens) |
-| `Services/HouseImporter` | Importación en Houses (alta, reactivación y desactivación) |
+| `Services/HouseImporter` | Importación en Houses (alta, reactivación, cambio de precio o de URL y desactivación) |
 | `Services/HouseClassifier` | Ciudad y barrio al importar |
 
 Usa `App\Integrations\Groq\GroqClient` para hablar con la IA (modelos en `config/services.php`: `GROQ_MODEL` y `GROQ_REASONING_EFFORT` para extraer avisos, `GROQ_VISION_MODEL` para las fotos).
@@ -145,6 +148,17 @@ Algunas inmobiliarias (ej.: Punto Patagonia) no despublican lo alquilado: le pon
 
 Para forzar que se re-analice un sitio: borrar su snapshot (`storage/app/snapshots/`).
 
+### Identidad del aviso e historial de precios
+
+Igual para alquileres, terrenos y casas (ver ADR-003):
+- Si la captura no cambió no se re-analiza; si cambió, el importer busca cada aviso con `ListingMatcher`: por `source` (URL normalizada) y, si no está, por `external_id` (id de la inmobiliaria en el link, `listing_id_pattern`) dentro de la misma fuente (`site_path`). Si lo encuentra por id con otra URL, actualiza la URL y no lo avisa como nuevo. Si hay varios, toma el activo y más nuevo.
+- Ventana de reaparición (ADR-005): solo se reconocen avisos activos o desactivados hace menos de `harvesting.relisting_after_days` (30) días (`deactivated_at`). Uno que vuelve después es una disponibilidad nueva: se guarda como aviso nuevo (con su fecha y su historial) y se avisa. Por eso `source` ya no es `unique`: la misma URL puede estar en más de una fila.
+- El aviso siempre tiene el último precio confirmado. Cada cambio confirmado se guarda en la tabla de historial de su catálogo (`rental_price_changes`, `land_price_changes`, `house_price_changes`): una fila al darlo de alta (`created`), otra por cada cambio de precio y otra cuando se lo reconoce con otra URL.
+- Confirmación en dos lecturas (ADR-004): un precio distinto leído una vez queda en `pending_price*` sin tocar el precio. Mientras la fuente tenga avisos activos con precio pendiente (`ImportResult::pendingPriceCount`), el scraper **no guarda el snapshot**, así que la próxima corrida la vuelve a leer aunque la página no haya cambiado. Si la segunda lectura da el mismo precio nuevo, se confirma; si da el precio conocido o no se puede leer, se descarta; si da otro, pasa a ser el pendiente. Al desactivar un aviso se borra su pendiente (si no, la fuente se releería para siempre).
+- `PriceChangeDetector` además: un precio ilegible ("Consultar", o un precio de relleno en venta) no pisa el conocido, y un salto de más de `max_ratio` veces (3, `config/harvesting.php`) se ignora y se loguea, como red de seguridad.
+- Cada fila guarda `match_method` (`created`, `url`, `external_id`) y `match_confidence` (0 a 1; hoy todo es 1.0). Los métodos aproximados (huella, foto, texto) van a tener confianza menor (pendiente en `docs/todo.md`).
+- Solo se sigue el precio: título, descripción y características quedan como se vieron la primera vez.
+
 ## Rentals
 
 **Qué resuelve:** es el catálogo de alquileres. Sabe qué es un alquiler, cuándo está disponible y cómo se describe, sin importar de dónde vino.
@@ -152,10 +166,10 @@ Para forzar que se re-analice un sitio: borrar su snapshot (`storage/app/snapsho
 | Subdominio | Descripción |
 |---|---|
 | Disponibilidad | Ciclo de vida del aviso: activo (`active`, sigue en el sitio), inactivo, alquilado (`rented_at`, cartel en la foto) y antiguo (detectado hace 3+ meses, `Rental::OLD_AFTER_MONTHS`). Para filtrar los disponibles: `Rental::available()`. |
-| Precio | `price` tal como lo publica la inmobiliaria + `price_amount` / `price_currency` normalizados (`Support/PriceParser`); detecta precios de relleno ("$1"). |
+| Precio | `price` tal como lo publica la inmobiliaria + `price_amount` / `price_currency` normalizados (`Support/PriceParser`); detecta precios de relleno ("$1"). Siempre el último precio; el historial está en `Models/RentalPriceChange` (`priceChanges()`, `firstKnownPrice()`, `previousPrice()`). La tarjeta muestra "📉 Bajó de precio" con el precio anterior tachado (`hasPriceDrop()`; las búsquedas precargan `priceChanges`). |
 | Ubicación | `location` es el texto crudo de la inmobiliaria; `city` y `neighborhood` se resuelven de ahí (ver [Locations](#locations)). Si no aparece: la ciudad del detalle (IA, solo si está en la página) y después el `default_city` de la fuente. Son las opciones del filtro. |
 | Características | Del detalle: `covered_area`, `total_area`, `bedrooms`, `parking_spaces`, `age_years`, `services` (json de valores de `Enums/Utility`) y datos extra limpios. |
-| Identidad del aviso | `source` es el link del aviso, guardado decodificado (`Support/RentalLink`) para que el mismo aviso no se guarde dos veces. `site_path` es el `listing_url` de la fuente de donde salió. `source_path` no se usa (pendiente de borrar). |
+| Identidad del aviso | `source` es el link del aviso, guardado decodificado (`Support/RentalLink`) para que el mismo aviso no se guarde dos veces. `external_id` es el id de la inmobiliaria sacado del link (si la fuente tiene `listing_id_pattern`), para reconocerlo si cambia la URL. `deactivated_at`: cuándo dejó de publicarse; si vuelve pasados 30 días es un aviso nuevo, así que una URL puede repetirse (`source` no es único). `site_path` es el `listing_url` de la fuente de donde salió. `source_path` no se usa (pendiente de borrar). |
 | Títulos | `content` es el título de la inmobiliaria; `title` es un título corto y descriptivo que escribe la IA desde el detalle (`RentalDetailExtractor`). La tarjeta muestra `title` y, si no hay, `content`. |
 | Uso | `property_use` (`PropertyUse`: para vivir / comercial), resuelto del tipo de propiedad que nombra el título (`PropertyUseResolver`); si no, del detalle (IA, solo si el tipo está en la página). |
 | Búsqueda | `Queries/RentalSearch`. Filtros con chips de un clic (`<x-filter-chip>`): ciudad, y en "Más filtros" (`<details>`, se abre solo cuando alguno no está en su valor por defecto) uso (por defecto para vivir; `uses=all` para todos), rango de precio (`PriceRange`: rangos en pesos + dólares), ambientes (4+ agrupados) y gas natural; incluir no disponibles; orden (`RentalSort`: más nuevos por defecto sin chip; los chips de precio ordenan pesos, después dólares, después sin precio). |
@@ -169,7 +183,7 @@ Para forzar que se re-analice un sitio: borrar su snapshot (`storage/app/snapsho
 | Subdominio | Descripción |
 |---|---|
 | Disponibilidad | Activo (sigue publicado en el sitio) o no disponible. |
-| Precio | Mismas columnas que `Rental` (`source`, `site_path`, `content`, precio): texto de la inmobiliaria + monto y moneda normalizados (montos menores a 1.000 se toman como relleno). Precio por m² cuando hay superficie. |
+| Precio | Mismas columnas que `Rental` (`source`, `external_id`, `site_path`, `content`, precio): texto de la inmobiliaria + monto y moneda normalizados (montos menores a 1.000 se toman como relleno). Precio por m² cuando hay superficie. Último precio + historial en `Models/LandPriceChange`, "Bajó de precio" en la tarjeta. |
 | Superficie | `area` en m² (la IA convierte hectáreas); se muestra en ha desde 1 ha. |
 | Ubicación | Ciudad y barrio (ver [Locations](#locations)), resueltos al importar por `Harvesting\Services\LandClassifier`: texto del aviso → valor ya conocido → `default_city` de la fuente. Reclasificar sin IA: `lands:classify`. |
 | Búsqueda | `Queries/LandSearch`: ciudad (chips, incluye "Sin especificar"), incluir no disponibles y orden (`LandSort`: más nuevos, precio con dólares primero, más grandes). |
@@ -185,7 +199,7 @@ Pendiente: notificaciones.
 | Subdominio | Descripción |
 |---|---|
 | Disponibilidad | Activa (sigue publicada en el sitio) o no disponible. |
-| Precio | Mismas columnas que `Land`: texto de la inmobiliaria + monto y moneda normalizados (montos menores a 1.000 se toman como relleno). |
+| Precio | Mismas columnas que `Land`: texto de la inmobiliaria + monto y moneda normalizados (montos menores a 1.000 se toman como relleno). Último precio + historial en `Models/HousePriceChange`, "Bajó de precio" en la tarjeta. |
 | Características | En lugar de `area`: dormitorios, baños, superficie cubierta (`covered_area`) y del terreno (`total_area`, en ha desde 1 ha), más datos extra de la IA. |
 | Ubicación | Ciudad y barrio (ver [Locations](#locations)), resueltos al importar por `Harvesting\Services\HouseClassifier`. Reclasificar sin IA: `houses:classify`. |
 | Búsqueda | `Queries/HouseSearch`: ciudad, incluir no disponibles y orden (`HouseSort`: más nuevas, precio con dólares primero, más grandes por m² cubiertos). |
@@ -200,7 +214,7 @@ Pendiente: notificaciones.
 |---|---|
 | Series | Una clase por gráfico (`Contracts/PriceSeries`, en `Series/`: `ResidentialRentals`, `CommercialRentals`, `HousesForSale`, `LandsForSale`): qué avisos entran, qué precio se mide (`PriceUnit`: total, por m² o por m² cubierto), en qué monedas, si se agrupa por dormitorios (`groupsByBedrooms()`) y por rango de superficie. Hoy: alquileres para vivir y comerciales (ARS y USD), casas en venta (USD por m² cubierto, `covered_area`) y terrenos en venta (USD por m²); los avisos sin superficie quedan afuera. Se listan en `config/market.php`. |
 | Cotización | `Services/ExchangeRates`: promedio mensual del dólar (`market.dollar`, blue) bajado de argentinadatos.com (`App\Integrations\ArgentinaDatos`) a `exchange_rates`. Cada aviso se convierte con el promedio de su mes antes de calcular la mediana. |
-| Estadísticas | `Services/PriceStatsCalculator`: de los avisos **publicados en el mes** (`created_at`, así se puede reconstruir la historia) saca cantidad, mediana, promedio, p25 y p75 por moneda, para toda la Comarca y por ciudad. `Support/Distribution` hace las cuentas. |
+| Estadísticas | `Services/PriceStatsCalculator`: de los avisos **publicados en el mes** (`created_at`, así se puede reconstruir la historia), con el **primer precio conocido** de cada uno (`firstKnownPrice()` del historial; el actual si no tiene historial), saca cantidad, mediana, promedio, p25 y p75 por moneda, para toda la Comarca y por ciudad. `Support/Distribution` hace las cuentas. |
 | Rangos de superficie | Casas (m² cubiertos) y terrenos (m² del lote) también guardan estadísticas por rango (`price_stats.size_range`, clave de `SizeRange` como `0-1000`; null = todas las superficies), para comparar lugares con avisos parecidos. Cortes en `config('market.size_ranges')`, declarados por `PriceSeries::sizeRanges()`. Al cambiar los cortes: `market:snapshot --backfill`. |
 | Foto mensual | `Services/MarketSnapshot` + `market:snapshot`: guarda en `price_stats` (por serie, moneda, ciudad, rango y dormitorios) el mes pasado y el mes en curso (todos los martes a las 04:00; el mes en curso se ve como "(en curso)" hasta que termina), reemplazando lo que hubiera de esos meses. `--month=YYYY-MM` calcula uno; `--backfill` toda la historia hasta el mes en curso. |
 | Gráficos | `Queries/PriceHistory` arma los puntos; `resources/views/market` + Chart.js (`resources/js/market-charts.js`). Cada gráfico tiene una línea de mediana por lugar (`PriceHistory::places()`: Toda la Comarca + cada ciudad con datos, color fijo por lugar); un selector arriba (chips para sacar, buscador para agregar) aplica a todos y se guarda en `?places=`. La banda p25–p75 solo se ve con un único lugar. Cada gráfico con rangos tiene sus chips ("Todas" por defecto, en `?size[<serie>]=`). |
@@ -315,3 +329,21 @@ Un ADR no se edita cuando cambia la decisión: se agrega uno nuevo que lo reempl
 - Decisión: cada mes cuenta los avisos **publicados** en ese mes (`created_at`), convertidos con el dólar promedio del mes, y el resultado se guarda en `price_stats` (tabla propia de Market).
 - Alternativas: medir los avisos activos en cada mes, o calcular en vivo sobre las tablas de los catálogos.
 - Consecuencias: la historia se puede reconstruir en cualquier momento (`--backfill`) y la página no hace cálculos pesados; a cambio, un aviso que sigue publicado varios meses solo cuenta en el mes en que apareció, y los cambios de criterio necesitan un backfill.
+
+### ADR-003 — El catálogo guarda el último precio y cada catálogo tiene su historial (2026-11-24)
+- Contexto: el importer solo reconocía los avisos por URL y nunca actualizaba el precio, así que las bajas se perdían, y si la inmobiliaria cambiaba la URL (ej. un slug con otro título) el mismo aviso se guardaba y se avisaba como nuevo. Market agrupa por mes de publicación (ADR-002): si el aviso pasa a tener el último precio, un alquiler de marzo que sube en junio movería la mediana de marzo (con la inflación en pesos pasa siempre) y cada backfill reescribiría el pasado.
+- Decisión: `rentals`, `lands` y `houses` siempre tienen el último precio (lo que ven el listado, los filtros y los avisos). Cada catálogo tiene su tabla de historial (`rental_price_changes`, `land_price_changes`, `house_price_changes`), escrita por Harvesting a través del modelo del dominio, con una fila inicial por aviso, una por cambio real y el método y la confianza del match. Para reconocer un aviso: URL y después `external_id` (id de la inmobiliaria en el link, regex por fuente) dentro de la misma fuente. Market cuenta cada aviso en su mes de publicación con el primer precio conocido.
+- Alternativas: una tabla polimórfica compartida (no tendría un dominio dueño); guardar solo el último precio y dejar Market sobre el catálogo (distorsiona los meses pasados); matching aproximado (huella, foto, texto) desde el principio (más caro y riesgoso; queda para después con `match_confidence` < 1); medir en Market el precio vigente a fin de cada mes (necesita meses de historial; es el paso siguiente).
+- Consecuencias: se ven las bajas de precio, un cambio de URL en sitios con id ya no genera un aviso nuevo y los meses pasados de Análisis quedan fijos; a cambio, hay tres tablas casi iguales, los sitios con solo slug (Tornero, Di Salvo, Ester Cortez) siguen dependiendo de la URL, y Market todavía no refleja las subas y bajas posteriores a la publicación.
+
+### ADR-004 — Un precio nuevo se toma recién cuando dos lecturas coinciden (2026-11-24)
+- Contexto: con el historial de ADR-003, si la IA lee mal un precio en una corrida (un cero de más, el precio de otro aviso), queda registrado como cambio y la tarjeta muestra una baja falsa. La IA no es estable con la misma captura (ver listados largos de Di Salvo).
+- Decisión: un precio distinto queda pendiente (`pending_price*` en el catálogo) y se confirma solo si la lectura siguiente da lo mismo. Mientras haya pendientes en una fuente no se guarda su snapshot, para que la próxima corrida la vuelva a leer aunque la página no haya cambiado. El tope de `max_ratio` queda como red de seguridad.
+- Alternativas: comparar contra el precio de una semana antes (pierde cambios dentro de la semana y no frena un error en el día de referencia); tomar "la página no cambió" como confirmación (el mismo HTML no confirma que la IA lo haya leído bien); verificar que el monto esté escrito en el HTML capturado (sin demora, pero depende del formato de cada sitio; se puede sumar después).
+- Consecuencias: un error aislado de la IA no llega al historial ni a la tarjeta; a cambio, cada cambio de precio tarda una corrida más (un día en alquileres, una semana en terrenos y casas) y cuesta una lectura extra de la IA por fuente con pendientes.
+
+### ADR-005 — Un aviso que reaparece después de 30 días es un aviso nuevo (2026-11-24)
+- Contexto: al cargar `external_id` aparecieron alquileres guardados dos veces con el mismo id: uno inactivo de 2025-09 y otro de 2026-11 con otro título, precio y hasta otra cantidad de dormitorios. No se puede saber si es la misma casa editada o un aviso reusado para otra propiedad (el link viejo muestra lo mismo que el nuevo). Además el importer reactivaba cualquier aviso que volviera, por URL o por id, aunque hubiera estado despublicado un año: no se avisaba y Market lo contaba en el mes original.
+- Decisión: solo se reconocen avisos activos o desactivados hace menos de `harvesting.relisting_after_days` (30) días, según `deactivated_at`. Uno que vuelve después se guarda y se avisa como nuevo. `source` deja de ser único (índice común) porque la misma URL puede volver como aviso nuevo.
+- Alternativas: reactivar siempre (como antes: se pierde la disponibilidad nueva y se distorsiona Market); comparar los datos del aviso para detectar reúsos (otra ciudad, otros ambientes): queda para la etapa 4, con `match_confidence`; mantener `source` único y archivar la fila vieja cambiándole la URL (ensucia el dato).
+- Consecuencias: una propiedad que vuelve al mercado se avisa y cuenta en su mes, y los avisos que la IA saltea una corrida se siguen reactivando; a cambio, la misma propiedad puede quedar en varias filas (una por cada vez que se publicó), y los inactivos viejos tomaron `updated_at` como `deactivated_at`, que puede ser más reciente que la fecha real.

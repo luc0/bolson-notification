@@ -3,6 +3,11 @@
 namespace App\Domains\Harvesting\Services;
 
 use App\Domains\Harvesting\Data\ImportResult;
+use App\Domains\Harvesting\Data\ListingMatch;
+use App\Domains\Harvesting\Enums\MatchMethod;
+use App\Domains\Harvesting\Enums\PriceReview;
+use App\Domains\Harvesting\Support\PriceChangeDetector;
+use App\Domains\Rentals\Data\ParsedPrice;
 use App\Domains\Rentals\Models\Rental;
 use App\Domains\Rentals\Support\PriceParser;
 use App\Domains\Rentals\Support\RentalLink;
@@ -16,6 +21,8 @@ class RentalImporter
         private readonly PriceParser $priceParser,
         private readonly RentalClassifier $rentalClassifier,
         private readonly RentalImageChecker $imageChecker,
+        private readonly ListingMatcher $listingMatcher,
+        private readonly PriceChangeDetector $priceChangeDetector,
     ) {}
 
     /**
@@ -29,7 +36,7 @@ class RentalImporter
 
         foreach ($scrapedItems as $item) {
             try {
-                $rental = $this->storeItem($item, $siteUrl);
+                $rental = $this->storeItem($item, $source);
                 $this->rentalClassifier->classify($rental, $source);
                 $this->refreshRentedStatus($rental);
 
@@ -45,31 +52,27 @@ class RentalImporter
         }
 
         $this->deactivateMissingRentals($scrapedItems, $siteUrl);
+        $pendingPriceCount = Rental::where('site_path', $siteUrl)->where('active', true)->whereNotNull('pending_price_amount')->count();
 
         Log::info('✅ Stored '.count($newItems)." new rentals from {$siteUrl} ({$failedCount} failed).");
 
-        return new ImportResult($newItems, $failedCount);
+        return new ImportResult($newItems, $failedCount, $pendingPriceCount);
     }
 
-    private function storeItem(array $item, string $siteUrl): Rental
+    private function storeItem(array $item, Source $source): Rental
     {
         $link = RentalLink::normalize($item['Link']);
-        $imageUrl = $item['Image'] ?? null;
-        $existingRental = Rental::where('source', $link)->first();
-
-        if ($existingRental) {
-            $existingRental->update([
-                'active' => true,
-                'image_url' => $imageUrl ?? $existingRental->image_url,
-            ]);
-
-            return $existingRental;
-        }
-
+        $externalId = $source->listingIdFrom($link);
         $price = $this->priceParser->parse($item['Price'] ?? null, $item['Currency'] ?? null);
 
-        return Rental::create([
+        $match = $this->listingMatcher->find(Rental::class, $link, $externalId, $source->listingUrl);
+        if ($match !== null) {
+            return $this->updateExisting($match, $item, $link, $externalId, $price);
+        }
+
+        $rental = Rental::create([
             'source' => $link,
+            'external_id' => $externalId,
             'content' => $item['Content'],
             'description' => $item['Caracteristicas'] ?? null,
             'price' => $price->raw,
@@ -78,9 +81,58 @@ class RentalImporter
             'location' => $item['Location'] ?? null,
             'rooms' => $item['Rooms'] ?? null,
             'bathrooms' => $item['Bathrooms'] ?? null,
-            'site_path' => $siteUrl,
-            'image_url' => $imageUrl,
+            'site_path' => $source->listingUrl,
+            'image_url' => $item['Image'] ?? null,
             'active' => true,
+        ]);
+        $this->recordPrice($rental, MatchMethod::Created);
+
+        return $rental;
+    }
+
+    /**
+     * The rental always keeps its latest confirmed price and URL; each confirmed price change (or a URL change) adds a row to its history.
+     */
+    private function updateExisting(ListingMatch $match, array $item, string $link, ?string $externalId, ParsedPrice $price): Rental
+    {
+        /** @var Rental $rental */
+        $rental = $match->listing;
+        $hasNewLink = $rental->source !== $link;
+        $priceReview = $this->priceChangeDetector->review($rental, $price);
+
+        $rental->update([
+            'active' => true,
+            'deactivated_at' => null,
+            'source' => $link,
+            'external_id' => $externalId ?? $rental->external_id,
+            'image_url' => $item['Image'] ?? $rental->image_url,
+            ...$priceReview->attributes($price),
+        ]);
+
+        if ($hasNewLink) {
+            Log::info("🔗 Rental recognized by {$match->method->value} with a new URL: {$link}");
+        }
+
+        if ($priceReview === PriceReview::Pending) {
+            Log::info("⏳ New price {$price->amount} {$price->currency} to confirm on the next read: {$link}");
+        }
+
+        if ($priceReview === PriceReview::Confirmed || $hasNewLink) {
+            $this->recordPrice($rental, $match->method);
+        }
+
+        return $rental;
+    }
+
+    private function recordPrice(Rental $rental, MatchMethod $method): void
+    {
+        $rental->priceChanges()->create([
+            'price' => $rental->price,
+            'price_amount' => $rental->price_amount,
+            'price_currency' => $rental->price_currency,
+            'match_method' => $method->value,
+            'match_confidence' => $method->confidence(),
+            'observed_at' => now(),
         ]);
     }
 
@@ -127,7 +179,8 @@ class RentalImporter
             $deactivatedCount = Rental::where('site_path', $siteUrl)
                 ->where('active', true)
                 ->whereNotIn('source', $scrapedSources)
-                ->update(['active' => false]);
+                // A pending price can't be confirmed anymore: without this the source would be re-read forever.
+                ->update(['active' => false, 'deactivated_at' => now(), 'pending_price' => null, 'pending_price_amount' => null, 'pending_price_currency' => null]);
 
             Log::info("🔄 {$deactivatedCount} rentals deactivated for site: {$siteUrl}");
         } catch (Throwable $e) {

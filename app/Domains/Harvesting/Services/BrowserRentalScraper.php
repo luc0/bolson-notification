@@ -73,6 +73,12 @@ class BrowserRentalScraper implements RentalScraper
             return $importResult->newItems;
         }
 
+        if ($importResult->hasPendingPrices()) {
+            Log::info("⏳ {$importResult->pendingPriceCount} price changes of {$source->key} to confirm, snapshot not saved so it's read again next run.");
+
+            return $importResult->newItems;
+        }
+
         $this->captureStore->markProcessed($source, $capture);
 
         return $importResult->newItems;

@@ -81,3 +81,23 @@ it('has a valid definition for every configured house site', function () {
     expect(Source::houses())->not->toBeEmpty()
         ->each(fn ($source) => $source->listingUrl->toStartWith('https://'));
 });
+
+it('reads the agency id of a listing from its link', function () {
+    config(['sources.rental_sites.agency.listing_id_pattern' => '#/p/(\d+)-#']);
+
+    expect(Source::findRental('agency')->listingIdFrom('https://agency.com/p/6990365-Departamento-en-Alquiler'))->toBe('6990365')
+        ->and(Source::findRental('agency')->listingIdFrom('https://agency.com/otra-cosa'))->toBeNull()
+        ->and(Source::findRental('portal')->listingIdFrom('https://portal.com/p/1-casa'))->toBeNull();
+});
+
+it('reads the ids of the configured sites', function (string $key, string $link, string $id) {
+    config(['sources' => require base_path('config/sources.php')]);
+    $source = collect([...Source::rentals(), ...Source::lands(), ...Source::houses()])->first(fn (Source $source) => $source->key === $key);
+
+    expect($source->listingIdFrom($link))->toBe($id);
+})->with([
+    ['rioazulpropiedades', 'https://www.rioazulpropiedades.com/p/6667459-Departamento-en-Alquiler-en-Centro-rivadavia', '6667459'],
+    ['puntosurpropiedades', 'https://puntosurpropiedades.ar/web/propiedad.php?id_propiedad=655', '655'],
+    ['inmobiliariadelagua', 'https://inmobiliariadelagua.com.ar/departamento-alquiler-casco-centrico-el-bolson/8587691', '8587691'],
+    ['surpatagonian', 'https://surpatagonian.com/propiedad.html?id=b0d9b5b5-a0ab-4c34-b5da-be4186ea2f69', 'b0d9b5b5-a0ab-4c34-b5da-be4186ea2f69'],
+]);

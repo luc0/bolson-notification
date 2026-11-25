@@ -10,6 +10,9 @@
             @if($isUnavailable)
                 <span class="bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 text-xs font-medium px-2.5 py-0.5 rounded" title="La inmobiliaria ya no la ofrece">🚫 No disponible</span>
             @endif
+            @if($house->hasPriceDrop())
+                <span class="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 text-xs font-medium px-2.5 py-0.5 rounded" title="Antes: {{ $house->previousPrice()->formattedPrice() }}">📉 Bajó de precio</span>
+            @endif
             <span class="text-xs text-gray-500 dark:text-gray-400" title="{{ $house->created_at->format('d/m/Y H:i') }}">Publicada {{ $house->detectedForHumans() }}</span>
         </div>
 
@@ -42,7 +45,12 @@
                 <span></span>
             @endif
             @if($house->price_amount)
-                <span class="text-xl font-bold text-green-600 whitespace-nowrap">{{ $house->formattedPrice() }}</span>
+                <span class="text-right whitespace-nowrap">
+                    @if($house->hasPriceDrop())
+                        <span class="block text-sm text-gray-500 dark:text-gray-400 line-through" title="Precio anterior">{{ $house->previousPrice()->formattedPrice() }}</span>
+                    @endif
+                    <span class="text-xl font-bold text-green-600">{{ $house->formattedPrice() }}</span>
+                </span>
             @else
                 <span class="text-sm font-semibold text-gray-600 dark:text-gray-300">{{ $house->formattedPrice() ?? 'Consultar precio' }}</span>
             @endif

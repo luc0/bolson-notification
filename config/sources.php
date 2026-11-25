@@ -23,6 +23,9 @@
 | - next_page_selector: CSS selector of the "next page" link on paginated listings. The scraper follows it
 |   (up to 5 pages) and merges them into one capture, so rentals on later pages aren't deactivated.
 |   Sites that open listings from an onclick (no href) work too: scrape.cjs keeps that URL as an href.
+| - listing_id_pattern: regex whose first group is the agency's own id of a listing in its link. Lets the importer
+|   recognize a listing whose URL changed (e.g. a new title in the slug) instead of storing it as new.
+|   Only for sites with a stable id in the URL; slug-only sites (Tornero, Di Salvo, Ester Cortez) leave it out.
 |
 */
 
@@ -45,6 +48,7 @@ return [
             'listing_url' => 'https://www.inmobiliariapuntopatagonia.com.ar/Alquiler',
             // e.g. https://www.inmobiliariapuntopatagonia.com.ar/p/6858071-Departamento-en-Alquiler-en-El-Bolson-...
             'link_base_url' => 'https://www.inmobiliariapuntopatagonia.com.ar/p/',
+            'listing_id_pattern' => '#/p/(\d+)-#',
             'wait_for' => '.prop-desc',
             'default_city' => null, // listing mixes cities
         ],
@@ -55,6 +59,7 @@ return [
             'listing_url' => 'https://puntosurpropiedades.ar/web/index.php?search_tipo_de_propiedad=1&search_locality=El%20Bols%C3%B3n&search_tipo_de_operacion=2#listado',
             // e.g. https://puntosurpropiedades.ar/web/propiedad.php?id_propiedad=655
             'link_base_url' => 'https://puntosurpropiedades.ar/web/',
+            'listing_id_pattern' => '#[?&]id_propiedad=(\d+)#',
             'wait_for' => null,
             'default_city' => 'el_bolson', // listing filtered by search_locality
         ],
@@ -65,6 +70,7 @@ return [
             'listing_url' => 'https://www.rioazulpropiedades.com/Buscar?operation=2&locations=40933&o=2,2&1=1',
             // e.g. https://www.rioazulpropiedades.com/p/6667459-Departamento-en-Alquiler-en-Centro-rivadavia
             'link_base_url' => 'https://www.rioazulpropiedades.com/',
+            'listing_id_pattern' => '#/p/(\d+)-#',
             'wait_for' => null,
             'default_city' => 'el_bolson', // listing filtered by locations=40933
         ],
@@ -75,6 +81,7 @@ return [
             'listing_url' => 'https://inmobiliariadelagua.com.ar/s/alquiler////?business_type%5B%5D=for_rent',
             // e.g. https://inmobiliariadelagua.com.ar/departamento-alquiler-casco-centrico-el-bolson/8587691
             'link_base_url' => 'https://inmobiliariadelagua.com.ar',
+            'listing_id_pattern' => '#/(\d+)/?$#',
             'wait_for' => '.item',
             'default_city' => null, // listing mixes cities
         ],
@@ -86,6 +93,7 @@ return [
             'listing_url' => 'https://surpatagonian.com/propiedades?op=alquiler',
             // e.g. https://surpatagonian.com/propiedad.html?id=b0d9b5b5-a0ab-4c34-b5da-be4186ea2f69
             'link_base_url' => 'https://surpatagonian.com/',
+            'listing_id_pattern' => '#[?&]id=([0-9a-f-]{36})#i',
             'wait_for' => '.card-propiedad',
             'default_city' => null, // the site covers the whole Comarca
         ],
@@ -120,6 +128,7 @@ return [
             'listing_url' => 'https://www.inmobiliariapuntopatagonia.com.ar/Terrenos',
             // e.g. https://www.inmobiliariapuntopatagonia.com.ar/p/5399685-Terreno-en-Venta-en-Lago-Puelo-...
             'link_base_url' => 'https://www.inmobiliariapuntopatagonia.com.ar/p/',
+            'listing_id_pattern' => '#/p/(\d+)-#',
             'wait_for' => '.prop-desc',
         ],
 
@@ -129,6 +138,7 @@ return [
             // search_tipo_de_propiedad=8 (Terreno), search_tipo_de_operacion=1 (Venta).
             'listing_url' => 'https://puntosurpropiedades.ar/web/index.php?search_tipo_de_propiedad=8&search_locality=El%20Bols%C3%B3n&search_tipo_de_operacion=1#listado',
             'link_base_url' => 'https://puntosurpropiedades.ar/web/',
+            'listing_id_pattern' => '#[?&]id_propiedad=(\d+)#',
             'wait_for' => null,
             'default_city' => 'el_bolson', // listing filtered by search_locality
         ],
@@ -138,6 +148,7 @@ return [
             'type' => 'agency',
             'listing_url' => 'https://www.rioazulpropiedades.com/Terrenos',
             'link_base_url' => 'https://www.rioazulpropiedades.com/',
+            'listing_id_pattern' => '#/p/(\d+)-#',
             'wait_for' => null,
         ],
 
@@ -147,6 +158,7 @@ return [
             'listing_url' => 'https://inmobiliariadelagua.com.ar/s/lote-terreno/venta?id_property_type=5&business_type%5B0%5D=for_sale',
             // e.g. https://inmobiliariadelagua.com.ar/lote-terreno-venta-cerro-amigo-el-bolson/10349652
             'link_base_url' => 'https://inmobiliariadelagua.com.ar',
+            'listing_id_pattern' => '#/(\d+)/?$#',
             'wait_for' => '.item',
         ],
 
@@ -157,6 +169,7 @@ return [
             'listing_url' => 'https://www.ricardorubiopatagonia.com/Terrenos',
             // e.g. https://www.ricardorubiopatagonia.com/p/3913442-Terreno-en-Venta-en-Las-Golondrinas
             'link_base_url' => 'https://www.ricardorubiopatagonia.com/',
+            'listing_id_pattern' => '#/p/(\d+)-#',
             'wait_for' => null,
         ],
 
@@ -167,6 +180,7 @@ return [
             'listing_url' => 'https://www.actitudinmobiliaria.com.ar/Terrenos',
             // e.g. https://www.actitudinmobiliaria.com.ar/p/13741797-Terreno-en-Venta-en-El-Bolson-Terreno-en-barrio-Los-Abedules
             'link_base_url' => 'https://www.actitudinmobiliaria.com.ar/',
+            'listing_id_pattern' => '#/p/(\d+)-#',
             'wait_for' => null,
         ],
 
@@ -265,6 +279,7 @@ return [
             'listing_url' => 'https://www.ricardorubiopatagonia.com/Casas',
             // e.g. https://www.ricardorubiopatagonia.com/p/709133-Casa-en-Venta-en-Centro-RR3699
             'link_base_url' => 'https://www.ricardorubiopatagonia.com/',
+            'listing_id_pattern' => '#/p/(\d+)-#',
             'wait_for' => null,
         ],
 
@@ -274,6 +289,7 @@ return [
             // Same site template as rioazul / puntopatagonia: shows the first 40 houses (loads more on scroll).
             'listing_url' => 'https://www.actitudinmobiliaria.com.ar/Casas',
             'link_base_url' => 'https://www.actitudinmobiliaria.com.ar/',
+            'listing_id_pattern' => '#/p/(\d+)-#',
             'wait_for' => null,
         ],
 

@@ -52,6 +52,7 @@ final readonly class RentalSearch
         $rooms = array_values(array_filter(array_map('intval', $this->rooms), fn (int $count) => $count > 0));
 
         return Rental::query()
+            ->with('priceChanges')
             ->tap(fn (Builder $query) => $this->applyAddedBefore($query))
             ->when(! $this->includeInactive, fn (Builder $query) => $query->available())
             ->when(! empty($this->cities), fn (Builder $query) => $query->byCity(self::toEnums($this->cities, City::class)))

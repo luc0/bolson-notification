@@ -273,3 +273,17 @@ it('labels the size ranges built from the config bounds', function () {
         ->and($ranges->rangeOf(1000.5)->key())->toBe('1000-5000')
         ->and($ranges->rangeOf(null))->toBeNull();
 });
+
+it('counts each listing with the price it was published with, so later changes do not rewrite past months', function () {
+    $rental = marketRental(500000);
+    $rental->priceChanges()->create(['price_amount' => 500000, 'price_currency' => 'ARS', 'match_method' => 'created', 'match_confidence' => 1, 'observed_at' => '2026-10-10']);
+    $rental->priceChanges()->create(['price_amount' => 800000, 'price_currency' => 'ARS', 'match_method' => 'url', 'match_confidence' => 1, 'observed_at' => '2026-11-15']);
+    $rental->update(['price_amount' => 800000]);
+    $unpricedAtFirst = marketRental(600000);
+    $unpricedAtFirst->priceChanges()->create(['price' => 'Consultar', 'match_method' => 'created', 'match_confidence' => 1, 'observed_at' => '2026-10-10']);
+    $unpricedAtFirst->priceChanges()->create(['price_amount' => 600000, 'price_currency' => 'ARS', 'match_method' => 'url', 'match_confidence' => 1, 'observed_at' => '2026-10-20']);
+
+    $this->artisan('market:snapshot')->assertSuccessful();
+
+    expect(marketStat('residential_rentals', 'ARS'))->listings_count->toBe(2)->median->toBe(550000.0);
+});

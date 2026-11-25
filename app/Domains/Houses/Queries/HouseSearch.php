@@ -36,6 +36,7 @@ final readonly class HouseSearch
     public function houses(): Collection
     {
         $query = House::query()
+            ->with('priceChanges')
             ->when(! $this->includeInactive, fn (Builder $query) => $query->available())
             ->when(! empty($this->cities), fn (Builder $query) => $query->byCity($this->selectedCities()));
 

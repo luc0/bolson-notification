@@ -135,6 +135,22 @@ Si ya se había corrido antes de los rangos de superficie o del precio por m² c
 
 Después, `php artisan schedule:list` tiene que mostrar `market:snapshot` los martes a las 04:00.
 
+### Historial de precios e id de la inmobiliaria
+
+Migraciones nuevas (`2026_11_24_000000` a `000005`), con cambios de datos que corren solas en `migrate`:
+- `rental_price_changes`, `land_price_changes`, `house_price_changes`: una fila inicial (`created`) por cada aviso existente con su precio actual.
+- `external_id` en `rentals`, `lands` y `houses`: se completa desde la URL con `listing_id_pattern` de `config/sources.php`.
+- `pending_price`, `pending_price_amount`, `pending_price_currency` en `rentals`, `lands` y `houses` (vacías): precio nuevo esperando la segunda lectura.
+- `deactivated_at` en `rentals`, `lands` y `houses`: los inactivos toman su `updated_at`. `source` deja de ser `unique` (pasa a índice común). El `down` falla si ya hay URLs repetidas.
+
+Después del deploy, una sola vez (Market pasa a usar el primer precio del historial; hoy da lo mismo que antes, pero deja la base al día):
+
+```bash
+php artisan market:snapshot --backfill
+```
+
+Verificar: `php artisan tinker --execute="echo App\\Domains\\Rentals\\Models\\RentalPriceChange::count();"` igual a la cantidad de alquileres, y en el log de la próxima corrida, líneas `🔗 ... recognized by external_id`, `⏳ ... to confirm` (y en la corrida siguiente la misma fuente se vuelve a mandar a la IA aunque no haya cambiado) o `⚠️ Price change ignored` si las hubo.
+
 ## 7. Verificación después de cada deploy
 
 - [ ] La home carga con HTTPS y se puede loguear.

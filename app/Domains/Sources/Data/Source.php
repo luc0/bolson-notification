@@ -19,7 +19,26 @@ final readonly class Source
         public ?string $waitFor = null,
         public ?string $defaultCity = null,
         public ?string $nextPageSelector = null,
+        public ?string $listingIdPattern = null,
     ) {}
+
+    /**
+     * The agency's own id of a listing, read from its link with `listing_id_pattern` (first capture group).
+     * It survives a change of the rest of the URL (e.g. a new title in the slug).
+     */
+    public function listingIdFrom(string $link): ?string
+    {
+        if ($this->listingIdPattern === null) {
+            return null;
+        }
+
+        $hasId = preg_match($this->listingIdPattern, $link, $matches) === 1 && ($matches[1] ?? '') !== '';
+        if (! $hasId) {
+            return null;
+        }
+
+        return $matches[1];
+    }
 
     /**
      * Rental sources.
@@ -98,6 +117,7 @@ final readonly class Source
             waitFor: $site['wait_for'] ?? null,
             defaultCity: $site['default_city'] ?? null,
             nextPageSelector: $site['next_page_selector'] ?? null,
+            listingIdPattern: $site['listing_id_pattern'] ?? null,
         );
     }
 }

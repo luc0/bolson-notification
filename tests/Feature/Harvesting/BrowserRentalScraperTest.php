@@ -68,3 +68,23 @@ it('does nothing when the node scraper fails', function () {
     expect(app(BrowserRentalScraper::class)->scrape())->toBe([]);
     Http::assertNothingSent();
 });
+
+it('reads the source again while a new price waits for confirmation, even if the page did not change', function () {
+    $rental = Rental::create([
+        'source' => 'https://example.com/p/1', 'content' => 'Depto', 'description' => '', 'site_path' => 'https://example.com/alquileres',
+        'price' => '$450.000', 'price_amount' => 450000, 'price_currency' => 'ARS', 'image_url' => 'https://img.example.com/1.jpg', 'active' => true,
+    ]);
+    $scraper = app(BrowserRentalScraper::class);
+
+    $scraper->scrape();
+
+    expect($rental->fresh())->price_amount->toBe('450000.00')->pending_price_amount->toBe('500000.00')
+        ->and(File::exists("{$this->tempPath}/snapshots/example.html"))->toBeFalse();
+
+    // Same capture, read again: the second read confirms the price and the snapshot is saved.
+    $scraper->scrape();
+
+    expect($rental->fresh())->price_amount->toBe('500000.00')->pending_price_amount->toBeNull()
+        ->and(File::exists("{$this->tempPath}/snapshots/example.html"))->toBeTrue();
+    Http::assertSentCount(2);
+});

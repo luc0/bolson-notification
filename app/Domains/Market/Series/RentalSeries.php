@@ -41,16 +41,25 @@ abstract class RentalSeries implements PriceSeries
     public function listingsPublishedIn(CarbonImmutable $month): iterable
     {
         return Rental::query()
+            ->with('firstKnownPrice')
             ->where('property_use', $this->propertyUse())
-            ->whereNotNull('price_amount')
             ->whereBetween('created_at', [$month->startOfMonth(), $month->endOfMonth()])
             ->lazy()
-            ->map(fn (Rental $rental) => new PricedListing(
-                amount: (float) $rental->price_amount,
-                currency: Currency::from($rental->price_currency),
-                city: $rental->city,
-                bedrooms: $rental->bedrooms,
-            ));
+            ->map(function (Rental $rental) {
+                // The price it was published with: later changes belong to later months, not to this one.
+                $price = $rental->firstKnownPrice ?? $rental;
+                if ($price->price_amount === null) {
+                    return null;
+                }
+
+                return new PricedListing(
+                    amount: (float) $price->price_amount,
+                    currency: Currency::from($price->price_currency),
+                    city: $rental->city,
+                    bedrooms: $rental->bedrooms,
+                );
+            })
+            ->filter();
     }
 
     public function firstPublishedAt(): ?CarbonImmutable

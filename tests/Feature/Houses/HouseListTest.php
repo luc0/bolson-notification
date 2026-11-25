@@ -99,3 +99,11 @@ it('filters by city, including houses without a known city', function () {
         ->assertDontSee('House https://example.com/bolson')
         ->assertDontSee('House https://example.com/unknown');
 });
+
+it('shows when a house dropped its price, with the previous one', function () {
+    $house = createHouse('https://example.com/1', ['price_amount' => 110000, 'price_currency' => 'USD']);
+    $house->priceChanges()->create(['price_amount' => 120000, 'price_currency' => 'USD', 'match_method' => 'created', 'match_confidence' => 1, 'observed_at' => now()->subWeek()]);
+    $house->priceChanges()->create(['price_amount' => 110000, 'price_currency' => 'USD', 'match_method' => 'url', 'match_confidence' => 1, 'observed_at' => now()]);
+
+    $this->get('/casas')->assertOk()->assertSee('Bajó de precio')->assertSee('U$S 120.000')->assertSee('U$S 110.000');
+});

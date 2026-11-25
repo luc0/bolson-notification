@@ -7,6 +7,8 @@ use App\Domains\Rentals\Enums\PriceRange;
 use App\Domains\Rentals\Enums\PropertyUse;
 use App\Domains\Rentals\Enums\Utility;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Rental extends Model
 {
@@ -17,12 +19,16 @@ class Rental extends Model
 
     protected $fillable = [
         'source',
+        'external_id',
         'content',
         'title',
         'description',
         'price',
         'price_amount',
         'price_currency',
+        'pending_price',
+        'pending_price_amount',
+        'pending_price_currency',
         'location',
         'city',
         'neighborhood',
@@ -31,6 +37,7 @@ class Rental extends Model
         'bathrooms',
         'source_path',
         'active',
+        'deactivated_at',
         'site_path',
         'image_url',
         'image_checked_url',
@@ -49,7 +56,9 @@ class Rental extends Model
         'city' => City::class,
         'property_use' => PropertyUse::class,
         'price_amount' => 'decimal:2',
+        'pending_price_amount' => 'decimal:2',
         'active' => 'boolean',
+        'deactivated_at' => 'datetime',
         'rented_at' => 'datetime',
         'rooms' => 'integer',
         'bathrooms' => 'integer',
@@ -61,6 +70,44 @@ class Rental extends Model
         'services' => 'array',
         'details_fetched_at' => 'datetime',
     ];
+
+    public function priceChanges(): HasMany
+    {
+        return $this->hasMany(RentalPriceChange::class);
+    }
+
+    /**
+     * The first price it was seen with (what Market counts for the month it was published).
+     */
+    public function firstKnownPrice(): HasOne
+    {
+        return $this->hasOne(RentalPriceChange::class)->ofMany(
+            ['id' => 'min'],
+            fn ($query) => $query->whereNotNull('price_amount'),
+        );
+    }
+
+    /**
+     * The last known price that differs from the current one (needs `priceChanges`, eager load it in lists).
+     */
+    public function previousPrice(): ?RentalPriceChange
+    {
+        return $this->priceChanges
+            ->sortByDesc('id')
+            ->first(fn (RentalPriceChange $change) => $change->price_amount !== null
+                && ($change->price_amount !== $this->price_amount || $change->price_currency !== $this->price_currency));
+    }
+
+    public function hasPriceDrop(): bool
+    {
+        $previous = $this->previousPrice();
+        $isComparable = $previous !== null && $this->price_amount !== null && $previous->price_currency === $this->price_currency;
+        if (! $isComparable) {
+            return false;
+        }
+
+        return (float) $this->price_amount < (float) $previous->price_amount;
+    }
 
     /**
      * @param  array<int, City|null>  $cities  null = rentals without a known city.

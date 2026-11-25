@@ -52,16 +52,25 @@ class LandsForSale implements PriceSeries
     public function listingsPublishedIn(CarbonImmutable $month): iterable
     {
         return Land::query()
-            ->whereNotNull('price_amount')
+            ->with('firstKnownPrice')
             ->where('area', '>', 0)
             ->whereBetween('created_at', [$month->startOfMonth(), $month->endOfMonth()])
             ->lazy()
-            ->map(fn (Land $land) => new PricedListing(
-                amount: (float) $land->price_amount / $land->area,
-                currency: Currency::from($land->price_currency),
-                city: $land->city,
-                size: $land->area,
-            ));
+            ->map(function (Land $land) {
+                // The price it was published with: later changes belong to later months, not to this one.
+                $price = $land->firstKnownPrice ?? $land;
+                if ($price->price_amount === null) {
+                    return null;
+                }
+
+                return new PricedListing(
+                    amount: (float) $price->price_amount / $land->area,
+                    currency: Currency::from($price->price_currency),
+                    city: $land->city,
+                    size: $land->area,
+                );
+            })
+            ->filter();
     }
 
     public function firstPublishedAt(): ?CarbonImmutable

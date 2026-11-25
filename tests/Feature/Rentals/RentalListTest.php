@@ -185,3 +185,18 @@ it('filters by property use and combines it with the city', function () {
     $this->get('/?uses[]=commercial&uses[]=residential')
         ->assertSee('href="'.e(route('rentals.index', ['uses' => 'all'], false)).'"', false);
 });
+
+it('shows when a rental dropped its price', function () {
+    $rental = createRental('https://example.com/cheaper');
+    $rental->update(['price_amount' => 450000, 'price_currency' => 'ARS']);
+    $rental->priceChanges()->create(['price_amount' => 500000, 'price_currency' => 'ARS', 'match_method' => 'created', 'match_confidence' => 1, 'observed_at' => now()->subWeek()]);
+    $rental->priceChanges()->create(['price_amount' => 450000, 'price_currency' => 'ARS', 'match_method' => 'url', 'match_confidence' => 1, 'observed_at' => now()]);
+    $pricier = createRental('https://example.com/pricier');
+    $pricier->update(['price_amount' => 600000, 'price_currency' => 'ARS']);
+    $pricier->priceChanges()->create(['price_amount' => 500000, 'price_currency' => 'ARS', 'match_method' => 'created', 'match_confidence' => 1, 'observed_at' => now()->subWeek()]);
+
+    $page = $this->get('/')->assertOk()->assertSeeTextInOrder(['Bajó de precio', '$500.000', '$450.000/mes']);
+
+    // Only the cheaper one: a rise is not flagged.
+    expect(substr_count($page->getContent(), '📉 Bajó de precio'))->toBe(1);
+});

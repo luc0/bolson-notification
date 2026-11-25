@@ -4,11 +4,15 @@ namespace App\Domains\Lands\Models;
 
 use App\Domains\Locations\Enums\City;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * A land plot for sale published by an agency.
  *
  * - source: URL of the listing (stored decoded), site_path: listing_url of the source it was scraped from.
+ * - external_id: the agency's own id from the link (Source listing_id_pattern), to recognize it if the URL changes.
+ * - price*: always the latest price; the history is in priceChanges().
  * - content: the agency's title; description: extra features, one per line.
  * - price (raw text) + price_amount / price_currency (parsed); area in m².
  * - location: raw text from the agency; city / neighborhood resolved from it (LandClassifier).
@@ -19,11 +23,15 @@ class Land extends Model
 
     protected $fillable = [
         'source',
+        'external_id',
         'content',
         'description',
         'price',
         'price_amount',
         'price_currency',
+        'pending_price',
+        'pending_price_amount',
+        'pending_price_currency',
         'location',
         'city',
         'neighborhood',
@@ -31,14 +39,55 @@ class Land extends Model
         'image_url',
         'site_path',
         'active',
+        'deactivated_at',
     ];
 
     protected $casts = [
         'city' => City::class,
         'price_amount' => 'decimal:2',
+        'pending_price_amount' => 'decimal:2',
         'area' => 'float',
         'active' => 'boolean',
+        'deactivated_at' => 'datetime',
     ];
+
+    public function priceChanges(): HasMany
+    {
+        return $this->hasMany(LandPriceChange::class);
+    }
+
+    /**
+     * The first price it was seen with (what Market counts for the month it was published).
+     */
+    public function firstKnownPrice(): HasOne
+    {
+        return $this->hasOne(LandPriceChange::class)->ofMany(
+            ['id' => 'min'],
+            fn ($query) => $query->whereNotNull('price_amount'),
+        );
+    }
+
+    /**
+     * The last known price that differs from the current one (needs `priceChanges`, eager load it in lists).
+     */
+    public function previousPrice(): ?LandPriceChange
+    {
+        return $this->priceChanges
+            ->sortByDesc('id')
+            ->first(fn (LandPriceChange $change) => $change->price_amount !== null
+                && ($change->price_amount !== $this->price_amount || $change->price_currency !== $this->price_currency));
+    }
+
+    public function hasPriceDrop(): bool
+    {
+        $previous = $this->previousPrice();
+        $isComparable = $previous !== null && $this->price_amount !== null && $previous->price_currency === $this->price_currency;
+        if (! $isComparable) {
+            return false;
+        }
+
+        return (float) $this->price_amount < (float) $previous->price_amount;
+    }
 
     /**
      * @param  array<int, City|null>  $cities  null = lands without a known city.

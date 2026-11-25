@@ -3,7 +3,12 @@
 namespace App\Domains\Harvesting\Services;
 
 use App\Domains\Harvesting\Data\ImportResult;
+use App\Domains\Harvesting\Data\ListingMatch;
+use App\Domains\Harvesting\Enums\MatchMethod;
+use App\Domains\Harvesting\Enums\PriceReview;
+use App\Domains\Harvesting\Support\PriceChangeDetector;
 use App\Domains\Houses\Models\House;
+use App\Domains\Rentals\Data\ParsedPrice;
 use App\Domains\Rentals\Support\PriceParser;
 use App\Domains\Rentals\Support\RentalLink;
 use App\Domains\Sources\Data\Source;
@@ -21,6 +26,8 @@ class HouseImporter
     public function __construct(
         private readonly PriceParser $priceParser,
         private readonly HouseClassifier $houseClassifier,
+        private readonly ListingMatcher $listingMatcher,
+        private readonly PriceChangeDetector $priceChangeDetector,
     ) {}
 
     /**
@@ -34,7 +41,7 @@ class HouseImporter
 
         foreach ($scrapedItems as $item) {
             try {
-                $house = $this->storeItem($item, $siteUrl);
+                $house = $this->storeItem($item, $source);
                 $this->houseClassifier->classify($house, $source);
                 if ($house->wasRecentlyCreated) {
                     $newItems[] = [...$item, 'site_url' => $siteUrl];
@@ -47,45 +54,103 @@ class HouseImporter
         }
 
         $this->deactivateMissingHouses($scrapedItems, $siteUrl);
+        $pendingPriceCount = House::where('site_path', $siteUrl)->where('active', true)->whereNotNull('pending_price_amount')->count();
 
         Log::info('✅ Stored '.count($newItems)." new houses from {$siteUrl} ({$failedCount} failed).");
 
-        return new ImportResult($newItems, $failedCount);
+        return new ImportResult($newItems, $failedCount, $pendingPriceCount);
     }
 
-    private function storeItem(array $item, string $siteUrl): House
+    private function storeItem(array $item, Source $source): House
     {
         $link = RentalLink::normalize($item['Link']);
-        $imageUrl = $item['Image'] ?? null;
-        $existingHouse = House::where('source', $link)->first();
+        $externalId = $source->listingIdFrom($link);
+        $price = $this->salePrice($item);
 
-        if ($existingHouse) {
-            $existingHouse->update([
-                'active' => true,
-                'image_url' => $imageUrl ?? $existingHouse->image_url,
-            ]);
-
-            return $existingHouse;
+        $match = $this->listingMatcher->find(House::class, $link, $externalId, $source->listingUrl);
+        if ($match !== null) {
+            return $this->updateExisting($match, $item, $link, $externalId, $price);
         }
 
-        $price = $this->priceParser->parse($item['Price'] ?? null, $item['Currency'] ?? null);
-        $isRealPrice = $price->amount >= self::MIN_REAL_SALE_PRICE;
-
-        return House::create([
+        $house = House::create([
             'source' => $link,
+            'external_id' => $externalId,
             'content' => $item['Content'],
             'description' => $item['Caracteristicas'] ?? null,
             'price' => $price->raw,
-            'price_amount' => $isRealPrice ? $price->amount : null,
-            'price_currency' => $isRealPrice ? $price->currency : null,
+            'price_amount' => $price->amount,
+            'price_currency' => $price->currency,
             'location' => $item['Location'] ?? null,
             'bedrooms' => $this->positiveOrNull($item['Bedrooms'] ?? null),
             'bathrooms' => $this->positiveOrNull($item['Bathrooms'] ?? null),
             'covered_area' => $this->positiveOrNull($item['CoveredArea'] ?? null),
             'total_area' => $this->positiveOrNull($item['TotalArea'] ?? null),
-            'image_url' => $imageUrl,
-            'site_path' => $siteUrl,
+            'image_url' => $item['Image'] ?? null,
+            'site_path' => $source->listingUrl,
             'active' => true,
+        ]);
+        $this->recordPrice($house, MatchMethod::Created);
+
+        return $house;
+    }
+
+    /**
+     * A placeholder price ("U\$S 200" for "ask for the price") is stored as unknown.
+     */
+    private function salePrice(array $item): ParsedPrice
+    {
+        $price = $this->priceParser->parse($item['Price'] ?? null, $item['Currency'] ?? null);
+        $isRealPrice = $price->amount >= self::MIN_REAL_SALE_PRICE;
+        if (! $isRealPrice) {
+            return new ParsedPrice($price->raw, null, null);
+        }
+
+        return $price;
+    }
+
+    /**
+     * The house always keeps its latest confirmed price and URL; each confirmed price change (or a URL change) adds a row to its history.
+     */
+    private function updateExisting(ListingMatch $match, array $item, string $link, ?string $externalId, ParsedPrice $price): House
+    {
+        /** @var House $house */
+        $house = $match->listing;
+        $hasNewLink = $house->source !== $link;
+        $priceReview = $this->priceChangeDetector->review($house, $price);
+
+        $house->update([
+            'active' => true,
+            'deactivated_at' => null,
+            'source' => $link,
+            'external_id' => $externalId ?? $house->external_id,
+            'image_url' => $item['Image'] ?? $house->image_url,
+            ...$priceReview->attributes($price),
+        ]);
+
+        if ($hasNewLink) {
+            Log::info("🔗 House recognized by {$match->method->value} with a new URL: {$link}");
+        }
+
+        if ($priceReview === PriceReview::Pending) {
+            Log::info("⏳ New price {$price->amount} {$price->currency} to confirm on the next read: {$link}");
+        }
+
+        if ($priceReview === PriceReview::Confirmed || $hasNewLink) {
+            $this->recordPrice($house, $match->method);
+        }
+
+        return $house;
+    }
+
+    private function recordPrice(House $house, MatchMethod $method): void
+    {
+        $house->priceChanges()->create([
+            'price' => $house->price,
+            'price_amount' => $house->price_amount,
+            'price_currency' => $house->price_currency,
+            'match_method' => $method->value,
+            'match_confidence' => $method->confidence(),
+            'observed_at' => now(),
         ]);
     }
 
@@ -113,7 +178,8 @@ class HouseImporter
             $deactivatedCount = House::where('site_path', $siteUrl)
                 ->where('active', true)
                 ->whereNotIn('source', $scrapedSources)
-                ->update(['active' => false]);
+                // A pending price can't be confirmed anymore: without this the source would be re-read forever.
+                ->update(['active' => false, 'deactivated_at' => now(), 'pending_price' => null, 'pending_price_amount' => null, 'pending_price_currency' => null]);
 
             Log::info("🔄 {$deactivatedCount} houses deactivated for site: {$siteUrl}");
         } catch (Throwable $e) {

@@ -36,6 +36,7 @@ final readonly class LandSearch
     public function lands(): Collection
     {
         $query = Land::query()
+            ->with('priceChanges')
             ->when(! $this->includeInactive, fn (Builder $query) => $query->available())
             ->when(! empty($this->cities), fn (Builder $query) => $query->byCity($this->selectedCities()));
 
